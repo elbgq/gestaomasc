@@ -7,7 +7,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from cadastros.models import Produto
 from comercial.models import MovimentacaoEstoque, Estoque, Venda, CMVItem
 from django.db.models import Sum
-from datetime import datetime
+from django.core.paginator import Paginator
 
 #====================================
 # ESTOQUE
@@ -218,9 +218,14 @@ def registrar_cmv(venda):
 
 #====================================
 # CMV detalhado
-#====================================
+#==================================== 
 def cmv_lista(request):
-    vendas = Venda.objects.all().order_by("-data_emissao")
+    vendas_list = Venda.objects.all().order_by("-data_emissao")
+
+    paginator = Paginator(vendas_list, 20)  # 20 itens por página
+    page_number = request.GET.get("page")
+    vendas = paginator.get_page(page_number)
+
     return render(request, "comercial/cmv_lista.html", {"vendas": vendas})
 
 

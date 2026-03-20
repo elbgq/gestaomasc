@@ -12,7 +12,6 @@ env/
 *.log
 *.pot
 *.pyc
-db.sqlite3
 media/
 
 # VS Code
