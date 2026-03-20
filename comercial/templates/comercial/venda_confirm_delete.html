@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h3>Excluir Venda #{{ venda.id }}</h3>
+<p>Tem certeza de que deseja excluir esta venda? Esta ação não pode ser desfeita.</p>
+
+<form method="post">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-danger">Sim, excluir</button>
+    <a href="{% url 'comercial:venda_list' %}" class="btn btn-secondary">Cancelar</a>
+</form>
+
+{% endblock %}
+

@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}Confirmação de Exclusão{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="card shadow-sm">
+        <div class="card-header bg-danger text-white">
+            <h4 class="mb-0">Excluir Registro</h4>
+        </div>
+        <div class="card-body">
+            <p class="fs-5">
+                Tem certeza que deseja excluir <strong>{{ obj }}</strong>?
+            </p>
+            <p class="text-muted">
+                Esta ação não poderá ser desfeita.
+            </p>
+
+            <form method="post">
+                {% csrf_token %}
+                <div class="d-flex justify-content-center gap-3 mt-4">
+                    
+                    <!-- Botão cancelar -->
+                    <a href="javascript:history.back()" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left"></i> Cancelar
+                    </a>
+
+                    <!-- Botão confirmar exclusão -->
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash"></i> Confirmar Exclusão
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

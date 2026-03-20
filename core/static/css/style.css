@@ -1,0 +1,86 @@
+/* =========================
+   LAYOUT ESTRUTURAL
+========================= */
+/* Paleta de cores*/
+:root {
+    --erp-primary: #2e7d32;
+    --erp-primary-dark: #1b5e20;
+    --erp-primary-light: #a9ebbd;
+
+    --erp-bg: #f5f5f5;
+
+    --erp-sidebar-bg: #2b2727;      /* PRETO */
+    --erp-sidebar-hover: #1f1f1f;   /* hover escuro */
+
+    --erp-text-light: #ffffff;
+    --erp-text-dark: #333333;
+}
+
+html, body {
+    background-color: var(--erp-primary-light);
+}
+
+.erp-body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+
+
+/* Sidebar fixa */
+.erp-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 250px;
+    height: 100vh;
+    background-color: var(--erp-sidebar-bg);
+    color: white;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+/* Conteúdo deslocado */
+.erp-content {
+    margin-left: 250px;
+    padding: 30px;
+    min-height: 100vh;
+}
+
+/* Footer */
+.erp-footer {
+    margin-left: 250px;
+    background-color: var(--erp-sidebar-bg);
+    color: white;
+    padding: 10px;
+}
+
+/* Botão toggle */
+.erp-toggle {
+    position: fixed;
+    top: 15px;
+    left: 15px;
+    z-index: 1100;
+}
+
+/* =========================
+   RESPONSIVIDADE
+========================= */
+
+@media (max-width: 768px) {
+
+    .erp-sidebar {
+        transform: translateX(-100%);
+        z-index: 1050;
+    }
+
+    .erp-sidebar.active {
+        transform: translateX(0);
+    }
+
+    .erp-content {
+        margin-left: 0;
+    }
+}
+

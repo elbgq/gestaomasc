@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>Conta a Pagar – Compra #{{ conta.compra.id }}</h2>
+
+<div class="card p-3 mb-3">
+    <p><strong>Fornecedor:</strong> {{ conta.contato }}</p>
+    <p><strong>Compra:</strong> #{{ conta.compra.id }}</p>
+    <p><strong>Total:</strong> R$ {{ conta.valor|floatformat:2 }}</p>
+    <p><strong>Total Pago:</strong> R$ {{ total_pago|floatformat:2 }}</p>
+    <p><strong>Em Aberto:</strong> R$ {{ total_em_aberto|floatformat:2 }}</p>
+    <p><strong>Status:</strong>
+        {% if conta.esta_pago %}
+            <span class="text-success">Pago</span>
+        {% else %}
+            <span class="text-danger">Em aberto</span>
+        {% endif %}
+    </p>
+</div>
+
+<h4>Parcelas</h4>
+
+<table class="table table-bordered table-sm">
+    <thead>
+        <tr>
+            <th>Nº</th>
+            <th>Valor</th>
+            <th>Vencimento</th>
+            <th>Status</th>
+            <th>Ação</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for p in parcelas %}
+        <tr>
+            <td>{{ forloop.counter }}</td>
+            <td>R$ {{ p.valor|floatformat:2 }}</td>
+            <td>{{ p.data_vencimento|date:"d/m/Y" }}</td>
+            <td>
+                {% if p.esta_pago %}
+                    <span class="text-success">Pago em {{ p.data_pagamento|date:"d/m/Y" }}</span>
+                {% else %}
+                    <span class="text-danger">Em aberto</span>
+                {% endif %}
+            </td>
+            <td>
+                {% if not p.esta_pago %}
+                    <a href="{% url 'financeiro:pagar_titulo' p.id %}" class="btn btn-sm btn-danger">
+                        Pagar
+                    </a>
+                {% else %}
+                    {% if p.caixa_movimento %}
+                        <a href="{% url 'financeiro:caixa_detalhe' p.caixa_movimento.id %}" class="btn btn-sm btn-secondary">
+                            Ver no Caixa
+                        </a>
+                    {% endif %}
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+ 
+<hr>
+
+<a href="{% url 'financeiro:contas_pagar_lista' %}" class="btn btn-outline-secondary">Voltar</a>
+
+{% endblock %}

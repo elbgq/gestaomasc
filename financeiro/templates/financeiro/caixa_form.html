@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% load widget_tweaks %}
+{% block title %}Novo Movimento no Caixa{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <!-- Título -->
+    <h2 class="mb-4">
+        {% if view.object.pk %}
+            Editar Movimento do Caixa
+        {% else %}
+            Novo Movimento no Caixa
+        {% endif %}
+    </h2>
+
+    <!-- Erros -->
+    {% if form.errors %}
+        <div class="alert alert-danger">
+            <strong>Corrija os erros abaixo:</strong>
+            <ul class="mb-0">
+                {% for field, errors in form.errors.items %}
+                    <li><strong>{{ field }}:</strong> {{ errors|join:", " }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+
+    <!-- Formulário -->
+    <form method="post" novalidate>
+        {% csrf_token %}
+
+        <div class="card shadow-sm p-4">
+
+            <!-- Data -->
+            <div class="mb-3">
+                <label class="form-label">Data</label>
+                {{ form.data|add_class:"form-control" }}
+            </div>
+
+            <!-- Descrição -->
+            <div class="mb-3">
+                <label class="form-label">Descrição</label>
+                {{ form.descricao|add_class:"form-control" }}
+            </div>
+
+            <!-- Tipo -->
+            <div class="mb-3">
+                <label class="form-label">Tipo</label>
+                {{ form.tipo|add_class:"form-select" }}
+            </div>
+
+            <!-- Valor -->
+            <div class="mb-3">
+                <label class="form-label">Valor</label>
+                {{ form.valor|add_class:"form-control" }}
+            </div>
+
+            <!-- Origem -->
+            <div class="mb-3">
+                <label class="form-label">Origem</label>
+                {{ form.origem|add_class:"form-select" }}
+            </div>
+
+            <!-- Observação -->
+            <div class="mb-3">
+                <label class="form-label">Observação (opcional)</label>
+                {{ form.observacao|add_class:"form-control" }}
+            </div>
+
+            <!-- Botões -->
+            <div class="mt-4 d-flex gap-2">
+                <button type="submit" class="btn btn-success">
+                    💾 Salvar
+                </button>
+
+                <a href="{% url 'financeiro:caixa_list' %}" class="btn btn-secondary">
+                    ↩️ Voltar
+                </a>
+            </div>
+
+        </div>
+    </form>
+
+</div>
+{% endblock %}

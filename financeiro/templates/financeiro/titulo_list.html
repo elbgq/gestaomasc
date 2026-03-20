@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+
+{% block title %}Títulos Financeiros{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <h1 class="h3 mb-4">Títulos Financeiros</h1>
+
+    <!-- ============================
+         NAV TABS
+    ============================= -->
+    <ul class="nav nav-tabs" id="tituloTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active text-success fw-bold"
+                    id="receber-tab"
+                    data-bs-toggle="tab"
+                    data-bs-target="#receber"
+                    type="button"
+                    role="tab">
+                📥 A Receber
+            </button>
+        </li>
+
+        <li class="nav-item" role="presentation">
+            <button class="nav-link text-danger fw-bold"
+                    id="pagar-tab"
+                    data-bs-toggle="tab"
+                    data-bs-target="#pagar"
+                    type="button"
+                    role="tab">
+                📤 A Pagar
+            </button>
+        </li>
+    </ul>
+
+    <!-- ============================
+         TAB CONTENT
+    ============================= -->
+    <div class="tab-content mt-3" id="tituloTabsContent">
+
+        <!-- ============================
+             ABA: TÍTULOS A RECEBER
+        ============================= -->
+        <div class="tab-pane fade show active" id="receber" role="tabpanel">
+
+            <div class="card border-success">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Títulos a Receber</h5>
+                </div>
+
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover align-middle mb-0">
+                            <thead class="table-success">
+                                <tr>
+                                    <th>Descrição</th>
+                                    <th>Categoria</th>
+                                    <th>Valor</th>
+                                    <th>Vencimento</th>
+                                    <th>Status</th>
+                                    <th>Origem</th>
+                                    <th class="text-center">Ações</th>
+                                </tr>
+                            </thead>
+
+                            <tbody> 
+                                {% for t in titulos %}
+                                    {% if t.tipo == "R" %}
+                                    <tr>
+                                        <td>{{ t.descricao }}</td>
+                                        <td>{{ t.categoria }}</td>
+                                        <td>R$ {{ t.valor|floatformat:2 }}</td>
+                                        <td>{{ t.data_vencimento|date:"d/m/Y" }}</td>
+
+                                        <td>
+                                            {% if t.esta_pago %}
+                                                <span class="badge bg-success">Quitado</span>
+                                            {% else %}
+                                                <span class="badge bg-warning text-dark">Em aberto</span>
+                                            {% endif %}
+                                        </td>
+
+                                        <td>{{ t.origem }}</td>
+                                        <!-- Ações -->
+                                        <td class="text-center align-middle">
+                                            <div class="d-flex justify-content-center gap-2">
+                                                <a href="{% url 'financeiro:titulo_detalhe' t.tipo t.id %}"
+                                                class="btn btn-sm btn-info">Detalhes</a>
+
+                                                {% if t.esta_pago %}
+                                                    <span></span>
+                                                {% else %}
+                                                    <a href="{% url 'financeiro:titulo_confirmar_quitacao' t.tipo t.id %}"
+                                                class="btn btn-sm btn-success">Quitar</a>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endif %}
+                                {% empty %}
+                                    <tr>
+                                        <td colspan="7" class="text-center text-muted py-3">
+                                            Nenhum título encontrado.
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ============================
+             ABA: TÍTULOS A PAGAR
+        ============================= -->
+        <div class="tab-pane fade" id="pagar" role="tabpanel">
+
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">Títulos a Pagar</h5>
+                </div>
+
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover align-middle mb-0">
+                            <thead class="table-danger">
+                                <tr>
+                                    <th>Descrição</th>
+                                    <th>Categoria</th>
+                                    <th>Valor</th>
+                                    <th>Vencimento</th>
+                                    <th>Status</th>
+                                    <th>Origem</th>
+                                    <th class="text-center">Ações</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                {% for t in titulos %}
+                                    {% if t.tipo == "D" %}
+                                    <tr>
+                                        <td>{{ t.descricao }}</td>
+                                        <td>{{ t.categoria }}</td>
+                                        <td>R$ {{ t.valor|floatformat:2 }}</td>
+                                        <td>{{ t.data_vencimento|date:"d/m/Y" }}</td>
+
+                                        <td>
+                                            {% if t.esta_pago %}
+                                                <span class="badge bg-success">Quitado</span>
+                                            {% else %}
+                                                <span class="badge bg-warning text-dark">Em aberto</span>
+                                            {% endif %}
+                                        </td>
+
+                                        <td>{{ t.origem }}</td>
+                                        <!-- Ações -->
+                                        <td class="text-center align-middle">
+                                            <div class="d-flex justify-content-center gap-2">
+                                                <a href="{% url 'financeiro:titulo_detalhe' t.tipo t.id %}"
+                                                class="btn btn-sm btn-info">Detalhes</a>
+
+                                                {% if t.esta_pago %}
+                                                    <span></span>
+                                                {% else %}
+                                                    <a href="{% url 'financeiro:titulo_confirmar_quitacao' t.tipo t.id %}"
+                                                class="btn btn-sm btn-success">Quitar</a>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endif %}
+                                {% empty %}
+                                    <tr>
+                                        <td colspan="7" class="text-center text-muted py-3">
+                                            Nenhum título encontrado.
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+{% endblock %}

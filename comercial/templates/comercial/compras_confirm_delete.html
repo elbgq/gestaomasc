@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card p-4 shadow-sm">
+    <h3 class="mb-3">Excluir Compra</h3>
+
+    <p>Tem certeza que deseja excluir a compra <strong>#{{ compra.id }}</strong>?</p>
+
+    <p><strong>Fornecedor:</strong> {{ compra.contato }}</p>
+    <p><strong>Valor total:</strong> R$ {{ compra.valor_total|floatformat:2 }}</p>
+    <p><strong>Data:</strong> {{ compra.data|date:"d/m/Y" }}</p>
+
+    <div class="alert alert-warning mt-3">
+        Esta ação é irreversível e irá:
+        <ul>
+            <li>Estornar itens da compra</li>
+            <li>Estornar movimentações de estoque</li>
+            <li>Excluir lançamentos financeiros</li>
+            <li>Excluir parcelas a pagar</li>
+            <li>Excluir o cabeçalho da compra</li>
+        </ul>
+    </div>
+
+    <form method="post" action="{% url 'comercial:compra_excluir' compra.id %}">
+        {% csrf_token %}
+        <a href="{% url 'comercial:compra_detalhe' compra.id %}" class="btn btn-secondary">Cancelar</a>
+        <button type="submit" class="btn btn-danger">Excluir</button>
+    </form>
+</div>
+{% endblock %}

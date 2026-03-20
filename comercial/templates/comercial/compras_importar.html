@@ -1,0 +1,22 @@
+<!-- DEBUG: INÍCIO DO TEMPLATE -->
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<h2>Importar Compra (CSV ou XML)</h2>
+
+<form method="post" enctype="multipart/form-data" action="{% url 'comercial:compras_importar' %}" class="mt-4">
+    {% csrf_token %}
+ 
+    <div class="mb-3">
+        <label class="form-label">Selecione o arquivo</label>
+        <input type="file" name="arquivo" accept=".csv,.xml" class="form-control" required>
+        <small class="text-muted">Formatos aceitos: CSV (separado por ;) ou XML (NF-e)</small>
+    </div>
+ 
+    <button type="submit" class="btn btn-primary">📥 Importar</button>
+    <a href="{% url 'comercial:compra_list' %}" class="btn btn-secondary">↩️ Voltar</a>
+</form>
+<!-- DEBUG: FIM DO TEMPLATE -->
+{% endblock %}
+ 

@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}Caixa - {{ caixa.nome }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <h1 class="h3 mb-3">Caixa: {{ caixa.nome }}</h1>
+
+    <div class="alert alert-info">
+        <strong>Saldo Atual:</strong> R$ {{ saldo|floatformat:2 }}
+    </div>
+    <!-- BOTÕES DE AÇÃO DO CAIXA -->
+    <div class="mb-3">
+
+    {% if not caixa_aberto %}
+        <!-- Caixa fechado → só pode abrir -->
+        <a href="{% url 'financeiro:caixa_abrir' caixa.id %}" class="btn btn-success">
+            Abrir Caixa
+        </a>
+    {% endif %}
+
+    {% if caixa_aberto %}
+        <!-- Caixa aberto → pode fechar -->
+        <a href="{% url 'financeiro:caixa_fechar' caixa.id %}" class="btn btn-danger">
+            Fechar Caixa
+        </a>
+
+        <!-- Caixa aberto → pode sangria e reforço -->
+        <a href="{% url 'financeiro:caixa_sangria' caixa.id %}" class="btn btn-warning">
+            Sangria
+        </a>
+
+        <a href="{% url 'financeiro:caixa_reforco' caixa.id %}" class="btn btn-primary">
+            Reforço
+        </a>
+    {% endif %}
+
+</div>
+ 
+    </div>
+    <!-- FIM DOS BOTÕES -->
+
+<h4 class="h5 mt-4">Movimentos</h4>
+
+    <form method="get" class="row g-3 mb-4">
+        <div class="col-md-3">
+            <label class="form-label">Data Inicial</label>
+            <input type="date" name="data_inicio" value="{{ request.GET.data_inicio }}" class="form-control">
+        </div>
+
+        <div class="col-md-3">
+            <label class="form-label">Data Final</label>
+            <input type="date" name="data_fim" value="{{ request.GET.data_fim }}" class="form-control">
+        </div>
+
+        <div class="col-md-3 d-flex align-items-end">
+            <button class="btn btn-primary w-100">Filtrar</button>
+        </div>
+    </form>
+
+    <table class="table table-striped table-hover">
+        <thead class="table-dark">
+            <tr>
+                <th>Data</th>
+                <th>Descrição</th>
+                <th>Tipo</th>
+                <th>Valor</th>
+                <th>Origem</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            {% for m in movimentos %}
+            <tr>
+                <td>{{ m.data|date:"d/m/Y" }}</td>
+                <td>{{ m.descricao }}</td>
+                <td>
+                    {% if m.tipo == "E" %}
+                        <span class="badge bg-success">Entrada</span>
+                    {% else %}
+                        <span class="badge bg-danger">Saída</span>
+                    {% endif %}
+                </td>
+                <td>R$ {{ m.valor|floatformat:2 }}</td>
+                <td>{{ m.get_origem_display }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" class="text-center text-muted">Nenhum movimento encontrado.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+</div>
+{% endblock %}

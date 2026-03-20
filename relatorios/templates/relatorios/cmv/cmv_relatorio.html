@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2 class="mb-4">Relatório de CMV (Custo da Mercadoria Vendida)</h2>
+
+<form method="get" class="mb-4">
+    <div class="row g-3">
+        <div class="col-md-3">
+            <label class="form-label">{{ form.data_inicio.label }}</label>
+            {{ form.data_inicio }}
+        </div>
+
+        <div class="col-md-3">
+            <label class="form-label">{{ form.data_fim.label }}</label>
+            {{ form.data_fim }}
+        </div>
+
+        <div class="col-md-4">
+            <label class="form-label">{{ form.produto.label }}</label>
+            {{ form.produto }}
+        </div>
+    
+    </div>
+    
+    <div class="mt-3">
+        <button type="submit" class="btn btn-primary">
+            Filtrar
+        </button>
+        <a href="{% url 'relatorios:cmv_relatorio' %}" class="btn btn-secondary">
+            Limpar filtros
+        </a>
+    </div>
+</form>
+
+{% if itens %}
+<div class="table-responsive mt-4">
+    <table class="table table-bordered table-striped table-sm align-middle">
+        <thead class="table-light">
+            <tr>
+                <th>Data da Venda</th>
+                <th>Produto</th>
+                <th class="text-end">Quantidade</th>
+                <th class="text-end">Preço Médio</th>
+                <th class="text-end">Total CMV</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in itens %}
+            <tr>
+                <td>{{ item.data|date:"d/m/Y" }}</td>
+                <td>{{ item.produto.descricao }}</td>
+                <td class="text-end">{{ item.quantidade }}</td>
+                <td class="text-end">R$ {{ item.custo_medio|floatformat:2 }}</td>
+                <td class="text-end">R$ {{ item.total_cmv|floatformat:2 }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="mt-4">
+    <h5>
+        Total de Itens Vendidos: <strong>{{ totais.total_quantidade|default:"0" }}</strong><br>
+        Total Geral do CMV: <strong>R$ {{ totais.total_cmv|floatformat:2|default:"0,00" }}</strong>
+    </h5>
+</div>
+ 
+{% else %}
+<p class="mt-4">Nenhum resultado encontrado para os filtros informados.</p>
+{% endif %}
+
+{% endblock %}

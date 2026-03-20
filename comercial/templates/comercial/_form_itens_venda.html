@@ -1,0 +1,99 @@
+{% load widget_tweaks %}
+
+{{ formset.management_form }}
+
+<table class="table table-bordered" id="itens-venda-table">
+    <thead class="table-dark">
+        <tr>
+            <th style="width: 20%">Produto</th>
+            <th style="width: 20%">Serviço</th>
+            <th style="width: 10%">Qtd</th>
+            <th style="width: 10%">Preço</th>
+            <th style="width: 10%">Desc.</th>
+            <th style="width: 15%">Total</th>
+            <th style="width: 10%">Ação</th>
+        </tr>
+    </thead>
+
+    <tbody id="formset-body-venda">
+        {% for f in formset %}
+        <tr class="item-row">
+
+            {# Campos ocultos obrigatórios #}
+            {% for hidden in f.hidden_fields %}
+                {{ hidden }}
+            {% endfor %}
+
+            <td>
+                {{ f.produto }}
+            </td>
+
+            <td>
+                {{ f.servico }}
+            </td>
+
+            <td>
+                {{ f.quantidade }}
+            </td>
+
+            <td>
+                {{ f.preco_unitario }}
+            </td>
+
+            <td>
+                {{ f.desconto }}
+            </td>
+
+            <td class="item-total">
+                R$ {{ f.instance.total_item|default:"0,00" }}
+            </td>
+
+            <td>
+                {{ f.DELETE }} Remover
+            </td>
+
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<button type="button" class="btn btn-secondary" id="add-item-btn-venda">
+    ➕ Adicionar Item
+</button>
+
+<!-- Template correto do empty_form -->
+<script type="text/template" id="empty-form-template">
+<tr class="item-row">
+
+    {% for hidden in formset.empty_form.hidden_fields %}
+        {{ hidden }}
+    {% endfor %}
+
+    <td>
+        {{ formset.empty_form.produto }}
+    </td>
+
+    <td>
+        {{ formset.empty_form.servico }}
+    </td>
+
+    <td>
+        {{ formset.empty_form.quantidade }}
+    </td>
+
+    <td>
+        {{ formset.empty_form.preco_unitario }}
+    </td>
+
+    <td>
+        {{ formset.empty_form.desconto }}
+    </td>
+
+    <td class="item-total">R$ 0,00</td>
+
+    <td>
+        {{ formset.empty_form.DELETE }} Remover
+    </td>
+
+</tr>
+</script>

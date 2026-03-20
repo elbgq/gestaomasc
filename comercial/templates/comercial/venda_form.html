@@ -1,0 +1,314 @@
+{% extends "base.html" %}
+{% load static %}
+{% load widget_tweaks %}
+
+{% block content %}
+<h2>{% if venda.pk %}Editar Venda{% else %}Nova Venda{% endif %}</h2>
+
+{% if form.errors %}
+<div class="alert alert-danger">
+    {{ form.errors }}
+</div>
+{% endif %}
+ 
+<form method="post">
+    {% csrf_token %}
+
+    <!-- CAMPOS DA VENDA -->
+    {% include "comercial/_form_campos_base.html" with form=form excluir="numero,total,cmv,data_finalizacao,status" %}
+
+    <hr> 
+
+    <!-- ITENS DA VENDA -->
+    {% include "comercial/_form_itens_venda.html" with formset=itens_formset produtos=produtos servicos=servicos %}
+    <div class="alert alert-warning mt-1 d-none estoque-alerta">
+        Estoque disponível: <span class="estoque-valor">0</span>
+    </div>
+    <div class="mt-3">
+        <h4>Total da Venda: R$ <span id="total-venda">{{ total|floatformat:2 }}</span></h4>
+    </div>
+
+    <div class="mt-4 d-flex gap-2">
+        <a href="{% url 'comercial:venda_list' %}" class="btn btn-outline-dark">↩️ Voltar</a>
+        <a href="{% url 'comercial:venda_create' %}" class="btn btn-outline-dark">🆕 Nova Venda</a>
+        <button type="submit" class="btn btn-primary">💾 Salvar (Rascunho)</button>
+        {% if itens_formset.non_form_errors %}
+        <div class="alert alert-danger">
+            {{ itens_formset.non_form_errors }}
+        </div>
+        {% endif %}
+
+        {% if venda.id %}
+        <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalFinalizar">
+            ✅ Encerrar Venda
+        </button>
+        {% endif %}
+    </div>
+
+    <hr>
+
+    {% if venda.id %}
+        {% include "comercial/modal_finalizar_venda.html" %}
+    {% endif %}
+ 
+</form>
+
+{% if formset.non_form_errors %}
+<div class="alert alert-danger">
+    {{ formset.non_form_errors }}
+</div>
+{% endif %}
+
+{% if request.GET.abrir_modal %}
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    var modal = new bootstrap.Modal(document.getElementById("modalFinalizar"));
+    modal.show();
+});
+</script>
+{% endif %}
+
+{% endblock content %}
+
+
+<!-- ============================================================
+     SCRIPT CONSOLIDADO — DEVE FICAR FORA DO BLOCK CONTENT
+     MAS ANTES DO FECHAMENTO DO BODY (base.html cuida disso)
+=============================================================== -->
+{% block scripts %}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    /* ============================================================
+       1. CÁLCULO DO ITEM E TOTAL DA VENDA
+    ============================================================ */
+
+    function calcularTotalItem(row) {
+        const qtd = row.querySelector(".item-quantidade");
+        const preco = row.querySelector(".item-preco-unitario");
+        const desconto = row.querySelector(".item-desconto");
+        const total = row.querySelector(".item-total");
+
+        if (!qtd || !preco || !total) return;
+
+        const q = parseFloat(qtd.value) || 0;
+        const p = parseFloat(preco.value) || 0;
+        const d = parseFloat(desconto?.value) || 0;
+
+        const valor = (q * p) - d;
+
+        total.innerText = "R$ " + valor.toFixed(2).replace('.', ',');
+        calcularTotalVenda();
+    }
+
+    function calcularTotalVenda() {
+        let soma = 0;
+
+        document.querySelectorAll(".item-total").forEach(campo => {
+            const texto = campo.innerText.replace("R$", "").trim();
+            const valor = parseFloat(texto.replace(".", "").replace(",", ".")) || 0;
+            soma += valor;
+        });
+
+        const totalVendaEl = document.getElementById("total-venda");
+        if (totalVendaEl) {
+            totalVendaEl.innerText = soma.toFixed(2).replace('.', ',');
+        }
+    }
+
+    function adicionarListeners(row) {
+        row.querySelectorAll(".item-quantidade, .item-preco-unitario, .item-desconto")
+            .forEach(campo => {
+                ["input", "change"].forEach(evt => {
+                    campo.addEventListener(evt, () => calcularTotalItem(row));
+                });
+            });
+    }
+
+    /* ============================================================
+       2. BLOQUEIO PRODUTO ↔ SERVIÇO
+    ============================================================ */
+
+    function bloquearProdutoOuServico(row) {
+        const produto = row.querySelector(".item-produto");
+        const servico = row.querySelector(".item-servico");
+
+        if (!produto || !servico) return;
+
+        function aplicarRegraProduto() {
+            if (produto.value) {
+                servico.disabled = true;
+                servico.value = "";
+                $(servico).val(null).trigger("change");
+            } else {
+                servico.disabled = false;
+            }
+        }
+
+        function aplicarRegraServico() {
+            if (servico.value) {
+                produto.disabled = true;
+                produto.value = "";
+                $(produto).val(null).trigger("change");
+            } else {
+                produto.disabled = false;
+            }
+        }
+
+        // Eventos nativos
+        produto.addEventListener("change", aplicarRegraProduto);
+        servico.addEventListener("change", aplicarRegraServico);
+
+        // Eventos do Select2 (se estiver ativo)
+        if (typeof $.fn.select2 !== "undefined") {
+            $(produto).on("select2:select", aplicarRegraProduto);
+            $(servico).on("select2:select", aplicarRegraServico);
+        }
+    }
+
+    /* ============================================================
+       3. PREÇO AUTOMÁTICO + ESTOQUE
+    ============================================================ */
+
+    async function buscarInfoItem(tipo, id) {
+        const url = `/comercial/api/preco/${tipo}/${id}/`;
+        const response = await fetch(url);
+        return await response.json();
+    }
+
+    function configurarPrecoEEstoque(row) {
+        const produto = row.querySelector(".item-produto");
+        const servico = row.querySelector(".item-servico");
+        const preco = row.querySelector(".item-preco-unitario");
+        const alerta = document.querySelector(".estoque-alerta");
+        const estoqueValor = document.querySelector(".estoque-valor");
+
+        if (servico) {
+            const handlerServico = async function () {
+                if (servico.value) {
+                    const info = await buscarInfoItem("servico", servico.value);
+                    preco.value = parseFloat(info.preco).toFixed(2);
+                    preco.dispatchEvent(new Event("input"));
+                    if (alerta) alerta.classList.add("d-none");
+                }
+            };
+
+            servico.addEventListener("change", handlerServico);
+
+            if (typeof $.fn.select2 !== "undefined") {
+                $(servico).on("select2:select", handlerServico);
+            }
+        }
+
+        if (!produto) return;
+
+        const handlerProduto = async function () {
+            if (!produto.value) {
+                preco.value = "";
+                preco.dispatchEvent(new Event("input"));
+                if (alerta) {
+                    alerta.classList.add("d-none");
+                    alerta.classList.remove("alert-danger", "alert-warning");
+                }
+                return;
+            }
+
+            const info = await buscarInfoItem("produto", produto.value);
+
+            preco.value = parseFloat(info.preco).toFixed(2);
+            preco.dispatchEvent(new Event("input"));
+
+            if (alerta && estoqueValor) {
+                estoqueValor.innerText = info.estoque;
+                alerta.classList.remove("d-none");
+
+                if (info.estoque <= 0) {
+                    alerta.classList.remove("alert-warning");
+                    alerta.classList.add("alert-danger");
+                } else {
+                    alerta.classList.remove("alert-danger");
+                    alerta.classList.add("alert-warning");
+                }
+            }
+        };
+
+        produto.addEventListener("change", handlerProduto);
+
+        if (typeof $.fn.select2 !== "undefined") {
+            $(produto).on("select2:select", handlerProduto);
+        }
+    }
+
+    /* ============================================================
+       4. SELECT2 (SE EXISTIR)
+    ============================================================ */
+
+    function aplicarSelect2(row) {
+        if (typeof $.fn.select2 !== "undefined") {
+            $(row).find('.select2-produto').select2({
+                theme: 'bootstrap-5',
+                width: '100%',
+                placeholder: "Buscar produto...",
+                allowClear: true
+            });
+
+            $(row).find('.select2-servico').select2({
+                theme: 'bootstrap-5',
+                width: '100%',
+                placeholder: "Buscar serviço...",
+                allowClear: true
+            });
+        }
+    }
+
+    /* ============================================================
+       5. APLICAR REGRAS AOS ITENS EXISTENTES
+    ============================================================ */
+
+    document.querySelectorAll(".item-row").forEach(row => {
+        adicionarListeners(row);
+        configurarPrecoEEstoque(row);
+        bloquearProdutoOuServico(row);
+        aplicarSelect2(row);
+    });
+
+    /* ============================================================
+       6. ADICIONAR NOVO ITEM (empty_form_template)
+    ============================================================ */
+
+    const addBtn = document.getElementById("add-item-btn-venda");
+    const tableBody = document.getElementById("formset-body-venda");
+    const totalForms = document.querySelector("#id_itens-TOTAL_FORMS");
+
+    if (addBtn) {
+        addBtn.addEventListener("click", function () {
+            const formIndex = parseInt(totalForms.value);
+
+            let template = document.getElementById("empty-form-template").innerHTML;
+            template = template.replace(/__prefix__/g, formIndex);
+
+            tableBody.insertAdjacentHTML("beforeend", template);
+
+            const newRow = tableBody.querySelector("tr:last-child");
+
+            adicionarListeners(newRow);
+            configurarPrecoEEstoque(newRow);
+            bloquearProdutoOuServico(newRow);
+            aplicarSelect2(newRow);
+
+            totalForms.value = formIndex + 1;
+
+            calcularTotalVenda();
+        });
+    }
+
+    calcularTotalVenda();
+
+    console.log("VENDA FORM SCRIPT CARREGOU!");
+    console.log("jQuery existe?", typeof $ !== "undefined");
+    console.log("Select2 existe?", typeof $.fn.select2 !== "undefined");
+
+});
+</script>
+{% endblock scripts %}
+

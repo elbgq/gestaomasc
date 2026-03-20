@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="card p-4 shadow-sm">
+
+    <h2 class="text-center">Recibo de Venda</h2>
+    <hr>
+
+    <p><strong>Venda:</strong> #{{ venda.id }}</p>
+    <p><strong>Cliente:</strong> {{ venda.cliente }}</p>
+    <p><strong>Data:</strong> {{ venda.data|date:"d/m/Y H:i" }}</p>
+    <p><strong>Forma de Pagamento:</strong> {{ venda.get_forma_pagamento_display }}</p>
+
+    <hr>
+
+    <h4>Itens</h4>
+    <table class="table table-bordered table-sm">
+        <thead>
+            <tr>
+                <th>Item</th>
+                <th>Qtd</th>
+                <th>Preço</th>
+                <th>Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in itens %}
+            <tr>
+                <td>{{ item }}</td>
+                <td>{{ item.quantidade }}</td>
+                <td>R$ {{ item.preco_unitario|floatformat:2 }}</td>
+                <td>R$ {{ item.total|floatformat:2 }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h4 class="text-end">Total: R$ {{ venda.total|floatformat:2 }}</h4>
+
+    <hr>
+
+    <div class="text-center mt-3">
+        <button onclick="window.print()" class="btn btn-primary">Imprimir</button>
+        <a href="{% url 'comercial:venda_detalhe' venda.id %}" class="btn btn-secondary">Voltar</a>
+    </div>
+
+</div>
+
+{% endblock %}

@@ -1,0 +1,38 @@
+{% if venda.id %}
+<form method="POST">
+    {% csrf_token %}
+
+<div class="modal fade" id="modalFinalizar" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content shadow">
+
+      <div class="modal-header bg-dark text-white">
+        <h5 class="modal-title">Finalizar Venda</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body">
+
+        <p class="mb-3">Escolha como deseja finalizar a venda:</p>
+
+        <div class="d-grid gap-2">
+
+          <!-- Finalizar à vista -->
+          <button type="submit" name="continuar" value="0" class="btn btn-success btn-lg">
+              💵 Finalizar à Vista
+          </button>
+
+          <!-- Finalizar parcelada -->
+          <button type="submit" name="continuar" value="1" class="btn btn-primary btn-lg">
+              📄 Finalizar Parcelada
+          </button>
+
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+</div>
+</form>
+{% endif %}

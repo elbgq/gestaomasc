@@ -1,0 +1,25 @@
+
+
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}MASC - Sistema de Gestão{% endblock %}
+
+
+{% block content %}
+<div class="container-fluid mt-5 text-center">
+    <h1 class="display-5 fw-bold">Bem-vindo ao Sistema de Gestão MASC</h1>
+    <p class="lead text-muted mt-3">
+        Utilize o menu da lateral para acessar os módulos.
+    </p>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <img src="{% static 'img/img_erp.png' %}"
+    
+     alt="Logo"
+     style="max-width: 100%; height: auto;"
+     class="mt-4">
+</div>
+<script src="{% static 'js/app.js' %}"></script>
+
+
+{% endblock %}

@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}Finalizar Compra - Parcelado{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <h2 class="mb-3">Finalizar Compra (Parcelado)</h2>
+
+    <div class="card">
+        <div class="card-body">
+
+            <p><strong>Fornecedor:</strong> {{ compra.fornecedor.nome }}</p>
+            <p><strong>Número da Nota:</strong> {{ compra.numero_nota }}</p>
+            <p><strong>Data:</strong> {{ compra.data }}</p>
+            <p><strong>Valor Total:</strong> R$ {{ compra.valor_total|floatformat:2 }}</p>
+
+            <hr>
+
+            <form method="post">
+                {% csrf_token %}
+
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Número de Parcelas</label>
+                        <input type="number" name="parcelas" class="form-control" value="{{ compra.parcelas }}" required>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">Intervalo (dias)</label>
+                        <input type="number" name="intervalo" class="form-control" value="{{ compra.intervalo_dias }}" required>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">Primeiro Vencimento</label>
+                        <input type="date" name="primeiro_vencimento" class="form-control" value="{{ compra.data_primeiro_vencimento }}" required>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-success">
+                    <i class="bi bi-check-circle"></i> Confirmar Compra Parcelada
+                </button>
+
+                <a href="{% url 'comercial:compra_list' %}" class="btn btn-secondary">
+                    Cancelar
+                </a>
+            </form>
+
+        </div>
+    </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,227 @@
+{% extends "base.html" %}
+
+{% block title %}Contas a Receber{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <h1 class="h3 mb-4">Contas a Receber</h1>
+
+    <!-- ============================
+         NAV TABS
+    ============================= -->
+    <ul class="nav nav-tabs" id="receberTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active text-success fw-bold"
+                    id="vendas-tab"
+                    data-bs-toggle="tab"
+                    data-bs-target="#vendas"
+                    type="button"
+                    role="tab">
+                🧾 De Vendas
+            </button>
+        </li>
+ 
+        <li class="nav-item" role="presentation">
+            <button class="nav-link text-primary fw-bold"
+                    id="avulsas-tab"
+                    data-bs-toggle="tab"
+                    data-bs-target="#avulsas"
+                    type="button"
+                    role="tab">
+                📌 Avulsas
+            </button>
+        </li>
+    </ul>
+
+    <!-- ============================
+         TAB CONTENT
+    ============================= -->
+    <div class="tab-content mt-3" id="receberTabsContent">
+
+        <!-- ============================
+             ABA: RECEITAS DE VENDAS
+        ============================= -->
+        <div class="tab-pane fade show active" id="vendas" role="tabpanel">
+
+            <div class="card border-success">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Receitas de Vendas</h5>
+                </div>
+
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover align-middle mb-0">
+                            <thead class="table-success">
+                                <tr>
+                                    <th>Data Lançamento</th>
+                                    <th>Vencimento</th>
+                                    <th>Cliente</th>
+                                    <th>Descrição</th>
+                                    <th class="text-end">Valor</th>
+                                    <th>Status</th>
+                                    <th class="text-center">Ações</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                {% for r in receitas_vendas %}
+                                <tr>
+                                    <td>{{ r.data_lancamento|date:"d/m/Y" }}</td>
+
+                                    <td>
+                                        {{ r.data_vencimento|date:"d/m/Y" }}
+                                        {% if not r.esta_pago and r.data_vencimento < hoje %}
+                                            <span class="badge bg-danger ms-2">Atrasado</span>
+                                        {% endif %}
+                                    </td>
+
+                                    <td>{{ r.cliente.nome }}</td>
+                                    <td>{{ r.descricao }}</td>
+
+                                    <td class="text-end">R$ {{ r.valor|floatformat:2 }}</td>
+
+                                    <td>
+                                        {% if r.esta_pago %}
+                                            <span class="badge bg-success">Recebido</span>
+                                        {% elif r.data_vencimento < hoje %}
+                                            <span class="badge bg-danger">Vencido</span>
+                                        {% else %}
+                                            <span class="badge bg-warning text-dark">Pendente</span>
+                                        {% endif %}
+                                    </td>
+
+                                    <td class="text-center">
+                                        <div class="btn-group" role="group">
+
+                                            {% if r.referencia_id %}
+                                                <a href="{% url 'comercial:venda_editar' r.referencia_id %}"
+                                                   class="btn btn-sm btn-outline-warning">
+                                                    Editar Venda
+                                                </a>
+                                            {% endif %}
+
+                                            {% if not r.esta_pago %}
+                                                <a href="{% url 'financeiro:titulo_confirmar_quitacao' 'R' r.id %}"
+                                                   class="btn btn-sm btn-success">
+                                                    Quitar
+                                                </a>
+                                            {% endif %}
+
+                                            <span class="text-muted small">Excluir no Lançamento</span>
+
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                {% empty %}
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted py-4">
+                                        Nenhuma receita de venda encontrada.
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ============================
+             ABA: RECEITAS AVULSAS
+        ============================= -->
+        <div class="tab-pane fade" id="avulsas" role="tabpanel">
+
+            <div class="d-flex justify-content-between align-items-center mb-2">
+
+                <a href="{% url 'financeiro:receber_create' %}" class="btn btn-primary">
+                    Nova Receita Avulsa
+                </a> 
+            </div>
+
+            <div class="card border-primary">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Lançamentos Avulsos</h5>
+                </div>
+
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover align-middle mb-0">
+                            <thead class="table-primary">
+                                <tr>
+                                    <th>Data Lançamento</th>
+                                    <th>Vencimento</th>
+                                    <th>Cliente</th>
+                                    <th>Descrição</th>
+                                    <th class="text-end">Valor</th>
+                                    <th>Status</th>
+                                    <th class="text-center">Ações</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                {% for r in receitas_avulsas %}
+                                <tr>
+                                    <td>{{ r.data_lancamento|date:"d/m/Y" }}</td>
+
+                                    <td>
+                                        {{ r.data_vencimento|date:"d/m/Y" }}
+                                        {% if not r.esta_pago and r.data_vencimento < hoje %}
+                                            <span class="badge bg-danger ms-2">Atrasado</span>
+                                        {% endif %}
+                                    </td>
+
+                                    <td>{{ r.cliente.nome }}</td>
+                                    <td>{{ r.descricao }}</td>
+
+                                    <td class="text-end">R$ {{ r.valor|floatformat:2 }}</td>
+
+                                    <td>
+                                        {% if r.esta_pago %}
+                                            <span class="badge bg-success">Recebido</span>
+                                        {% elif r.data_vencimento < hoje %}
+                                            <span class="badge bg-danger">Vencido</span>
+                                        {% else %}
+                                            <span class="badge bg-warning text-dark">Pendente</span>
+                                        {% endif %}
+                                    </td>
+
+                                    <td class="text-center">
+                                        <div class="btn-group" role="group">
+
+                                            {% if not r.esta_pago %}
+                                                <a href="{% url 'financeiro:titulo_confirmar_quitacao' 'R' r.id %}"
+                                                   class="btn btn-sm btn-success">
+                                                    Quitar
+                                                </a>
+                                            {% endif %}
+
+                                            <span class="text-muted small">Excluir no Lançamento</span>
+
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                {% empty %}
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted py-4">
+                                        Nenhuma receita avulsa encontrada.
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+{% endblock %}

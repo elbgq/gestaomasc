@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>Vendas com CMV</h2>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Venda Nº</th>
+            <th>Cliente</th>
+            <th>Data</th>
+            <th>Total</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for venda in vendas %}
+        <tr>
+            <td>{{ venda.numero|stringformat:"06d" }}</td>
+            <td>{{ venda.cliente }}</td>
+            <td>{{ venda.data_emissao|date:"d/m/Y" }}</td>
+            <td>R$ {{ venda.total|floatformat:2 }}</td>
+            <td>
+                <a href="{% url 'comercial:cmv_detalhe' venda.id %}" class="btn btn-sm btn-primary">
+                    Ver CMV
+                </a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% endblock %}

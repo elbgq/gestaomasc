@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}Estoque{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <!-- Cabeçalho -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1 class="h3">Estoque</h1>
+
+        <a class="btn btn-primary" href="{% url 'comercial:estoque_relatorio' %}">
+            <i class="bi bi-file-earmark-bar-graph"></i> Relatório de Estoque
+        </a>
+    </div>
+
+    <!-- Formulário de busca -->
+    <form method="get" class="row g-2 mb-3">
+        <div class="col-auto">
+            <input type="text"
+                   name="q"
+                   class="form-control"
+                   placeholder="Buscar por descrição..."
+                   value="{{ request.GET.q }}">
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-outline-secondary" type="submit">Buscar</button>
+        </div>
+    </form>
+
+    <!-- Tabela -->
+    <div class="table-responsive">
+        <table class="table table-striped table-hover align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th>Codor</th>
+                    <th>Produto</th>
+                    <th>Quantidade</th>
+                    <th>Preço Médio</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for item in page_obj %}
+                <tr>
+                    <td>{{ item.produto.codor }}</td>
+                    <td>{{ item.produto.descricao }}</td>
+                    <td>{{ item.quantidade }}</td>
+                    <td>R$ {{ item.preco_medio|floatformat:2 }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="text-center text-muted">Nenhum item encontrado.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <p style="color:red">PARAMS: "{{ params }}"</p>
+    <!-- Paginação -->
+    {% include "partials/paginator.html" %}
+
+</div>
+{% endblock %}

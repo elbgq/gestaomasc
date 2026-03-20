@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Finalizar Compra - À Vista{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <h2 class="mb-3">Finalizar Compra (À Vista)</h2>
+
+    <div class="card">
+        <div class="card-body">
+
+            <p><strong>Fornecedor:</strong> {{ compra.fornecedor.nome }}</p>
+            <p><strong>Número da Nota:</strong> {{ compra.numero_nota }}</p>
+            <p><strong>Data:</strong> {{ compra.data }}</p>
+            <p><strong>Valor Total:</strong> R$ {{ compra.valor_total|floatformat:2 }}</p>
+
+            <hr>
+
+            <form method="post">
+                {% csrf_token %}
+
+                <p class="text-muted">
+                    Confirme abaixo para finalizar a compra e registrar a entrada no estoque.
+                </p>
+
+                <button type="submit" class="btn btn-success">
+                    <i class="bi bi-check-circle"></i> Confirmar Compra à Vista
+                </button>
+
+                <a href="{% url 'comercial:compras_listar' %}" class="btn btn-secondary">
+                    Cancelar
+                </a>
+            </form>
+
+        </div>
+    </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}Lista de Compras{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <!-- Cabeçalho -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1 class="h3">Compras</h1>
+
+        <div class="d-flex gap-2">
+            <a href="{% url 'comercial:compras_importar' %}" class="btn btn-secondary">
+                <i class="bi bi-upload"></i> Importar Compra (CSV/XML)
+            </a>
+
+            <a href="{% url 'comercial:compra_criar' %}" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Nova Compra
+            </a>
+        </div>
+    </div>
+
+    <!-- Tabela -->
+    <div class="table-responsive">
+        <table class="table table-striped table-hover align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th>Nº Nota</th>
+                    <th>Fornecedor</th>
+                    <th>Data</th>
+                    <th>Valor Total</th>
+                    <th>Status</th>
+                    <th>Itens Pendentes</th>
+                    <th class="text-center">Ações</th>
+                </tr>
+            </thead> 
+
+            <tbody>
+                {% for compra in page_obj %}
+                <tr>
+                    <td>{{ compra.numero_nota|default:"-" }}</td>
+                    <td>{{ compra.fornecedor.nome|default:"-" }}</td>
+                    <td>{{ compra.data|date:"d/m/Y" }}</td>
+                    <td>R$ {{ compra.valor_total|floatformat:2 }}</td>
+                     <!-- STATUS -->
+                    <td>{% if compra.confirmada %}
+                        <span class="badge bg-success">Confirmada</span>
+                    {% else %}
+                        <span class="badge bg-warning text-dark">Pendente</span>
+                    {% endif %}
+                    {% if compra.importada %}
+                            <span class="badge bg-info text-dark">Importada</span>
+                    {% endif %}
+                    </td>
+                    <!-- ITENS PENDENTES -->
+                    <td>
+                        {% if compra.itens_pendentes > 0 %}
+                            <span class="badge bg-danger">{{ compra.itens_pendentes }}</span>
+                        {% else %}
+                            <span class="badge bg-secondary">0</span>
+                        {% endif %}
+
+                    </td>
+                    <!-- AÇÕES -->
+                    <td class="d-flex justify-content-center gap-2">
+
+                        {% if compra.importada and not compra.confirmada %}
+                        <a href="{% url 'comercial:vincular_itens' compra.id %}" class="btn btn-sm btn-info">
+                            Vincular Itens
+                        </a>
+                        {% endif %}
+
+                        {% if not compra.confirmada %}
+
+                        <a href="{% url 'comercial:compra_editar' compra.pk %}" class="btn btn-sm btn-warning">
+                            Editar
+                        </a>
+                        {% endif %}
+                        
+                        {% if not compra.confirmada %}
+                        <a href="{% url 'comercial:compra_excluir' compra.id %}"
+                           class="btn btn-sm btn-danger"
+                           onclick="return confirm('Tem certeza que deseja excluir esta compra? Esta ação não pode ser desfeita.');">
+                            Excluir
+                        </a>
+                        {% endif %}
+                        <a href="{% url 'comercial:compra_detalhe' compra.id %}" 
+                            class="btn btn-sm btn-primary">
+                            Detalhes
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center text-muted">Nenhuma compra encontrada.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Paginação -->
+     {% include "partials/paginator.html" %}
+
+</div>
+{% endblock %}
+ 

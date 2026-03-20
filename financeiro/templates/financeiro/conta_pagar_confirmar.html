@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Confirmar Pagamento</h2>
+
+<div class="card p-4 shadow-sm">
+
+    <p><strong>Descrição:</strong> {{ titulo.descricao }}</p>
+    <p><strong>Valor:</strong> R$ {{ titulo.valor }}</p>
+    <p><strong>Vencimento:</strong> {{ titulo.data_vencimento }}</p>
+    <p><strong>Categoria:</strong> {{ titulo.categoria }}</p>
+    <p><strong>Beneficiário:</strong> {{ titulo.contato|default:"—" }}</p>
+
+    <form method="post">
+        {% csrf_token %}
+        <button class="btn btn-success">Confirmar Pagamento</button>
+        <a href="{% url 'financeiro:contas_pagar_lista' %}" class="btn btn-secondary">Cancelar</a>
+    </form>
+
+</div>
+{% endblock %}

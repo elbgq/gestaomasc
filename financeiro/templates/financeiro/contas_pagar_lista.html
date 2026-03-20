@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+
+{% block title %}Contas a Pagar{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <h1 class="h3 mb-4">Contas a Pagar</h1>
+
+    <!-- ============================
+         NAV TABS
+    ============================= -->
+    <ul class="nav nav-tabs" id="pagarTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active text-danger fw-bold"
+                    id="compras-tab"
+                    data-bs-toggle="tab"
+                    data-bs-target="#compras"
+                    type="button"
+                    role="tab">
+                🧾 De Compras
+            </button>
+        </li>
+
+        <li class="nav-item" role="presentation">
+            <button class="nav-link text-primary fw-bold"
+                    id="avulsas-tab"
+                    data-bs-toggle="tab"
+                    data-bs-target="#avulsas"
+                    type="button"
+                    role="tab">
+                📌 Avulsas
+            </button>
+        </li>
+    </ul>
+
+    <!-- ============================
+         TAB CONTENT
+    ============================= -->
+    <div class="tab-content mt-3" id="pagarTabsContent">
+
+        <!-- ============================
+             ABA: CONTAS DE COMPRAS
+        ============================= -->
+        <div class="tab-pane fade show active" id="compras" role="tabpanel">
+
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">Contas de Compras</h5>
+                </div>
+
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover align-middle mb-0">
+                            <thead class="table-danger">
+                                <tr>
+                                    <th>Compra</th>
+                                    <th>Fornecedor</th>
+                                    <th>Valor</th>
+                                    <th>Status</th>
+                                    <th>Vencimento</th>
+                                    <th class="text-center">Ações</th>
+                                </tr>
+                            </thead>
+ 
+                            <tbody>
+                                {% for conta in contas_compras %}
+                                <tr>
+                                    <td>
+                                        <a href="{% url 'comercial:compra_detalhe' conta.compra.id %}">
+                                            #{{ conta.compra.id }}
+                                        </a>
+                                    </td>
+
+                                    <td>{{ conta.contato }}</td>
+                                    <td>R$ {{ conta.valor|floatformat:2 }}</td>
+
+                                    <td>
+                                        {% if conta.esta_pago %}
+                                            <span class="badge bg-success">Pago</span>
+                                        {% elif conta.data_vencimento < hoje %}
+                                            <span class="badge bg-danger">Vencido</span>
+                                        {% else %}
+                                            <span class="badge bg-warning text-dark">Pendente</span>
+                                        {% endif %}
+                                    </td>
+
+                                    <td>{{ conta.data_vencimento|date:"d/m/Y" }}</td>
+
+                                    <td class="d-flex justify-content-center gap-2">
+                                        <a href="{% url 'financeiro:titulo_detalhe' conta.tipo conta.id %}"
+                                           class="btn btn-sm btn-primary">Detalhes</a>
+
+                                        {% if not conta.esta_pago %}
+                                            <a href="{% url 'financeiro:titulo_confirmar_quitacao' conta.tipo conta.id %}"
+                                               class="btn btn-sm btn-success">Quitar</a>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+
+                                {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted py-3">
+                                        Nenhuma conta de compra encontrada.
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ============================
+             ABA: CONTAS AVULSAS
+        ============================= -->
+        <div class="tab-pane fade" id="avulsas" role="tabpanel">
+
+            <div class="d-flex justify-content-between align-items-center mb-2">                
+
+                <a href="{% url 'financeiro:lancamento_create' %}" class="btn btn-primary">
+                    Nova Despesa Avulsa
+                </a>
+            </div>
+
+            <div class="card border-primary">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Despesas Avulsas</h5>
+                </div>
+
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover align-middle mb-0">
+                            <thead class="table-primary">
+                                <tr>
+                                    <th>Data de Lançamento</th>
+                                    <th>Vencimento</th>
+                                    <th>Beneficiário</th>
+                                    <th>Descrição</th>
+                                    <th>Valor</th>
+                                    <th>Status</th>
+                                    <th class="text-center">Ações</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                {% for p in contas_avulsas %}
+                                <tr>
+                                    <td>{{ p.data_lancamento|date:"d/m/Y" }}</td>
+                                    <td>
+                                        {{ r.data_vencimento|date:"d/m/Y" }}
+                                        {% if not r.esta_pago and r.data_vencimento < hoje %}
+                                            <span class="badge bg-danger ms-2">Atrasado</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ p.contato.nome }}</td>
+                                    <td>{{ p.descricao }}</td>
+                                    <td>R$ {{ p.valor|floatformat:2 }}</td>
+                                    <td>
+                                        {% if p.esta_pago %}
+                                            <span class="badge bg-success">Pago</span>
+                                        {% elif p.data_vencimento < hoje %}
+                                            <span class="badge bg-danger">Vencido</span>
+                                        {% else %}
+                                            <span class="badge bg-warning text-dark">Pendente</span>
+                                        {% endif %}
+                                    </td>
+
+                                    <td class="d-flex justify-content-center gap-2">
+                                        <a href="{% url 'financeiro:titulo_detalhe' p.tipo p.id %}"
+                                           class="btn btn-sm btn-primary">Detalhes</a>
+
+                                        {% if not p.esta_pago %}
+                                            <a href="{% url 'financeiro:titulo_confirmar_quitacao' p.tipo p.id %}"
+                                               class="btn btn-sm btn-success">Quitar</a>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+
+                                {% empty %}
+                                <tr>
+                                    <td colspan="8" class="text-center text-muted py-3">
+                                        Nenhuma conta avulsa encontrada.
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- ============================
+         RESUMO
+    ============================= -->
+    <div class="alert alert-info mt-4">
+        <strong>Total de contas de compras:</strong> R$ {{ total_compras|floatformat:2 }}<br>
+        <strong>Total de contas avulsas:</strong> R$ {{ total_avulsas|floatformat:2 }}
+    </div>
+
+    <div class="alert alert-warning">
+        <strong>Contas de compras vencidas:</strong> {{ vencidos_compras }}<br>
+        <strong>Contas avulsas vencidas:</strong> {{ vencidos_avulsas }}
+    </div>
+
+</div>
+{% endblock %}

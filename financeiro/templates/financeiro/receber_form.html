@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container mt-3">
+
+    <!-- Título -->
+    <h2 class="mb-4">
+        {% if view.object.pk %}
+            Editar Título a Receber
+        {% else %}
+            Novo Título a Receber
+        {% endif %}
+    </h2>
+
+    <!-- Erros -->
+    {% if form.errors %}
+        <div class="alert alert-danger">
+            <strong>Corrija os erros abaixo:</strong>
+            <ul class="mb-0">
+                {% for field, errors in form.errors.items %}
+                    <li><strong>{{ field }}:</strong> {{ errors|join:", " }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+
+    <!-- Formulário -->
+    <form method="post" novalidate>
+        {% csrf_token %}
+
+        <div class="card shadow-sm p-4">
+
+            <!-- Data de lançamento -->
+            <div class="mb-3">
+                <label class="form-label">Data de Lançamento</label>
+                {{ form.data_lancamento|add_class:"form-control" }}
+            </div>
+
+            <!-- Data de vencimento -->
+            <div class="mb-3">
+                <label class="form-label">Data de Vencimento</label>
+                {{ form.data_vencimento|add_class:"form-control" }}
+            </div>
+
+            <!-- Cliente -->
+            <div class="mb-3">
+                <label class="form-label">Cliente</label>
+                {{ form.cliente|add_class:"form-select select2" }}
+            </div>
+
+            <!-- Descrição -->
+            <div class="mb-3">
+                <label class="form-label">Descrição</label>
+                {{ form.descricao|add_class:"form-control" }}
+            </div>
+
+            <!-- Valor -->
+            <div class="mb-3">
+                <label class="form-label">Valor</label>
+                {{ form.valor|add_class:"form-control" }}
+            </div>
+
+            <!-- Categoria -->
+            <div class="mb-3">
+                <label class="form-label">Categoria</label>
+                {{ form.categoria|add_class:"form-select select2" }}
+            </div>
+
+            <!-- Botões -->
+            <div class="mt-4 d-flex gap-2">
+                <button type="submit" class="btn btn-success">
+                    💾 Salvar
+                </button>
+
+                <a href="{% url 'financeiro:receber_list' %}" class="btn btn-secondary">
+                    ↩️ Voltar
+                </a>
+            </div>
+
+        </div>
+    </form>
+
+</div>
+
+{% endblock %}

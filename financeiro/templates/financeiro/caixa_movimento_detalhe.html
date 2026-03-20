@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Movimento de Caixa{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <h1 class="h4 mb-4">Detalhes do Movimento</h1>
+
+    <div class="card shadow-sm p-4">
+ 
+        <p><strong>Data:</strong> {{ movimento.data|date:"d/m/Y" }}</p>
+        <p><strong>Descrição:</strong> {{ movimento.descricao }}</p>
+
+        <p><strong>Tipo:</strong>
+            {% if movimento.tipo == "E" %}
+                <span class="badge bg-success">Entrada</span>
+            {% else %}
+                <span class="badge bg-danger">Saída</span>
+            {% endif %}
+        </p>
+
+        <p><strong>Valor:</strong> R$ {{ movimento.valor|floatformat:2 }}</p>
+
+        <p><strong>Origem:</strong> {{ movimento.get_origem_display }}</p>
+
+        {% if movimento.referencia_id %}
+            <p><strong>Referência:</strong> Título ID {{ movimento.referencia_id }}</p>
+        {% endif %}
+
+        {% if movimento.observacao %}
+            <p><strong>Observação:</strong> {{ movimento.observacao }}</p>
+        {% endif %}
+        <div class="mt-4">
+            <a href="{% url 'financeiro:caixa_historico' %}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> Voltar
+            </a>
+        </div>
+
+    </div>
+
+</div>
+{% endblock %}

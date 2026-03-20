@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>Detalhes da Compra {{ compra.id }}</h2>
+
+<div class="mb-3"> 
+    <p><strong>Fornecedor:</strong> {{ compra.fornecedor.nome }}</p>
+    <p><strong>Compra nº:</strong> {{ compra.numero_formatado }}</p>
+    <p><strong>Data:</strong> {{ compra.data|date:"d/m/Y" }}</p>
+    <p><strong>Valor Total:</strong> R$ {{ compra.valor_total }}</p>
+
+    <p><strong>Status:</strong>
+        {% if compra.confirmada %}
+            <span class="badge bg-success">Confirmada</span>
+        {% else %}
+            <span class="badge bg-warning text-dark">Pendente</span>
+        {% endif %}
+    </p>
+</div>
+
+<h3>Itens da Compra</h3>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Descrição Importada</th>
+            <th>Produto</th>
+            <th>Qtd</th>
+            <th>Preço</th>
+            <th>Total</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in itens %}
+        <tr>
+            <td>{{ item.descricao_importada|default:"—" }}</td>
+            <td>{{ item.produto.descricao|default:"—" }}</td>
+            <td>{{ item.quantidade }}</td>
+            <td>R$ {{ item.preco_unitario }}</td>
+            <td>R$ {{ item.total }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% if movimentacoes %}
+<h3>Movimentações de Estoque</h3>
+ 
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Produto</th>
+            <th>Quantidade</th>
+            <th>Preço</th>
+            <th>Data</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for mov in movimentacoes %}
+        <tr>
+            <td>{{ mov.produto.descricao }}</td>
+            <td>{{ mov.quantidade }}</td>
+            <td>R$ {{ mov.preco }}</td>
+            <td>{{ mov.data|date:"d/m/Y H:i" }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}  
+
+{% include "partials/paginator.html" %}
+
+{% if titulos %}
+<h3>Contas a Pagar Geradas</h3>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Descrição</th>
+            <th>Vencimento</th>
+            <th>Valor</th>
+            <th>Pago?</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for t in titulos %}
+        <tr>
+            <td>{{ t.descricao }}</td>
+            <td>{{ t.data_vencimento|date:"d/m/Y" }}</td>
+            <td>R$ {{ t.valor }}</td>
+            <td>
+                {% if t.esta_pago %}
+                    <span class="badge bg-success">Sim</span>
+                {% else %}
+                    <span class="badge bg-danger">Não</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+
+<a href="{% url 'comercial:compra_list' %}" class="btn btn-secondary mt-3">Voltar</a>
+
+{% endblock %}

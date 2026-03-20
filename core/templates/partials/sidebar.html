@@ -1,0 +1,73 @@
+<div id="sidebar" class="erp-sidebar">
+    
+    <h4 class="text-center mb-4">
+    <a href="{% url 'core:home' %}" class="text-white text-decoration-none">
+        MASC
+    </a>
+</h4>
+
+    <ul class="nav flex-column">
+
+        <!-- Cadastros -->
+        <li class="nav-item mb-2">
+            <a class="nav-link text-white" data-bs-toggle="collapse" href="#menuCadastros" role="button">
+                <i class="bi bi-people"></i>  ☰ Cadastros
+            </a>
+            <div class="collapse" id="menuCadastros">
+                <ul class="nav flex-column ms-3">
+                    <li><a class="nav-link text-white" href="{% url 'cadastros:contato_list' %}">Contatos</a></li>
+                    <li><a class="nav-link text-white" href="{% url 'cadastros:produto_list' %}">Produtos</a></li>
+                    <li><a class="nav-link text-white" href="{% url 'cadastros:servico_list' %}">Serviços</a></li>
+                </ul>
+            </div>
+        </li>
+
+        <!-- Comercial -->
+        <li class="nav-item mb-2">
+            <a class="nav-link text-white" data-bs-toggle="collapse" href="#menuComercial" role="button">
+                <i class="bi bi-cart"></i>  ☰ Comercial
+            </a>
+            <div class="collapse" id="menuComercial">
+                <ul class="nav flex-column ms-3">
+                    <li><a class="nav-link text-white" href="{% url 'comercial:venda_list' %}">Vendas</a></li>
+                    <li><a class="nav-link text-white" href="{% url 'comercial:compra_list' %}">Compras</a></li>                  
+                    <li><a class="nav-link text-white" href="{% url 'comercial:estoque_list' %}">Estoque</a></li>
+                    <li><a class="nav-link text-white" href="{% url 'comercial:cmv_lista' %}">CMV</a></li>
+                </ul>
+            </div> 
+        </li> 
+
+        <!-- Financeiro -->
+        <li class="nav-item mb-2">
+            <a class="nav-link text-white" data-bs-toggle="collapse" href="#menuFinanceiro" role="button">
+                <i class="bi bi-cash-stack"></i>  ☰ Financeiro
+            </a>
+            <div class="collapse" id="menuFinanceiro">
+                <ul class="nav flex-column ms-3">
+                    <li><a class="nav-link text-white" href="{% url 'financeiro:categoria_list' %}">Plano de Contas</a></li>
+                    <li><a class="nav-link text-white" href="{% url 'financeiro:lancamento_list' %}">Lançamentos</a></li>
+                    <li><a class="nav-link text-white" href="{% url 'financeiro:receber_list' %}">Contas a Receber</a></li>
+                    <li><a class="nav-link text-white" href="{% url 'financeiro:contas_pagar_lista' %}">Contas a Pagar</a></li>
+                    <li><a class="nav-link text-white" href="{% url 'financeiro:titulo_list' %}">Titulos</a></li>
+                    <li><a class="nav-link text-white" href="{% url 'financeiro:caixa_historico' %}">Caixa</a></li>
+                </ul>
+            </div>
+        </li> 
+
+        <!-- Relatórios -->
+        <li class="nav-item mb-2">
+            <a class="nav-link text-white" data-bs-toggle="collapse" href="#menuRelatorios" role="button">
+                <i class="bi bi-bar-chart"></i>  ☰ Relatórios
+            </a>
+            <div class="collapse" id="menuRelatorios">
+                <ul class="nav flex-column ms-3">
+                    <li><a class="nav-link text-white" href="{% url 'relatorios:compras_por_periodo' %}">Compras por Período</a></li>
+                    <li><a class="nav-link text-white" href="{% url 'relatorios:vendas_por_periodo' %}">Vendas por Período</a></li>
+                    <li><a class="nav-link text-white" href="{% url 'relatorios:cmv_relatorio' %}">CMV - Relatório</a></li>
+                    <li><a class="nav-link text-white" href="{% url 'relatorios:dre' %}">DRE</a></li>
+                </ul>
+            </div>
+        </li>
+
+    </ul>
+</div>

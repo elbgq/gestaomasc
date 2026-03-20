@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}Excluir Movimento{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-danger text-white">
+            <h4 class="mb-0">Excluir Movimento</h4>
+        </div>
+
+        <div class="card-body">
+            <p>Tem certeza que deseja excluir este movimento?</p>
+
+            <p><strong>{{ object.descricao }}</strong></p>
+            <p>Valor: R$ {{ object.valor|floatformat:2 }}</p>
+
+            <form method="post">
+                {% csrf_token %}
+                <button class="btn btn-danger">Excluir</button>
+                <a href="{% url 'financeiro:caixa_list' %}" class="btn btn-secondary ms-2">Cancelar</a>
+            </form>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

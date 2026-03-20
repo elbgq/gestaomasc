@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% load widget_tweaks %}
+{% block title %}Cadastro de Produto{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <h2 class="mb-4">
+        {{ form.instance.pk|yesno:"Editar Produto,Novo Produto" }}
+    </h2>
+
+    <form method="post" class="needs-validation" novalidate>
+        {% csrf_token %}
+
+        <div class="card shadow-sm p-4">
+
+            <div class="row g-3">
+
+                <div class="col-md-4">
+                    <label for="id_codor" class="form-label">CodOrigem</label>
+                    {{ form.codor|add_class:"form-control" }}
+                </div>
+
+                <div class="col-md-8">
+                    <label for="id_descricao" class="form-label">Descrição</label>
+                    {{ form.descricao|add_class:"form-control" }}
+                </div>
+
+                <div class="col-md-4">
+                    <label for="id_unidade" class="form-label">Unidade</label>
+                    {{ form.unidade|add_class:"form-control" }}
+                </div>
+
+                <div class="col-md-4">
+                    <label for="id_preco_venda" class="form-label">Preço Venda</label>
+                    {{ form.preco_venda|add_class:"form-control" }}
+                </div>
+
+                <div class="col-md-4">
+                    <label for="id_marca" class="form-label">Marca</label>
+                    {{ form.marca|add_class:"form-control" }}
+                </div>
+
+            </div>
+
+            <div class="mt-4 d-flex gap-2">
+
+                <a href="{% url 'cadastros:produto_list' %}" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left"></i> Voltar
+                </a>
+
+                <button type="submit" name="action" value="save" class="btn btn-success">
+                    <i class="bi bi-check-circle"></i> Salvar
+                </button>
+
+                <button type="submit" name="action" value="save_new" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i> Salvar e Novo
+                </button>
+
+            </div>
+
+        </div>
+    </form>
+
+</div>
+{% endblock %}

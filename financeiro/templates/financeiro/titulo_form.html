@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% load widget_tweaks %}
+
+{% block content %}
+
+<h2 class="mb-4">
+    Editar Título
+</h2>
+
+<form method="post" novalidate>
+    {% csrf_token %}
+
+    <div class="card shadow-sm p-4">
+        {{ form.as_p }}
+    </div>
+
+    <div class="mt-4 d-flex gap-2">
+        <button type="submit" class="btn btn-success">💾 Salvar</button>
+        <a href="{% url 'financeiro:contas_pagar_lista' %}" class="btn btn-secondary">↩️ Voltar</a>
+    </div>
+</form>
+
+{% endblock %}

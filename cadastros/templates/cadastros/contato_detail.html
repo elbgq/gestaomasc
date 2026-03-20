@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <h2>Contato: {{ obj.nome }}</h2>
+
+    <table class="table table-bordered mt-3">
+        <tr>
+            <th>Nome</th>
+            <td>{{ obj.nome }}</td>
+        </tr>
+        <tr>
+            <th>Tipo</th>
+            <td>{{ obj.get_tipo_display }}</td>
+        </tr>
+        <tr>
+            <th>Documento</th>
+            <td>{{ obj.documento }}</td>
+        </tr>
+        <tr>
+            <th>Telefone</th>
+            <td>{{ obj.telefone }}</td>
+        </tr>
+        <tr>
+            <th>Email</th>
+            <td>{{ obj.email }}</td>
+        </tr>
+    </table>
+
+    <a href="{% url 'cadastros:contato_update' obj.id %}" class="btn btn-primary">Editar</a>
+    <a href="{% url 'cadastros:contato_delete' obj.id %}" class="btn btn-danger">Excluir</a>
+    <a href="{% url 'cadastros:contato_list' %}" class="btn btn-secondary">Voltar</a>
+
+</div>
+{% endblock %}

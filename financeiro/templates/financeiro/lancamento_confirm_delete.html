@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <h2 class="mb-3">Excluir Lançamento</h2>
+
+    <div class="card p-4 shadow-sm mb-3">
+        <p>Tem certeza que deseja excluir o lançamento <strong>{{ object.descricao }}</strong>?</p>
+        <p class="text-muted">Valor: R$ {{ object.valor|floatformat:2 }}</p>
+    </div>
+
+    <form method="post" class="d-flex gap-2">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Excluir</button>
+        <a href="{% url 'financeiro:lancamento_list' %}" class="btn btn-secondary">Cancelar</a>
+    </form>
+
+</div>
+{% endblock %}
