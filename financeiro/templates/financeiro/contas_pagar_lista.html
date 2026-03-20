@@ -64,7 +64,7 @@
                             </thead>
  
                             <tbody>
-                                {% for conta in contas_compras %}
+                                {% for conta in page_obj_compras %}
                                 <tr>
                                     <td>
                                         <a href="{% url 'comercial:compra_detalhe' conta.compra.id %}">
@@ -109,7 +109,10 @@
                         </table>
                     </div>
                 </div>
+                 
             </div>
+            <!-- Paginação -->
+                {% include "partials/paginator.html" with page_obj=page_obj_compras paginator=paginator_compras page_param="page_compras" %}
 
         </div>
 
@@ -146,7 +149,7 @@
                             </thead>
 
                             <tbody>
-                                {% for p in contas_avulsas %}
+                                {% for p in page_obj_avulsas %}
                                 <tr>
                                     <td>{{ p.data_lancamento|date:"d/m/Y" }}</td>
                                     <td>
@@ -190,7 +193,10 @@
                         </table>
                     </div>
                 </div>
+                
             </div>
+            <!-- Paginação -->
+                {% include "partials/paginator.html" with page_obj=page_obj_avulsas paginator=paginator_avulsas page_param="page_avulsas" %}
 
         </div>
 

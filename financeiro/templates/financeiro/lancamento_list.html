@@ -67,8 +67,8 @@
                             </thead>
 
                             <tbody>
-                                {% for l in lancamentos %}
-                                    {% if l.categoria.tipo == "D" %}
+                                {% for l in page_obj_despesas %}
+                                    
                                     <tr>
                                         <td>{{ l.data|date:"d/m/Y" }}</td>
                                         <td>{{ l.categoria }}</td>
@@ -114,8 +114,8 @@
                                             </div>
                                         </td>
                                     </tr>
-                                    {% endif %}
-                                {% empty %}
+                                    
+                                    {% empty %}
                                     <tr>
                                         <td colspan="6" class="text-center text-muted py-4">
                                             Nenhuma despesa encontrada.
@@ -128,6 +128,7 @@
                     </div>
                 </div>
             </div>
+            {% include "partials/paginator.html" with page_obj=page_obj_despesas paginator=paginator_despesas page_param="page_despesas" %}
 
         </div>
 
@@ -156,8 +157,8 @@
                             </thead>
 
                             <tbody>
-                                {% for l in lancamentos %}
-                                    {% if l.categoria.tipo == "R" %}
+                                {% for l in page_obj_receitas %}
+                                    
                                     <tr>
                                         <td>{{ l.data|date:"d/m/Y" }}</td>
                                         <td>{{ l.categoria }}</td>
@@ -202,8 +203,8 @@
                                             </div>
                                         </td>
                                     </tr>
-                                    {% endif %}
-                                {% empty %}
+                                    
+                                    {% empty %}
                                     <tr>
                                         <td colspan="6" class="text-center text-muted py-4">
                                             Nenhuma receita encontrada.
@@ -216,6 +217,7 @@
                     </div>
                 </div>
             </div>
+            {% include "partials/paginator.html" with page_obj=page_obj_receitas paginator=paginator_receitas page_param="page_receitas" %}
 
         </div>
 

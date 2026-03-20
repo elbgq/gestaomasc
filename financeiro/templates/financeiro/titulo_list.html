@@ -65,8 +65,8 @@
                             </thead>
 
                             <tbody> 
-                                {% for t in titulos %}
-                                    {% if t.tipo == "R" %}
+                                {% for t in page_obj_receber %}
+                                    
                                     <tr>
                                         <td>{{ t.descricao }}</td>
                                         <td>{{ t.categoria }}</td>
@@ -97,8 +97,7 @@
                                             </div>
                                         </td>
                                     </tr>
-                                    {% endif %}
-                                {% empty %}
+                                    {% empty %}
                                     <tr>
                                         <td colspan="7" class="text-center text-muted py-3">
                                             Nenhum título encontrado.
@@ -110,7 +109,8 @@
                     </div>
                 </div>
             </div>
-
+            <!-- Paginação -->
+            {% include "partials/paginator.html" with page_obj=page_obj_receber paginator=paginator_receber page_param="page_receber"%}
         </div>
 
         <!-- ============================
@@ -139,8 +139,8 @@
                             </thead>
 
                             <tbody>
-                                {% for t in titulos %}
-                                    {% if t.tipo == "D" %}
+                                {% for t in page_obj_pagar %}
+                                    
                                     <tr>
                                         <td>{{ t.descricao }}</td>
                                         <td>{{ t.categoria }}</td>
@@ -171,8 +171,7 @@
                                             </div>
                                         </td>
                                     </tr>
-                                    {% endif %}
-                                {% empty %}
+                                    {% empty %}
                                     <tr>
                                         <td colspan="7" class="text-center text-muted py-3">
                                             Nenhum título encontrado.
@@ -184,10 +183,11 @@
                     </div>
                 </div>
             </div>
-
+            <!-- Paginação -->
+            {% include "partials/paginator.html" with page_obj=page_obj_pagar paginator=paginator_pagar page_param="page_pagar" %}
         </div>
 
     </div>
-
+ 
 </div>
 {% endblock %}

@@ -6,6 +6,7 @@ from django.views.generic import DetailView, TemplateView
 from django.urls import reverse_lazy
 from django.utils import timezone
 from financeiro.models import FinanceiroReceber, FinanceiroPagar, CaixaMovimento, Caixa
+from django.core.paginator import Paginator
 
 
 class TituloListView(TemplateView):
@@ -17,15 +18,27 @@ class TituloListView(TemplateView):
         titulos_pagar = FinanceiroPagar.objects.all()
         titulos_receber = FinanceiroReceber.objects.all()
 
-        # Junta tudo em uma lista única
-        titulos = list(titulos_pagar) + list(titulos_receber)
+        # Paginação separada
+        page_receber = self.request.GET.get("page_receber")
+        page_pagar = self.request.GET.get("page_pagar")
 
-        # Ordena por data de vencimento
-        titulos.sort(key=lambda t: t.data_vencimento)
+        paginator_receber = Paginator(titulos_receber, 20)
+        paginator_pagar = Paginator(titulos_pagar, 20)
 
-        context["titulos"] = titulos
+        page_obj_receber = paginator_receber.get_page(page_receber)
+        page_obj_pagar = paginator_pagar.get_page(page_pagar)
+
+        context.update({
+            "page_obj_receber": page_obj_receber,
+            "page_obj_pagar": page_obj_pagar,
+            "paginator_receber": paginator_receber,
+            "paginator_pagar": paginator_pagar,
+            "is_paginated_receber": page_obj_receber.has_other_pages(),
+            "is_paginated_pagar": page_obj_pagar.has_other_pages(),
+        })
         return context
-
+    
+ 
 class TituloDetailView(DetailView):
     template_name = "financeiro/titulo_detalhe.html"
 

@@ -3,6 +3,8 @@ from django.utils import timezone
 from decimal import Decimal
 from datetime import timedelta
 from django.db.models import Sum
+from django.core.paginator import Paginator
+
 from financeiro.models import (CaixaMovimento, FinanceiroCategoria,
             FinanceiroLancamento, FinanceiroPagar,
         )
@@ -53,11 +55,12 @@ def contas_pagar_lista(request):
     # Query base
     titulos = FinanceiroPagar.objects.select_related("contato", "categoria").order_by("data_vencimento")
  
-    # Filtros opcionais:
+    # ================== Filtros ==================
     # Filtro por contato
     contato = request.GET.get("contato")
     if contato:
         titulos = titulos.filter(contato_id=contato)
+    
     # Filtro por vencimento
     vencimento = request.GET.get("vencimento")
     if vencimento == "vencidos":
@@ -67,9 +70,22 @@ def contas_pagar_lista(request):
     elif vencimento == "amanha":
         titulos = titulos.filter(data_vencimento=hoje + timezone.timedelta(days=1))
   
-    # Separação entre compras e avulsos
+    # ===== Separação entre abas ======
     contas_compras = titulos.filter(origem="COMPRA")
     contas_avulsas = titulos.exclude(origem="COMPRA")
+
+    # -------------------------
+    # PAGINAÇÃO INDEPENDENTE
+    # -------------------------
+  
+    page_compras = request.GET.get("page_compras")
+    page_avulsas = request.GET.get("page_avulsas")
+
+    paginator_compras = Paginator(contas_compras, 20)
+    paginator_avulsas = Paginator(contas_avulsas, 20)
+
+    page_obj_compras = paginator_compras.get_page(page_compras)
+    page_obj_avulsas = paginator_avulsas.get_page(page_avulsas)
 
     # Cálculo para o resumo
     total_compras = contas_compras.aggregate(total=Sum("valor"))["total"] or 0
@@ -81,12 +97,22 @@ def contas_pagar_lista(request):
 
     contexto = {
         "hoje": hoje,
-        "contas_compras": contas_compras,
+        # Objetos paginados
+        "page_obj_compras": page_obj_compras,
+        "page_obj_avulsas": page_obj_avulsas,
+        
+        # Paginadores para controle de links
+        "paginator_compras": paginator_compras,
+        "paginator_avulsas": paginator_avulsas,
+        
+        # Resumos
         "total_compras": total_compras,
         "vencidos_compras": vencidos_compras,
-        "contas_avulsas": contas_avulsas,
         "total_avulsas": total_avulsas,
-        "vencidos_avulsas": vencidos_avulsas
+        "vencidos_avulsas": vencidos_avulsas,
+        
+        # Para manter filtros nos links do paginator
+        "params": request.GET.urlencode(),
     }
 
     return render(request, "financeiro/contas_pagar_lista.html", contexto)

@@ -4,6 +4,7 @@ from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 from .models import FinanceiroReceber, CaixaMovimento
 from comercial.models import Venda
 from django.utils import timezone
+from django.core.paginator import Paginator
 from .forms import FinanceiroReceberForm
 from django.shortcuts import render, get_object_or_404, redirect
 from decimal import Decimal
@@ -15,6 +16,7 @@ class ReceberListView(ListView):
     model = FinanceiroReceber
     template_name = "financeiro/receber_list.html"
     context_object_name = "titulos"
+    paginate_by = None # Desativa paginação automática do ListView
 
     def get_queryset(self):
         return (
@@ -30,20 +32,42 @@ class ReceberListView(ListView):
 
         titulos = context["titulos"]
 
-        # RECEITAS DE VENDAS
-        context["receitas_vendas"] = titulos.filter(
-            origem__in=["VENDA"]
-        )
+        # -----------------------------
+        # SEPARAÇÃO ENTRE ABAS
+        # -----------------------------
+        receitas_vendas = titulos.filter(origem__in=["VENDA"])
+        receitas_avulsas = titulos.exclude(origem__in=["VENDA"])
+ 
+        # -----------------------------
+        # PAGINAÇÃO INDEPENDENTE
+        # -----------------------------
+        page_vendas = self.request.GET.get("page_vendas")
+        page_avulsas = self.request.GET.get("page_avulsas")
 
-        # RECEITAS AVULSAS
-        context["receitas_avulsas"] = titulos.exclude(
-            origem__in=["VENDA"]
-        )
+        paginator_vendas = Paginator(receitas_vendas, 20)
+        paginator_avulsas = Paginator(receitas_avulsas, 20)
+
+        page_obj_vendas = paginator_vendas.get_page(page_vendas)
+        page_obj_avulsas = paginator_avulsas.get_page(page_avulsas)
+
+        # -----------------------------
+        # CONTEXTO FINAL
+        # -----------------------------
+        context.update({
+            "page_obj_vendas": page_obj_vendas,
+            "paginator_vendas": paginator_vendas,
+
+            "page_obj_avulsas": page_obj_avulsas,
+            "paginator_avulsas": paginator_avulsas,
+
+            # Para manter filtros nos links do paginator
+            "params": self.request.GET.urlencode(),
+        })
 
         return context
 # ======================
 
-
+ 
 # Criar novo título a receber
 class ReceberCreateView(CreateView):
     model = FinanceiroReceber

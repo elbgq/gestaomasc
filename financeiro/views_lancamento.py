@@ -1,5 +1,8 @@
 from django.urls import reverse_lazy
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView
+from django.core.paginator import Paginator
+from django.shortcuts import render
+from django.utils import timezone
 from .models import FinanceiroLancamento, FinanceiroPagar, FinanceiroReceber, FinanceiroCategoria
 from .forms import LancamentoForm
 from django.contrib.contenttypes.models import ContentType
@@ -8,8 +11,57 @@ class LancamentoListView(ListView):
     model = FinanceiroLancamento
     template_name = "financeiro/lancamento_list.html"
     context_object_name = "lancamentos"
-  
+    paginate_by = None  # Desativa paginação automática do ListView
 
+    def get_queryset(self):
+        return (
+            FinanceiroLancamento.objects
+            .select_related("contato", "categoria")
+            .order_by("-data")  # ou o critério que você usa
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        hoje = timezone.localdate()
+        context["hoje"] = hoje
+
+        lancamentos = context["lancamentos"]
+
+        # -----------------------------
+        # SEPARAÇÃO ENTRE ABAS
+        # -----------------------------
+        lancamentos_receitas = lancamentos.filter(categoria__tipo="R")
+        lancamentos_despesas = lancamentos.filter(categoria__tipo="D")
+
+        # -----------------------------
+        # PAGINAÇÃO INDEPENDENTE
+        # -----------------------------
+        page_receitas = self.request.GET.get("page_receitas")
+        page_despesas = self.request.GET.get("page_despesas")
+
+        paginator_receitas = Paginator(lancamentos_receitas, 20)
+        paginator_despesas = Paginator(lancamentos_despesas, 20)
+
+        page_obj_receitas = paginator_receitas.get_page(page_receitas)
+        page_obj_despesas = paginator_despesas.get_page(page_despesas)
+
+        # -----------------------------
+        # CONTEXTO FINAL
+        # -----------------------------
+        context.update({
+            "page_obj_receitas": page_obj_receitas,
+            "paginator_receitas": paginator_receitas,
+
+            "page_obj_despesas": page_obj_despesas,
+            "paginator_despesas": paginator_despesas,
+
+            # Para preservar filtros e parâmetros no paginator
+            "params": self.request.GET.urlencode(),
+        })
+
+        return context
+ 
 class LancamentoCreateView(CreateView):
     model = FinanceiroLancamento
     form_class = LancamentoForm

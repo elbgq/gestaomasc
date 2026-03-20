@@ -65,7 +65,7 @@
                             </thead>
 
                             <tbody>
-                                {% for r in receitas_vendas %}
+                                {% for r in page_obj_vendas %}
                                 <tr>
                                     <td>{{ r.data_lancamento|date:"d/m/Y" }}</td>
 
@@ -126,7 +126,10 @@
                         </table>
                     </div>
                 </div>
+                
             </div>
+            <!-- Paginação -->
+                {% include "partials/paginator.html" with page_obj=page_obj_vendas paginator=paginator_vendas page_param="page_vendas" %}
 
         </div>
 
@@ -163,7 +166,7 @@
                             </thead>
 
                             <tbody>
-                                {% for r in receitas_avulsas %}
+                                {% for r in page_obj_avulsas %}
                                 <tr>
                                     <td>{{ r.data_lancamento|date:"d/m/Y" }}</td>
 
@@ -218,6 +221,8 @@
                     </div>
                 </div>
             </div>
+            <!-- Paginação -->
+                {% include "partials/paginator.html" with page_obj=page_obj_avulsas paginator=paginator_avulsas page_param="page_avulsas" %}
 
         </div>
 

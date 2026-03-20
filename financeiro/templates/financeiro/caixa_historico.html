@@ -69,18 +69,20 @@
                                     <span class="badge bg-danger">Saída</span>
                                 {% endif %}
                             </td>
-
+ 
                             <td>
                                 <span class="badge bg-secondary">
                                     {{ m.get_origem_display }}
                                 </span>
                             </td>
 
-                            <td class="text-center">
-                                <a href="{% url 'financeiro:caixa_movimento_detalhe' m.id %}"
-                                class="btn btn-sm btn-info">
-                                    Detalhes
-                                </a>
+                            <td class="text-center allign-middle">
+                                <div class="d-flex justify-content-center gap-2">
+                                    <a href="{% url 'financeiro:caixa_movimento_detalhe' m.id %}"
+                                    class="btn btn-sm btn-info">
+                                        Detalhes
+                                    </a>
+                                </div>
                             </td>
 
                         </tr>
@@ -96,9 +98,12 @@
 
                 </table>
             </div>
+            
         </div>
+        
     </div>
-
+    <!-- Paginação -->
+    {% include "partials/paginator.html" %}
     <div class="mt-4">
         <a href="{% url 'financeiro:caixa_list' %}" class="btn btn-secondary">
             <i class="bi bi-arrow-left"></i> Voltar

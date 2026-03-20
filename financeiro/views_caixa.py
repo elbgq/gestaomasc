@@ -1,9 +1,9 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.http import Http404
-from django.db.models import Count, Q, F, Sum
+from django.core.paginator import Paginator
+from django.db.models import Sum
 from .models import CaixaMovimento
 from django.contrib import messages
-from django.views.generic import CreateView, UpdateView, DeleteView, DetailView, TemplateView
+from django.views.generic import CreateView, UpdateView, DeleteView
 from django.urls import reverse_lazy
 from .models import CaixaMovimento
 from django.utils import timezone
@@ -167,8 +167,14 @@ def caixa_historico(request):
     total_entradas = movimentos.filter(tipo="E").aggregate(total=Sum("valor"))["total"] or 0
     total_saidas = movimentos.filter(tipo="S").aggregate(total=Sum("valor"))["total"] or 0
     saldo = total_entradas - total_saidas
+    
+     # Adicionando paginação
+    paginator = Paginator(movimentos, 20)  # 20 itens por página
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
 
     return render(request, "financeiro/caixa_historico.html", {
+        "page_obj": page_obj,
         "movimentos": movimentos,
         "total_entradas": total_entradas,
         "total_saidas": total_saidas,
