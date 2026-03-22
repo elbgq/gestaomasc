@@ -62,32 +62,34 @@
 
                     </td>
                     <!-- AÇÕES -->
-                    <td class="d-flex justify-content-center gap-2">
+                    <td class="text-center">
+                        <div class="center-flex-cell">
 
-                        {% if compra.importada and not compra.confirmada %}
-                        <a href="{% url 'comercial:vincular_itens' compra.id %}" class="btn btn-sm btn-info">
-                            Vincular Itens
-                        </a>
-                        {% endif %}
+                            {% if compra.importada and not compra.confirmada %}
+                            <a href="{% url 'comercial:vincular_itens' compra.id %}" class="btn btn-sm btn-info">
+                                Vincular Itens
+                            </a>
+                            {% endif %}
 
-                        {% if not compra.confirmada %}
+                            {% if not compra.confirmada %}
 
-                        <a href="{% url 'comercial:compra_editar' compra.pk %}" class="btn btn-sm btn-warning">
-                            Editar
-                        </a>
-                        {% endif %}
-                        
-                        {% if not compra.confirmada %}
-                        <a href="{% url 'comercial:compra_excluir' compra.id %}"
-                           class="btn btn-sm btn-danger"
-                           onclick="return confirm('Tem certeza que deseja excluir esta compra? Esta ação não pode ser desfeita.');">
-                            Excluir
-                        </a>
-                        {% endif %}
-                        <a href="{% url 'comercial:compra_detalhe' compra.id %}" 
-                            class="btn btn-sm btn-primary">
-                            Detalhes
-                        </a>
+                            <a href="{% url 'comercial:compra_editar' compra.pk %}" class="btn btn-sm btn-warning">
+                                Editar
+                            </a>
+                            {% endif %}
+                            
+                            {% if not compra.confirmada %}
+                            <a href="{% url 'comercial:compra_excluir' compra.id %}"
+                            class="btn btn-sm btn-danger"
+                            onclick="return confirm('Tem certeza que deseja excluir esta compra? Esta ação não pode ser desfeita.');">
+                                Excluir
+                            </a>
+                            {% endif %}
+                            <a href="{% url 'comercial:compra_detalhe' compra.id %}" 
+                                class="btn btn-sm btn-primary">
+                                Detalhes
+                            </a>
+                        </div>
                     </td>
                 </tr>
                 {% empty %}

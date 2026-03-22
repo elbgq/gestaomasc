@@ -83,4 +83,16 @@ html, body {
         margin-left: 0;
     }
 }
+/* Classe de preenchimento de campos das Ações */
+td.acoes {
+    background-color: inherit !important;
+}
 
+.center-flex-cell {
+    text-align: center;
+    vertical-align: middle;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+}

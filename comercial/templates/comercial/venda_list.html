@@ -45,19 +45,21 @@
                     <!-- Total da venda -->
                     <td>R$ {{ venda.total|floatformat:2 }}</td>
                     <!-- Ações -->
-                    <td class="d-flex justify-content-center gap-2">
-                        <a href="{% url 'comercial:venda_detalhe' venda.id %}" class="btn btn-sm btn-info">
-                            <i class="bi bi-eye"></i> Detalhes
-                        </a>
-                        {% if venda.status == "rascunho" %}
-                            <a href="{% url 'comercial:venda_editar' venda.id %}" class="btn btn-sm btn-warning">
-                                <i class="bi bi-pencil-square"></i> Editar
+                    <td class="text-center">
+                        <div class="center-flex-cell">
+                            <a href="{% url 'comercial:venda_detalhe' venda.id %}" class="btn btn-sm btn-info">
+                                <i class="bi bi-eye"></i> Detalhes
                             </a>
+                            {% if venda.status == "rascunho" %}
+                                <a href="{% url 'comercial:venda_editar' venda.id %}" class="btn btn-sm btn-warning">
+                                    <i class="bi bi-pencil-square"></i> Editar
+                                </a>
 
-                            <a href="{% url 'comercial:venda_excluir' venda.id %}" class="btn btn-sm btn-danger">
-                                <i class="bi bi-trash"></i> Excluir
-                            </a>
-                        {% endif %}
+                                <a href="{% url 'comercial:venda_excluir' venda.id %}" class="btn btn-sm btn-danger">
+                                    <i class="bi bi-trash"></i> Excluir
+                                </a>
+                            {% endif %}
+                        </div>
                     </td>
                 </tr>
 

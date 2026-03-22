@@ -1,10 +1,18 @@
 <div id="sidebar" class="erp-sidebar">
     
     <h4 class="text-center mb-4">
-    <a href="{% url 'core:home' %}" class="text-white text-decoration-none">
+    <a href="{% url 'home' %}" class="text-white text-decoration-none">
         MASC
     </a>
 </h4>
+
+    {% if user.is_authenticated %}
+    <form action="{% url 'logout' %}" method="post" style="display:inline;">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-link">Sair</button>
+    </form>
+
+    {% endif %}
 
     <ul class="nav flex-column">
 

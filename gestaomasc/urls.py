@@ -15,38 +15,26 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 
-
 # gestaomasc/urls.py
 
 from django.contrib import admin
 from django.urls import path, include
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth import views as auth_views
+from django.views.generic import TemplateView
+
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    path('', include('core.urls', namespace='core')),  # Página inicial do sistema
-    
-    # Rotas dos apps
+    # Site protegido por login
+    path('', TemplateView.as_view(template_name='home.html'), name='home'),
+    path('login/', auth_views.LoginView.as_view(), name='login'),
+    path('logout/', auth_views.LogoutView.as_view(next_page='login'), name='logout'),
+
     path('cadastros/', include('cadastros.urls', namespace='cadastros')),
     path('comercial/', include('comercial.urls', namespace='comercial')),
     path('financeiro/', include('financeiro.urls', namespace='financeiro')),
     path('relatorios/', include('relatorios.urls', namespace='relatorios')),
+
+    path('admin/', admin.site.urls),
 ]
 
-
-
-'''
-Como ficam as rotas finais
-- http://localhost:8000/cadastros/ → página inicial do app Cadastros
-- http://localhost:8000/cadastros/novo/ → criar novo cadastro
-- http://localhost:8000/comercial/ → página inicial do app Comercial
-- http://localhost:8000/comercial/pedido/ → criar pedido
-- http://localhost:8000/financeiro/ → página inicial do app Financeiro
-- http://localhost:8000/financeiro/relatorio/ → relatório financeiro
-
-🔹 Boas práticas
-- Organização modular: cada app cuida das suas próprias rotas.
-- Nomear rotas (name='...') para facilitar uso em templates com {% url 'nome_da_rota' %}.
-- Namespaces: se quiser evitar conflitos entre apps, pode usar app_name = 'cadastros' dentro
-de urls.py do app e depois chamar com {% url 'cadastros:cadastros_novo' %}.
-
-'''

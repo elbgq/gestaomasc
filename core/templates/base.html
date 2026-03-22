@@ -36,8 +36,10 @@
     </button>
 
     <div class="erp-layout">
-        {% include "partials/sidebar.html" %}
-    
+        {% if user.is_authenticated %}
+            {% include "partials/sidebar.html" %}
+        {% endif %}
+
         <main class="erp-content p-4">
             {% block content %}{% endblock %}
         </main>

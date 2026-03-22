@@ -56,6 +56,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'core.middleware.LoginRequiredMiddleware',
     #"gestaomasc.core.middleware.permissions.PermissionMiddleware",
 ]
 
@@ -66,7 +67,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR /'templates'], #TEMPLATES GLOBAIS
+        'DIRS': [BASE_DIR /'core' / 'templates'], #TEMPLATES GLOBAIS
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -135,4 +136,6 @@ STATIC_URL = "/static/"
 # STATICFILES_DIRS = [BASE_DIR / "gestaomasc" / "static"]  # pasta global opcional
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")  # usado em produção (collectstatic)
 X_FRAME_OPTIONS = 'SAMEORIGIN'
-LOGOUT_REDIRECT_URL = '/'
+LOGIN_URL = '/login/'
+LOGIN_REDIRECT_URL = '/'
+LOGOUT_REDIRECT_URL = '/login/'
