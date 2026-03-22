@@ -91,25 +91,23 @@
                                         {% endif %}
                                     </td>
 
-                                    <td class="text-center">
-                                        <div class="btn-group" role="group">
+                                    <td class="text-center align-middle">
+                                        <div class="d-flex justify-content-center gap-2">
+                                        {% if r.referencia_id %}
+                                            <a href="{% url 'comercial:venda_editar' r.referencia_id %}"
+                                                class="btn btn-sm btn-outline-warning">
+                                                Editar Venda
+                                            </a>
+                                        {% endif %}
 
-                                            {% if r.referencia_id %}
-                                                <a href="{% url 'comercial:venda_editar' r.referencia_id %}"
-                                                   class="btn btn-sm btn-outline-warning">
-                                                    Editar Venda
-                                                </a>
-                                            {% endif %}
-
-                                            {% if not r.esta_pago %}
-                                                <a href="{% url 'financeiro:titulo_confirmar_quitacao' 'R' r.id %}"
-                                                   class="btn btn-sm btn-success">
-                                                    Quitar
-                                                </a>
-                                            {% endif %}
-
-                                            <span class="text-muted small">Excluir no Lançamento</span>
-
+                                        {% if not r.esta_pago %}
+                                            <a href="{% url 'financeiro:titulo_confirmar_quitacao' 'R' r.id %}"
+                                                class="btn btn-sm btn-success">
+                                                Quitar
+                                            </a>
+                                        {% endif %}
+                                            <a href="{% url 'financeiro:titulo_detalhe' r.tipo r.id %}"
+                                                class="btn btn-sm btn-primary">Detalhes</a>
                                         </div>
                                     </td>
                                 </tr>
@@ -182,7 +180,8 @@
 
                                     <td class="text-end">R$ {{ r.valor|floatformat:2 }}</td>
 
-                                    <td>
+                                    <td class="text-center align-middle">
+                                        <div class="d-flex justify-content-center gap-2">
                                         {% if r.esta_pago %}
                                             <span class="badge bg-success">Recebido</span>
                                         {% elif r.data_vencimento < hoje %}
@@ -190,6 +189,7 @@
                                         {% else %}
                                             <span class="badge bg-warning text-dark">Pendente</span>
                                         {% endif %}
+                                        </div>
                                     </td>
 
                                     <td class="text-center">
@@ -201,9 +201,11 @@
                                                     Quitar
                                                 </a>
                                             {% endif %}
+                                            <a href="{% url 'financeiro:titulo_detalhe' r.tipo r.id %}"
+                                                class="btn btn-sm btn-primary">Detalhes</a>
 
-                                            <span class="text-muted small">Excluir no Lançamento</span>
-
+                                            <!-- <span class="text-muted small">Excluir no Lançamento</span> -->
+ 
                                         </div>
                                     </td>
                                 </tr>

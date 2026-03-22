@@ -85,14 +85,14 @@ html, body {
 }
 /* Classe de preenchimento de campos das Ações */
 td.acoes {
-    background-color: inherit !important;
-}
-
-.center-flex-cell {
+    /*background-color: inherit !important;*/
     text-align: center;
     vertical-align: middle;
+    white-space: nowrap;    
+}
+.acoes-wrapper {
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 0.5rem;
+    gap: .5rem;
 }

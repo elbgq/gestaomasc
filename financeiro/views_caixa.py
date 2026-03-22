@@ -182,6 +182,7 @@ def caixa_historico(request):
         "data_ini": data_ini,
         "data_fim": data_fim,
     })
+     
 # Detalhes do movimento de caixa
 def caixa_movimento_detalhe(request, pk):
     movimento = get_object_or_404(CaixaMovimento, pk=pk)

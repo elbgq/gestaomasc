@@ -43,7 +43,7 @@ class FinanceiroReceberAdmin(admin.ModelAdmin):
 
 @admin.register(CaixaMovimento)
 class CaixaMovimentoAdmin(admin.ModelAdmin):
-    list_display = ("id", "data", "descricao", "tipo", "valor", "origem", "referencia_id")
+    list_display = ("id", "data", "descricao", "tipo", "valor", "origem", "referencia_id", "referencia_tipo")
     list_filter = ("tipo", "origem")
     search_fields = ("descricao",)
 

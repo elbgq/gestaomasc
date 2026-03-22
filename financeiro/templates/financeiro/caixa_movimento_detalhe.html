@@ -23,9 +23,13 @@
         <p><strong>Valor:</strong> R$ {{ movimento.valor|floatformat:2 }}</p>
 
         <p><strong>Origem:</strong> {{ movimento.get_origem_display }}</p>
-
+        {{ movimento.referencia.categoria.tipo }}
         {% if movimento.referencia_id %}
-            <p><strong>Referência:</strong> Título ID {{ movimento.referencia_id }}</p>
+            <p><strong>Referência:</strong>
+                <a href="{% url 'financeiro:titulo_detalhe' movimento.referencia_tipo movimento.referencia_id %}">
+                    Detalhes do Título #{{ movimento.referencia_id }}
+                </a>
+            </p>
         {% endif %}
 
         {% if movimento.observacao %}

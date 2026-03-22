@@ -87,14 +87,15 @@
 
                                     <td>{{ conta.data_vencimento|date:"d/m/Y" }}</td>
 
-                                    <td class="d-flex justify-content-center gap-2">
-                                        <a href="{% url 'financeiro:titulo_detalhe' conta.tipo conta.id %}"
-                                           class="btn btn-sm btn-primary">Detalhes</a>
-
+                                    <td class="text-center align-middle">
+                                        <div class="d-flex justify-content-center gap-2">
                                         {% if not conta.esta_pago %}
                                             <a href="{% url 'financeiro:titulo_confirmar_quitacao' conta.tipo conta.id %}"
-                                               class="btn btn-sm btn-success">Quitar</a>
+                                            class="btn btn-sm btn-success">Quitar</a>
                                         {% endif %}
+                                            <a href="{% url 'financeiro:titulo_detalhe' conta.tipo conta.id %}"
+                                            class="btn btn-sm btn-primary">Detalhes</a>
+                                        </div>
                                     </td>
                                 </tr>
 
@@ -171,14 +172,15 @@
                                         {% endif %}
                                     </td>
 
-                                    <td class="d-flex justify-content-center gap-2">
-                                        <a href="{% url 'financeiro:titulo_detalhe' p.tipo p.id %}"
-                                           class="btn btn-sm btn-primary">Detalhes</a>
-
-                                        {% if not p.esta_pago %}
-                                            <a href="{% url 'financeiro:titulo_confirmar_quitacao' p.tipo p.id %}"
-                                               class="btn btn-sm btn-success">Quitar</a>
-                                        {% endif %}
+                                    <td class="text-center align-middle">
+                                        <div class="d-flex justify-content-center gap-2">
+                                            {% if not p.esta_pago %}
+                                                <a href="{% url 'financeiro:titulo_confirmar_quitacao' p.tipo p.id %}"
+                                                class="btn btn-sm btn-success">Quitar</a>
+                                            {% endif %}
+                                            <a href="{% url 'financeiro:titulo_detalhe' p.tipo p.id %}"
+                                            class="btn btn-sm btn-primary">Detalhes</a>
+                                        </div>
                                     </td>
                                 </tr>
 

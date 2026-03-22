@@ -33,10 +33,10 @@
                     <td>{{ c.get_tipo_display }}</td>
                     <td>{{ c.get_grupo_dre_display }}</td>
 
-                    <td class="d-flex justify-content-center gap-2">
+                    <td >
                         <a href="{% url 'financeiro:categoria_update' c.id %}" class="btn btn-sm btn-warning">
                             Editar
-                        </a>
+                        </a> 
 
                         <a href="{% url 'financeiro:categoria_delete' c.id %}" class="btn btn-sm btn-danger">
                             Excluir

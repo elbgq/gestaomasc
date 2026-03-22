@@ -222,6 +222,12 @@ class CaixaMovimento(models.Model):
     tipo = models.CharField(max_length=1, choices=TIPO_CHOICES) 
     origem = models.CharField(max_length=20, choices=ORIGEM_CHOICES)
     referencia_id = models.IntegerField(null=True, blank=True)
+    referencia_tipo = models.CharField(
+        max_length=1,
+        choices=[("R", "Receber"), ("D", "Pagar")],
+        null=True,
+        blank=True
+)
     observacao = models.TextField(blank=True, null=True)
     caixa = models.ForeignKey(
         "financeiro.Caixa",

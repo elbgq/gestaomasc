@@ -137,6 +137,7 @@ def titulo_quitacao_view(request, tipo, pk):
         valor=titulo.valor,
         origem=origem_mov,  # ← AGORA SIM
         referencia_id=titulo.id,
+        referencia_tipo=titulo.categoria.tipo,
     )
 
     messages.success(request, "Título quitado com sucesso!")

@@ -83,7 +83,7 @@ urlpatterns = [
     # DASHBOARD FINANCEIRO
     path("dashboard/", dashboard_financeiro, name="dashboard"),
     
-    # Títulos
+    # Títulos 
     path("titulos/", TituloListView.as_view(), name="titulo_list"),
     path("titulos/<str:tipo>/<int:pk>/quitar/", titulo_quitacao_view, name="titulo_confirmar_quitacao"),
     path("titulos/<str:tipo>/<int:pk>/", TituloDetailView.as_view(), name="titulo_detalhe"),
