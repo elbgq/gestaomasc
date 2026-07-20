@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>Demonstração do Resultado do Exercício (DRE)</h2>
+
+<form method="get" class="mb-4">
+    <div class="row g-3">
+        <div class="col-md-3">
+            {{ form.data_inicio.label_tag }}
+            {{ form.data_inicio }}
+        </div>
+        <div class="col-md-3">
+            {{ form.data_fim.label_tag }} 
+            {{ form.data_fim }}
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+            <button class="btn btn-primary w-100">Gerar</button>
+        </div>
+    </div>
+</form>
+ 
+{% if dre %}
+<table class="table table-bordered table-striped w-75 mx-auto">
+    <!-- RECEITA BRUTA -->
+    <tr class="table-secondary">
+        <th>Receita Bruta</th>
+        <td class="text-end">R$ {{ dre.receita_bruta|default:0|floatformat:2 }}</td>
+    </tr>
+    <tr><th class="ps-2">Receita de Produtos</th><td class="text-end">R$ {{ dre.receita_produtos|floatformat:2 }}</td></tr>
+    <tr><th class="ps-2">Receita de Serviços</th><td class="text-end">R$ {{ dre.receita_servicos|floatformat:2 }}</td></tr>
+    
+    <!-- DEDUÇÕES -->
+    <tr class="table-secondary"><th>Deduções da Receita Bruta</th><td></td></tr>
+    <tr><th class="ps-3">ICMS</th><td class="text-end">R$ {{ dre.icms|floatformat:2 }}</td></tr>
+    <tr><th class="ps-3">ISS</th><td class="text-end">R$ {{ dre.iss|floatformat:2 }}</td></tr>
+    <tr><th class="ps-3">PIS</th><td class="text-end">R$ {{ dre.pis|floatformat:2 }}</td></tr>
+    <tr><th class="ps-3">COFINS</th><td class="text-end">R$ {{ dre.cofins|floatformat:2 }}</td></tr>
+
+    <tr class="table-secondary">
+        <th>Total Deduções</th>
+        <td class="text-end">R$ {{ dre.deducoes|floatformat:2 }}</td>
+    </tr>
+    <!-- RECEITA LÍQUIDA -->
+    <tr class="table-secondary">
+        <th>Receita Líquida</th>
+        <td class="text-end">R$ {{ dre.receita_liquida|floatformat:2 }}</td>
+    </tr>
+
+    <!-- CMV -->
+    <tr><th>(-) CMV</th><td class="text-end">R$ {{ dre.cmv|floatformat:2 }}</td></tr>
+
+    <tr class="table-secondary">
+        <th>Lucro Bruto</th>
+        <td class="text-end">R$ {{ dre.lucro_bruto|floatformat:2 }}</td>
+    </tr>
+    <!-- DESPESAS OPERACIONAIS -->
+    <tr><th>Despesas com Vendas</th><td class="text-end">R$ {{ dre.despesas_vendas|floatformat:2 }}</td></tr>
+    <tr><th>Despesas Administrativas</th><td class="text-end">R$ {{ dre.despesas_adm|floatformat:2 }}</td></tr>
+    <tr><th>Despesas Gerais</th><td class="text-end">R$ {{ dre.despesas_gerais|floatformat:2 }}</td></tr>
+
+    <tr class="table-secondary">
+        <th>Total Despesas Operacionais</th>
+        <td class="text-end">R$ {{ dre.despesas_operacionais|floatformat:2 }}</td>
+    </tr>
+
+    <tr class="table-secondary">
+        <th>Resultado Operacional</th>
+        <td class="text-end">R$ {{ dre.resultado_operacional|floatformat:2 }}</td>
+    </tr>
+    <!-- OUTRAS RECEITAS E DESPESAS -->
+    <tr><th>Outras Receitas</th><td class="text-end">R$ {{ dre.outras_receitas|floatformat:2 }}</td></tr>
+    <tr><th>Outras Despesas</th><td class="text-end">R$ {{ dre.outras_despesas|floatformat:2 }}</td></tr>
+
+    <tr class="table-secondary">
+        <th>Resultado Antes do IR/CSLL</th>
+        <td class="text-end">R$ {{ dre.resultado_antes_ir|floatformat:2 }}</td>
+    </tr>
+    <!-- IRPJ / CSLL -->
+    <tr><th>(-) IRPJ</th><td class="text-end">R$ {{ dre.irpj|floatformat:2 }}</td></tr>
+    <tr><th>(-) CSLL</th><td class="text-end">R$ {{ dre.csll|floatformat:2 }}</td></tr>
+
+    <tr class="table-secondary">
+        <th>Total IR + CSLL</th>
+        <td class="text-end">R$ {{ dre.ir_csll|floatformat:2 }}</td>
+    </tr>
+
+    <!-- LUCRO LÍQUIDO -->
+    <tr class="table-success">
+        <th>Lucro Líquido</th>
+        <td class="text-end"><strong>R$ {{ dre.lucro_liquido|floatformat:2 }}</strong></td>
+    </tr>
+
+</table>
+{% endif %}
+
+{% endblock %}

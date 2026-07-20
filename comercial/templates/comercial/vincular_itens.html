@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2 class="mb-3">Vincular Itens da Compra {{ compra.numero_nota }}</h2>
+
+<div class="mb-2">
+    <p><strong>Fornecedor:</strong> {{ compra.contato.nome }}</p>
+    <p><strong>Data:</strong> {{ compra.data|date:"d/m/Y" }}</p>
+</div>
+
+<form method="post">
+    {% csrf_token %}
+    <!-- Botão para criar novo produto -->
+    <button type="button" class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#modalNovoProduto">
+        ➕ Criar Produto
+    </button>
+
+    <table class="table table-bordered align-middle">
+        <thead class="table-light">
+            <tr>
+                <th style="width: 35%">Descrição Importada</th>
+                <th style="width: 35%">Produto Vinculado</th>
+                <th style="width: 10%">Qtd</th>
+                <th style="width: 10%">Preço</th>
+                <th style="width: 10%">Status</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            {% for item in itens %}
+            <tr class="{% if item.status == 'pendente' %}table-warning{% endif %}">
+                <td>{{ item.descricao_importada }}</td>
+                <td>
+                    <select name="produto_{{ item.id }}" class="form-select select2-produto">
+                        <option value="">-- Selecione --</option>
+                        {% for produto in produtos %}
+                        <option value="{{ produto.id }}"
+                            {% if item.produto_id == produto.id %}selected{% endif %}>
+                            {{ produto.descricao }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </td>
+                <td>{{ item.quantidade }}</td>
+                <td>R$ {{ item.preco_unitario|floatformat:2 }}</td>
+                <td>
+                    {% if item.status == "pendente" %}
+                        <span class="badge bg-warning">Pendente</span>
+
+                    {% elif item.status == "vinculado" %}
+                        <span class="badge bg-success">Vinculado</span>
+
+                    {% elif item.status == "novo" %}
+                        <span class="badge bg-info">Novo Produto</span>
+
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="mt-3 d-flex gap-2">
+        <button class="btn btn-success">💾 Salvar Vinculações</button>
+
+        {% if not tem_pendentes %}
+            <a href="{% url 'comercial:compras_confirmar' compra.id %}" class="btn btn-primary">
+                ✅ Confirmar Compra
+            </a>
+        {% endif %}
+
+        <a href="{% url 'comercial:compra_list' %}" class="btn btn-secondary">↩️ Voltar</a>
+    </div>
+
+</form>
+ 
+<!-- Modal Criar Produto -->
+<div class="modal fade" id="modalNovoProduto" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+
+      <form method="post" action="{% url 'cadastros:produto_create_ajax' %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title">Novo Produto</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Descrição</label>
+            <input type="text" name="descricao" class="form-control" required>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Preço de Venda</label>
+            <input type="number" step="0.01" name="preco_venda" class="form-control" required>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-success">Salvar</button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

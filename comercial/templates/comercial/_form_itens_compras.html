@@ -1,0 +1,65 @@
+{% load widget_tweaks %}
+
+{{ formset.management_form }}
+ 
+<table class="table table-bordered" id="itens-compras-table">
+    <thead class="table-dark">
+        <tr>
+            <th style="width: 30%">Produto</th>
+            <th style="width: 10%">Unidade</th>
+            <th style="width: 10%">Qtd</th>
+            <th style="width: 15%">Preço Unit.</th>
+            <th style="width: 15%">Total</th>
+            <th style="width: 10%">Ação</th>
+        </tr>
+    </thead>
+
+    <tbody id="formset-body-compras">
+        {% for f in formset %}
+        <tr class="item-row">
+
+            {# Campos ocultos obrigatórios do formset #}
+            {% for hidden in f.hidden_fields %}
+                {{ hidden }}
+            {% endfor %}
+
+            {# Produto #}
+            <td>
+                {{ f.produto|add_class:"form-select item-produto" }}
+            </td>
+            {# Unidade #}
+            <td>
+                {{ f.unidade|add_class:"form-select item-unidade" }}
+            </td>
+            {# Quantidade #}
+            <td>
+                {{ f.quantidade|add_class:"form-control item-quantidade" }}
+            </td>
+
+            {# Preço Unitário #}
+            <td>
+                {{ f.preco_unitario|add_class:"form-control item-preco-unitario" }}
+            </td>
+
+            {# Total (somente leitura) #}
+            <td class="item-total">
+                {% if f.instance.pk %}
+                    R$ {{ f.instance.total|floatformat:2 }}
+                {% else %}
+                    R$ 0,00
+                {% endif %}
+            </td>
+
+            {# Ação #}
+            <td>
+                <input type="checkbox" name="{{ f.prefix }}-DELETE"> Remover
+            </td>
+
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<button type="button" class="btn btn-secondary" id="add-item-btn-compras">
+    ➕ Adicionar Item
+</button>

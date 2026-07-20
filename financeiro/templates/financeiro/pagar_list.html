@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}Contas a Pagar{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <!-- Cabeçalho -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0">Contas a Pagar</h1>
+
+        <a href="{% url 'financeiro:pagar_create' %}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Nova Conta
+        </a>
+    </div>
+
+    <!-- Tabela -->
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover align-middle mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Data Lançamento</th>
+                            <th>Vencimento</th>
+                            <th>Fornecedor</th>
+                            <th>Descrição</th>
+                            <th class="text-end">Valor</th>
+                            <th>Status</th>
+                            <th class="text-center">Ações</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for p in titulos %}
+                        <tr>
+                            <td>{{ p.data_lancamento|date:"d/m/Y" }}</td>
+
+                            <td>
+                                {{ p.data_vencimento|date:"d/m/Y" }}
+
+                                {% if not p.esta_pago and p.data_vencimento < hoje %}
+                                    <span class="badge bg-danger ms-2">Atrasado</span>
+                                {% endif %}
+                            </td>
+
+                            <td>{{ p.contato.nome }}</td>
+                            <td>{{ p.descricao }}</td>
+
+                            <td class="text-end">R$ {{ p.valor|floatformat:2 }}</td>
+
+                            <!-- Status -->
+                            <td>
+                                {% if p.esta_pago %}
+                                    <span class="badge bg-primary">Pago</span>
+                                {% elif p.data_vencimento < hoje %}
+                                    <span class="badge bg-danger">Vencido</span>
+                                {% else %}
+                                    <span class="badge bg-warning text-dark">Pendente</span>
+                                {% endif %}
+                            </td>
+
+                            <!-- Ações -->
+                            <td class="text-center">
+                                <div class="btn-group" role="group">
+
+                                    {% if not p.esta_pago %}
+                                        <a href="{% url 'financeiro:pagar_titulo' p.id %}"
+                                           class="btn btn-sm btn-success">
+                                            Pagar
+                                        </a>
+                                    {% endif %}
+
+                                    <a href="{% url 'financeiro:pagar_update' p.id %}"
+                                       class="btn btn-sm btn-outline-warning">
+                                        Editar
+                                    </a>
+
+                                    <a href="{% url 'financeiro:pagar_delete' p.id %}"
+                                       class="btn btn-sm btn-danger">
+                                        Excluir
+                                    </a>
+
+                                </div>
+                            </td>
+                        </tr>
+
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center text-muted py-4">
+                                Nenhuma conta encontrada.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

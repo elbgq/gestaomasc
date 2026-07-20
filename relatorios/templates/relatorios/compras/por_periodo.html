@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>Relatório de Compras por Período</h2>
+
+<form method="get" class="mb-4">
+    <div class="row g-2">
+        <div class="col-md-3">
+            <label>{{ form.data_inicio.label }}</label>
+            {{ form.data_inicio }}
+        </div>
+        <div class="col-md-3">
+            <label>{{ form.data_fim.label }}</label>
+            {{ form.data_fim }}
+        </div>
+        <div class="col-md-3">
+            <label>{{ form.contato.label }}</label>
+            {{ form.contato }}
+        </div>
+        <div class="col-md-3">
+            <label>{{ form.numero_nota.label }}</label>
+            {{ form.numero_nota }}
+        </div>
+    </div>
+ 
+    <div class="mt-3">
+        <button type="submit" class="btn btn-primary">
+            Filtrar
+        </button>
+        <a href="{% url 'relatorios:compras_por_periodo' %}" class="btn btn-secondary">
+            Limpar Filtros
+        </a>
+    </div>
+</form>
+
+{% if itens %}
+<div class="table-responsive mt-4">
+    <table class="table table-bordered table-sm align-middle">
+        <thead class="table-light">
+            <tr>
+                <th>Data</th>
+                <th>Fornecedor</th>
+                <th>Número Nota</th>
+                <th>Produto</th>
+                <th>Quantidade</th>
+                <th>Preço Unitário</th>
+                <th>Total Item</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in itens %}
+            <tr>
+                <td>{{ item.compra.data|date:"d/m/Y" }}</td>
+                <td>{{ item.compra.fornecedor.nome }}</td> {# ajuste campo #}
+                <td>{{ item.compra.numero_formatado }}</td>
+                <td>{{ item.produto.descricao }}</td> {# ajuste campo #}
+                <td class="text-end">
+                    {{ item.quantidade }}
+                </td>
+                <td class="text-end">
+                    R$ {{ item.preco_unitario|floatformat:2 }}
+                </td>
+                <td class="text-end">
+                    R$ {{ item.total_item|floatformat:2 }}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="mt-3">
+    <h5>
+        Total de Itens: {{ totais.total_quantidade|default:"0" }}<br>
+        Total Geral de Compras: R$ {{ totais.total_geral|floatformat:2|default:"0,00" }}
+    </h5>
+</div>
+{% else %}
+    <p class="mt-4">Nenhum resultado encontrado para os filtros informados.</p>
+{% endif %}
+
+{% endblock %}

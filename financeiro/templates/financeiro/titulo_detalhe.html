@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}Detalhes do Título{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <h2 class="mb-4">Detalhes do Título</h2>
+
+    <div class="card shadow-sm p-4">
+
+        <p><strong>Descrição:</strong> {{ titulo.descricao }}</p>
+        <p><strong>Categoria:</strong> {{ titulo.categoria }}</p>
+        <p><strong>Valor:</strong> R$ {{ titulo.valor|floatformat:2 }}</p>
+
+        <p><strong>Data de Lançamento:</strong> {{ titulo.data_lancamento|date:"d/m/Y" }}</p>
+        <p><strong>Data de Vencimento:</strong> {{ titulo.data_vencimento|date:"d/m/Y" }}</p>
+
+        {% if titulo.esta_pago %}
+            <p><strong>Data de Quitação:</strong> {{ titulo.data_pagamento|date:"d/m/Y" }}</p>
+        {% endif %}
+ 
+        <p>
+            <strong>Tipo:</strong>
+            {% if titulo.tipo == "R" %}
+                <span class="badge bg-success">Receber</span>
+            {% else %}
+                <span class="badge bg-danger">Pagar</span>
+            {% endif %}
+        </p>
+
+        <p>
+            <strong>Status:</strong>
+            {% if titulo.esta_pago %}
+                <span class="badge bg-success">Quitado</span>
+            {% else %}
+                <span class="badge bg-warning text-dark">Em aberto</span>
+            {% endif %}
+        </p>
+
+        <p><strong>Origem:</strong> {{ titulo.origem }}</p>
+
+
+        <div class="mt-4 d-flex gap-2">
+
+            {% if not titulo.esta_pago %}
+                <a href="{% url 'financeiro:titulo_confirmar_quitacao' titulo.tipo titulo.id %}"
+                   class="btn btn-success">
+                    Quitar Título
+                </a>
+            {% endif %}
+<!-- DEBUG: tipo={{ object.tipo }} id={{ object.id }} valor_pago={{ object.valor_pago }} -->
+            <a href="{% url 'financeiro:titulo_list' %}" class="btn btn-secondary">
+                Voltar
+            </a>
+
+        </div>
+
+    </div>
+
+</div>
+{% endblock %}

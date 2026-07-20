@@ -1,0 +1,64 @@
+<div class="modal fade" id="modalFinalizar" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+
+      <form id="formFinalizar" method="post">
+        {% csrf_token %}
+
+        <div class="modal-header">
+          <h5 class="modal-title">Finalizar Compra</h5>
+        </div>
+
+        <div class="modal-body">
+
+          <p><strong>Total da compra:</strong> R$ {{ compra.valor_total }}</p>
+
+          <label>Forma de pagamento:</label>
+          <select id="forma_pagamento" name="forma_pagamento" class="form-control">
+              <option value="avista">À vista</option>
+              <option value="parcelado">Parcelado</option>
+          </select>
+
+          <div id="parcelas-box" style="display:none;" class="mt-3">
+              <label>Número de parcelas:</label>
+              <input type="number" name="parcelas" class="form-control" min="2" value="2">
+
+              <label class="mt-2">Dias entre parcelas:</label>
+              <input type="number" name="dias_entre_parcelas" class="form-control" min="1" value="30">
+
+              <label class="mt-2">Primeiro vencimento:</label>
+              <input type="date" name="data_inicial" class="form-control" required>
+          </div>
+
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-success">Confirmar</button>
+        </div>
+
+      </form>
+
+    </div>
+  </div>
+</div>
+
+<script>
+const form = document.getElementById("formFinalizar");
+const select = document.getElementById("forma_pagamento");
+
+select.addEventListener("change", function() {
+    const parcelasBox = document.getElementById("parcelas-box");
+
+    if (this.value === "parcelado") {
+        parcelasBox.style.display = "block";
+        form.action = "{% url 'comercial:compras_finalizar_parcelado' compra.id %}";
+    } else {
+        parcelasBox.style.display = "none";
+        form.action = "{% url 'comercial:compras_finalizar_avista' compra.id %}";
+    }
+});
+
+// Define ação inicial como à vista
+form.action = "{% url 'comercial:compras_finalizar_avista' compra.id %}";
+</script>

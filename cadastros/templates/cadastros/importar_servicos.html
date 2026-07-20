@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Importar Serviços via CSV</h2>
+<form method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+  <div class="mb-3">
+    <label for="csv_file" class="form-label">Selecione o arquivo CSV</label>
+    <input type="file" name="csv_file" id="csv_file" class="form-control" required>
+  </div>
+  <button type="submit" class="btn btn-primary">Importar</button>
+</form>
+{% endblock %}

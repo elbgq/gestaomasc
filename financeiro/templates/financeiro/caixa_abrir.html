@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h3>Abertura do Caixa - {{ caixa.nome }}</h3>
+
+    <form method="post">
+        {% csrf_token %}
+        <label>Valor de Abertura</label>
+        <input type="number" step="0.01" name="valor_abertura" class="form-control" required>
+
+        <button class="btn btn-success mt-3">Abrir Caixa</button>
+    </form>
+</div>
+{% endblock %}

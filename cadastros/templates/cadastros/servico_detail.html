@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}Detalhes do Serviço{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">Detalhes do Serviço</h4>
+        </div>
+        <div class="card-body">
+            <dl class="row">
+                <dt class="col-sm-3">CodSv</dt>
+                <dd class="col-sm-9">{{ obj.codsv }}</dd>
+
+                <dt class="col-sm-3">Descrição</dt>
+                <dd class="col-sm-9">{{ obj.descricao }}</dd>
+
+                <dt class="col-sm-3">Unidade</dt>
+                <dd class="col-sm-9">{{ obj.unidade }}</dd>
+
+                <dt class="col-sm-3">Preço</dt>
+                <dd class="col-sm-9">R$ {{ obj.preco_servico }}</dd>
+
+            </dl>
+        </div>
+        <div class="card-footer d-flex justify-content-between">
+            <a href="{% url 'cadastros:servico_list' %}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> Voltar
+            </a>
+            <div class="btn-group">
+                <a href="{% url 'cadastros:servico_update' obj.pk %}" class="btn btn-warning">
+                    <i class="bi bi-pencil-square"></i> Editar
+                </a>
+                <a href="{% url 'cadastros:servico_delete' obj.pk %}" class="btn btn-danger">
+                    <i class="bi bi-trash"></i> Excluir
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

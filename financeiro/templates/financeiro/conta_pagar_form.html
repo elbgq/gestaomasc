@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% load widget_tweaks %}
+
+{% block content %}
+
+<h2 class="mb-4">
+    {% if titulo.pk %}
+        Editar Pagamento
+    {% else %}
+        Novo Pagamento
+    {% endif %}
+</h2>
+{{ form.non_field_errors }}
+<form method="post" novalidate>
+    {% csrf_token %}
+    {{ form.origem.as_hidden }}
+    <div class="card shadow-sm p-4">
+
+        <div class="mb-3">
+            <label class="form-label">Data Lançamento</label>
+            {{ form.data_lancamento }}
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Data Vencimento</label>
+            {{ form.data_vencimento|add_class:"form-control datepicker" }}
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Beneficiário</label>
+            {{ form.contato|add_class:"form-select select2" }}
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Descrição</label>
+            {{ form.descricao|add_class:"form-control" }}
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Valor</label>
+            {{ form.valor|add_class:"form-control" }}
+        </div>
+ 
+        <div class="mb-3">
+            <label class="form-label">Categoria</label>
+            {{ form.categoria|add_class:"form-select select2" }}
+        </div>
+        
+        <div class="mt-4 d-flex gap-2">
+            <button type="submit" class="btn btn-success">💾 Salvar</button>
+            <a href="{% url 'financeiro:contas_pagar_lista' %}" class="btn btn-secondary">↩️ Voltar</a>
+        </div>
+
+    </div>
+</form>
+
+{% endblock %}

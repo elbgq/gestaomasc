@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-success text-white">
+            <h4 class="mb-0">Receber Título</h4>
+        </div>
+
+        <div class="card-body">
+
+            <p><strong>Descrição:</strong> {{ titulo.descricao }}</p>
+            <p><strong>Cliente:</strong> {{ titulo.cliente.nome }}</p>
+            <p><strong>Valor:</strong> R$ {{ titulo.valor|floatformat:2 }}</p>
+            <p><strong>Vencimento:</strong> {{ titulo.data_vencimento|date:"d/m/Y" }}</p>
+
+            <form method="post" class="mt-3">
+                {% csrf_token %}
+
+                <div class="mb-3">
+                    <label class="form-label">Data do recebimento</label>
+                    <input type="date" name="data_pagamento" class="form-control" required>
+                </div>
+
+                <button class="btn btn-success">
+                    Confirmar Recebimento
+                </button>
+
+                <a href="{% url 'financeiro:receber_list' %}" class="btn btn-secondary ms-2">
+                    Cancelar
+                </a>
+            </form>
+
+        </div>
+    </div>
+
+</div>
+{% endblock %}

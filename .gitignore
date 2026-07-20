@@ -1,0 +1,27 @@
+# Python
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual env
+venv/
+env/
+.venv/
+staticfiles/
+# Django
+*.log
+*.pot
+media/
+*.sqlite3*
+
+# Configurações locais
+*.env
+*.local
+*.dev
+
+# VS Code
+.vscode/
+
+# Windows
+Thumbs.db

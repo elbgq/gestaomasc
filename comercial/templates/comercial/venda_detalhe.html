@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block title %}Detalhes da Venda{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Venda #{{ venda.numero }}</h2>
+
+    <!-- Dados da venda -->
+    <div class="card shadow-sm p-4 mb-4">
+        <h4 class="mb-3">Informações Gerais</h4>
+        <p><strong>Cliente:</strong> {{ venda.cliente }}</p>
+        <p><strong>Venda nº:</strong> {{ venda.numero_formatado }}</p>
+        <p><strong>Data de Emissão:</strong> {{ venda.data_emissao|date:"d/m/Y H:i" }}</p>
+        <p><strong>Forma de Pagamento:</strong> 
+            {% if venda.forma_pagamento == "avista" %}
+                <span class="badge bg-success">À Vista</span>
+            {% else %}
+                <span class="badge bg-success">Parcelado</span>
+            {% endif %}
+        </p>
+        <p><strong>Total:</strong> R$ {{ venda.total|floatformat:2 }} </p>
+    </div>
+    <hr>
+
+    <!-- Itens -->
+    <div class="card shadow-sm p-4 mb-4">
+        <h4>Itens da Venda</h4>
+        <table class="table table-bordered table-sm">
+            <thead>
+                <tr>
+                    <th>Produto</th>
+                    <th>Serviço</th>
+                    <th>Quantidade</th>
+                    <th>Preço Unitário</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in itens %}
+                <tr>
+                    <td>{{ item.produto }}</td>
+                    <td>{{ item.servico }}</td>
+                    <td>{{ item.quantidade }}</td>
+                    <td>R$ {{ item.preco_unitario|floatformat:2 }}</td>
+                    <td>R$ {{ item.total|floatformat:2 }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Resumo financeiro -->
+    <div class="card shadow-sm p-4 mb-4">
+        <h4 class="mb-3">Resumo Financeiro</h4>
+
+        <p><strong>CMV:</strong> R$ {{ cmv_total|floatformat:2 }}</p>
+        <p><strong>Lucro Bruto:</strong> R$ {{ lucro|floatformat:2 }}</p>
+        <p><strong>Margem:</strong> {{ margem|floatformat:2 }}%</p>
+    </div>
+    <hr>
+
+    <!-- Parcelas -->
+    {% if parcelas %}
+    <div class="card shadow-sm p-4 mb-4">
+        <h4 class="mb-3">Parcelas</h4>
+
+        <table class="table table-sm table-bordered">
+            <thead>
+                <tr>
+                    <th>Vencimento</th>
+                    <th>Valor</th>
+                    <th>Pago</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in parcelas %}
+                <tr>
+                    <td>{{ p.data_vencimento|date:"d/m/Y" }}</td>
+                    <td>R$ {{ p.valor|floatformat:2 }}</td>
+                    <td>
+                        {% if p.esta_pago %}
+                            <span class="badge bg-success">Pago</span>
+                        {% else %}
+                            <span class="badge bg-warning text-dark">Pendente</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <!-- Movimentos de caixa -->
+    <div class="card shadow-sm p-4 mb-4">
+        <h4 class="mb-3">Movimento de Caixa</h4>
+
+        {% if movimento_caixa %}
+            <ul class="list-group">
+                {% for mov in movimento_caixa %}
+                <li class="list-group-item d-flex justify-content-between">
+                    <span>{{ mov.data|date:"d/m/Y" }} — {{ mov.descricao }}</span>
+                    <strong>R$ {{ mov.valor|floatformat:2 }}</strong>
+                </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="text-muted">Nenhum movimento de caixa registrado.</p>
+        {% endif %}
+    </div>
+    <hr>
+    <!-- Botões -->
+    <div class="d-flex gap-2">
+        <a href="{% url 'comercial:venda_list' %}" class="btn btn-secondary">
+            Voltar</a>
+        <a href="{% url 'comercial:venda_recibo' venda.id %}" class="btn btn-secondary">
+            Imprimir Recibo</a>
+
+        {% if venda.status == "rascunho" %}
+            <a href="{% url 'comercial:venda_editar' venda.id %}" class="btn btn-success">
+                Editar Venda</a>
+            <a href="{% url 'comercial:modal_finalizar_venda' venda.id %}" class="btn btn-success">
+                Finalizar Venda</a>
+        {% endif %}
+        <a href="{% url 'financeiro:caixa_list' %}" class="btn btn-outline-secondary">
+            Ver Caixa
+        </a>
+
+    </div>
+    
+</div>
+
+{% endblock %}

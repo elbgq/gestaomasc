@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% load static %}
+{% load widget_tweaks %}
+
+{% block content %}
+<h2>{% if compra.pk %}Editar Compra{% else %}Nova Compra{% endif %}</h2>
+
+<form method="post">
+    {% csrf_token %}
+
+    <!-- CAMPOS DA COMPRA -->
+    {% include "comercial/_form_campos_base.html" with form=form excluir="total,status,numero" %}
+
+    <hr>
+
+    <!-- ITENS DA COMPRA -->
+    {% include "comercial/_form_itens_compras.html" with formset=itens_formset %}
+
+    <!-- TOTAL -->
+    <div class="mt-3">
+        <h4>Total da Compra: R$ <span id="total-compra">0,00</span></h4>
+    </div>
+
+    <!-- BOTÕES -->
+    <div class="mt-4 d-flex gap-2">
+
+        <a href="{% url 'comercial:compra_list' %}" class="btn btn-outline-dark">↩️ Voltar</a>
+
+        <button type="submit" name="acao" value="salvar" class="btn btn-primary">
+            💾 Salvar (Rascunho)
+        </button>
+
+        {% if compra.id %}
+            <a href="{% url 'comercial:compras_confirmar' compra.id %}" class="btn btn-success">
+                ✅ Encerrar Compra
+            </a>
+        {% endif %}
+
+    </div>
+
+    <hr>
+
+    <!-- Modal de encerramento -->
+    {% if compra.id %}
+        {% include "comercial/modal_finalizar_compra.html" %}
+    {% endif %}
+
+    <!-- Abrir modal automaticamente -->
+    {% if request.GET.abrir_modal %}
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            var modal = new bootstrap.Modal(document.getElementById("modalFinalizar"));
+            modal.show();
+        });
+    </script>
+    {% endif %}
+
+</form>
+
+<!-- JS para cálculo, adicionar itens e bloqueio produto/serviço -->
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    function formatMoney(value) {
+        return parseFloat(value).toFixed(2).replace('.', ',');
+    }
+
+    function calcularTotalItem(row) {
+        const qtd = row.querySelector(".item-quantidade");
+        const preco = row.querySelector(".item-preco-unitario");
+        const total = row.querySelector(".item-total");
+
+        if (!qtd || !preco || !total) return;
+
+        const q = parseFloat(qtd.value) || 0;
+        const p = parseFloat(preco.value) || 0;
+
+        const valor = q * p;
+
+        total.innerText = "R$ " + valor.toFixed(2).replace('.', ',');
+        calcularTotalCompra();
+
+    } 
+
+    function calcularTotalCompra() {
+        let soma = 0;
+        document.querySelectorAll(".item-total").forEach(function (campo) {
+            const valor = campo.innerText.replace("R$", "").replace(",", ".");
+            soma += parseFloat(valor) || 0;
+        });
+        document.getElementById("total-compra").innerText = soma.toFixed(2).replace('.', ',');
+    }
+    // 🔹 NOVO: Atualiza a unidade conforme o produto selecionado
+    function atualizarUnidade(row) {
+        const produtoSelect = row.querySelector(".item-produto");
+        const unidadeField = row.querySelector(".item-unidade");
+
+        if (!produtoSelect || !unidadeField) return;
+
+        const unidade = produtoSelect.selectedOptions[0].dataset.unidade;
+
+        if (unidade) {
+            unidadeField.value = unidade;
+        }
+    }
+
+    function adicionarListeners(row) {
+        row.querySelectorAll(".item-quantidade, .item-preco-unitario")
+            .forEach(campo => campo.addEventListener("input", () => calcularTotalItem(row)));
+
+        }
+
+    // Listeners iniciais
+    document.querySelectorAll(".item-row").forEach(row => adicionarListeners(row));
+    
+    // Botão adicionar item
+    const addBtn = document.getElementById("add-item-btn-compras");
+    const tableBody = document.querySelector("#formset-body-compras");
+    const totalForms = document.querySelector("#id_itens-TOTAL_FORMS");
+
+    addBtn.addEventListener("click", function () {
+
+        const formIndex = parseInt(totalForms.value);
+        const lastRow = tableBody.querySelector("tr:last-child");
+
+        if (!lastRow) return;
+
+        let newRowHTML = lastRow.outerHTML.replace(/itens-(\d+)-/g, `itens-${formIndex}-`);
+
+        tableBody.insertAdjacentHTML("beforeend", newRowHTML);
+
+        const newRow = tableBody.lastElementChild;
+
+        // Limpa valores
+        newRow.querySelector(".item-quantidade").value = "";
+        newRow.querySelector(".item-preco-unitario").value = "";
+        newRow.querySelector(".item-total").innerText = "R$ 0,00";
+
+        adicionarListeners(newRow);
+
+        totalForms.value = formIndex + 1;
+
+        calcularTotalCompra();
+    });
+
+    calcularTotalCompra();
+});
+</script>
+
+{% endblock %}

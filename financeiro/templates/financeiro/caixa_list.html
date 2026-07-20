@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}Caixas{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1 class="h3">Caixas</h1>
+        <a href="{% url 'financeiro:caixa_create' %}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Novo Caixa
+        </a>
+    </div>
+ 
+    <table class="table table-striped table-hover">
+        <thead class="table-dark">
+            <tr>
+                <th>Nome</th>
+                <th>Saldo Atual</th>
+                <th>Status</th>
+                <th class="text-center">Ações</th>
+            </tr>
+        </thead>
+        {% for c in caixas %}
+            <div>Movimentos: {{ c.movimentos.count }}</div>
+        {% endfor %}
+
+
+        <tbody>
+            {% for c in caixas %}
+            <tr>
+                <td>{{ c.nome }}</td>
+                <td>R$ {{ c.saldo_atual|floatformat:2 }}</td>
+                <td>
+                    {% if c.ativo %}
+                        <span class="badge bg-success">Ativo</span>
+                    {% else %}
+                        <span class="badge bg-secondary">Inativo</span>
+                    {% endif %}
+                </td>
+                
+                <td class="text-center">
+                    <a href="{% url 'financeiro:caixa_detalhe' c.id %}" class="btn btn-sm btn-info">Detalhes</a>
+                    <a href="{% url 'financeiro:caixa_update' c.id %}" class="btn btn-sm btn-warning">Editar</a>
+                    <a href="{% url 'financeiro:caixa_delete' c.id %}" class="btn btn-sm btn-danger">Excluir</a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="4" class="text-center text-muted">Nenhum caixa cadastrado.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+</div>
+{% endblock %}

@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}Confirmar Quitação{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">Confirmar Quitação</h4>
+        </div>
+
+        <div class="card-body">
+
+            <p>
+                Tem certeza que deseja marcar este título como 
+                {% if titulo.tipo == "R" %}
+                    <strong>RECEBIDO</strong>?
+                {% else %}
+                    <strong>PAGO</strong>?
+                {% endif %}
+            </p>
+
+            <ul>
+                <li><strong>Descrição:</strong> {{ titulo.descricao }}</li>
+                <li><strong>Valor:</strong> R$ {{ titulo.valor|floatformat:2 }}</li>
+                <li><strong>Categoria:</strong> {{ titulo.categoria }}</li>
+                <li><strong>Vencimento:</strong> {{ titulo.data_vencimento|date:"d/m/Y" }}</li>
+            </ul>
+
+            <form method="post">
+                {% csrf_token %}
+
+                <button type="submit" class="btn btn-success">
+                    Confirmar Quitação
+                </button>
+
+                <a href="{% url 'financeiro:titulo_detalhe' titulo.tipo titulo.id %}" 
+                   class="btn btn-secondary ms-2">
+                    Cancelar
+                </a>
+            </form>
+
+        </div>
+    </div> 
+
+</div>
+{% endblock %}

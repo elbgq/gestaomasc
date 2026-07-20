@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>Relatório de Vendas por Período</h2>
+
+<form method="get" class="mb-4">
+    <div class="row g-2">
+        <div class="col-md-3">
+            <label>{{ form.data_inicio.label }}</label>
+            {{ form.data_inicio }}
+        </div>
+        <div class="col-md-3">
+            <label>{{ form.data_fim.label }}</label>
+            {{ form.data_fim }}
+        </div>
+        <div class="col-md-3">
+            <label>{{ form.cliente.label }}</label>
+            {{ form.cliente }}
+        </div>
+        <div class="col-md-3">
+            <label>{{ form.numero_nota.label }}</label>
+            {{ form.numero_nota }}
+        </div>
+    </div>
+
+    <div class="mt-3">
+        <button type="submit" class="btn btn-primary">Filtrar</button>
+        <a href="{% url 'relatorios:vendas_por_periodo' %}" class="btn btn-secondary">Limpar Filtros</a>
+    </div>
+</form>
+
+{% if itens %}
+<div class="table-responsive mt-4">
+    <table class="table table-bordered table-sm align-middle">
+        <thead class="table-light">
+            <tr>
+                <th>Data</th>
+                <th>Cliente</th>
+                <th>Número Nota</th>
+                <th>Item</th>
+                <th>Quantidade</th>
+                <th>Preço Venda</th>
+                <th>Total Item</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in itens %}
+            <tr>
+                <td>{{ item.venda.data_emissao|date:"d/m/Y" }}</td>
+                <td>{{ item.venda.cliente.nome }}</td>
+                <td>{{ item.venda.numero_formatado }}</td>
+
+                <td>
+                    {% if item.produto %}
+                        Produto - {{ item.produto.descricao }}
+                    {% elif item.servico %}
+                        Serviço - {{ item.servico.descricao }}
+                    {% else %}
+                        —
+                    {% endif %}
+                </td>
+
+                <td class="text-end">{{ item.quantidade }}</td>
+                <td class="text-end">R$ {{ item.preco_unitario|floatformat:2 }}</td>
+                <td class="text-end">R$ {{ item.total|floatformat:2 }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="mt-3">
+    <h5>
+        Total de Itens Vendidos: {{ totais.total_quantidade|default:"0" }}<br>
+        Total Geral de Vendas: R$ {{ totais.total_geral|floatformat:2|default:"0,00" }}
+    </h5>
+</div>
+
+{% else %}
+<p class="mt-4">Nenhum resultado encontrado para os filtros informados.</p>
+{% endif %}
+
+{% endblock %}

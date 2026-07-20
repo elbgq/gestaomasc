@@ -1,0 +1,22 @@
+
+
+{% extends "base.html" %}
+{% load static %}
+
+{% block body_class %}home-page{% endblock %}
+
+{% block content %}
+
+<div class="home-fullscreen">
+    <h4 class="display-5 fw-bold">Bem-vindo ao Sistema de Gestão MASC</h4>
+    <p class="lead text-muted mt-3">
+        Utilize o menu da lateral para acessar os módulos.
+    </p>
+    
+    <img src="{% static 'img/masc_img_erp.png' %}"
+     alt="Logo"
+     class="mt-4">
+</div>
+
+
+{% endblock %}

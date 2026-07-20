@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}Detalhes do Produto{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">Detalhes do Produto</h4>
+        </div>
+        <div class="card-body">
+            <dl class="row">
+                <dt class="col-sm-3">CodOrigem</dt>
+                <dd class="col-sm-9">{{ produto.codor }}</dd>
+
+                <dt class="col-sm-3">Descrição</dt>
+                <dd class="col-sm-9">{{ produto.descricao }}</dd>
+
+                <dt class="col-sm-3">Unidade</dt>
+                <dd class="col-sm-9">{{ produto.unidade }}</dd>
+
+                <dt class="col-sm-3">Preço Venda</dt>
+                <dd class="col-sm-9">{{ produto.preco_venda }}</dd>
+
+                <dt class="col-sm-3">Marca</dt>
+                <dd class="col-sm-9">{{ produto.marca }}</dd>
+
+                
+            </dl>
+        </div>
+        <div class="card-footer d-flex justify-content-between">
+            <a href="{% url 'cadastros:produto_list' %}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> Voltar
+            </a>
+            <div class="btn-group">
+                <a href="{% url 'cadastros:produto_update' produto.pk %}" class="btn btn-warning">
+                    <i class="bi bi-pencil-square"></i> Editar
+                </a> 
+                <a href="{% url 'cadastros:produto_delete' produto.pk %}" class="btn btn-danger">
+                    <i class="bi bi-trash"></i> Excluir
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

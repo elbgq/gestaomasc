@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Movimentação de Estoque</h2>
+<a href="?ordenar=-data">Mais recentes</a>
+<a href="?ordenar=produto__codor">Ordenar por Código</a>
+<a href="?ordenar=produto__descricao">Ordenar por Descrição</a>
+<a href="?ordenar=-quantidade">Maior quantidade</a>
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th>Data</th>
+      <th>Produto</th>
+      <th>Tipo</th>
+      <th>Quantidade</th>
+      <th>Preço</th>
+      <th>Origem</th>
+      <th>Saldo Após</th>
+      <th>Preço Médio Após</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for mov in object_list %}
+    <tr>
+      <td>{{ mov.data|date:"d/m/Y H:i" }}</td>
+      <td>{{ mov.produto.codor }} - {{ mov.produto.descricao }}</td>
+      <td>{{ mov.tipo }}</td>
+      <td>{{ mov.quantidade }}</td>
+      <td>{{ mov.preco }}</td>
+      <td>{{ mov.origem }} (ID {{ mov.referencia_id }})</td>
+      <td>{{ mov.saldo_apos }}</td>
+      <td>{{ mov.preco_medio_apos }}</td>
+    </tr>
+    {% endfor %}
+
+  </tbody>
+</table>
+
+{% endblock %}

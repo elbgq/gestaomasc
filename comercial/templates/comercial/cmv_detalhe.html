@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2 class="mb-4">Detalhamento do CMV da Venda Nº {{ venda.numero|stringformat:"06d" }}</h2>
+
+<p>
+    <strong>Cliente:</strong> {{ venda.cliente }}<br>
+    <strong>Data:</strong> {{ venda.data_emissao|date:"d/m/Y" }}<br>
+    <strong>Total da Venda:</strong> R$ {{ venda.total|floatformat:2 }}
+</p>
+
+<hr>
+
+{% if itens %}
+<div class="table-responsive mt-4">
+    <table class="table table-bordered table-striped table-sm align-middle">
+        <thead class="table-light">
+            <tr>
+                <th>Produto</th>
+                <th class="text-end">Quantidade</th>
+                <th class="text-end">Preço Médio</th>
+                <th class="text-end">Total CMV</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in itens %}
+            <tr>
+                <td>{{ item.produto.descricao }}</td>
+                <td class="text-end">{{ item.quantidade }}</td>
+                <td class="text-end">R$ {{ item.custo_medio|floatformat:2 }}</td>
+                <td class="text-end">R$ {{ item.total_cmv|floatformat:2 }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="mt-4">
+    <h5>
+        Total de Itens: <strong>{{ total_quantidade }}</strong><br>
+        Total do CMV: <strong>R$ {{ total_cmv|floatformat:2 }}</strong>
+    </h5>
+</div>
+
+{% else %}
+<p class="mt-4">Nenhum item de CMV encontrado para esta venda.</p>
+{% endif %}
+
+<a href="{% url 'comercial:venda_detalhe' venda.id %}" class="btn btn-secondary mt-3">
+    Voltar para a Venda
+</a>
+
+{% endblock %}

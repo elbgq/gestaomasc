@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard Financeiro{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <h1 class="h3 mb-4">Dashboard Financeiro</h1>
+
+    <!-- Cards -->
+    <div class="row g-3 mb-4">
+
+        <div class="col-md-4">
+            <div class="card shadow-sm border-success">
+                <div class="card-body">
+                    <h5 class="text-success">Saldo Atual</h5>
+                    <h3>
+                        {% if saldo_atual >= 0 %}
+                            <span class="text-success">R$ {{ saldo_atual|floatformat:2 }}</span>
+                        {% else %}
+                            <span class="text-danger">R$ {{ saldo_atual|floatformat:2 }}</span>
+                        {% endif %}
+                    </h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card shadow-sm border-primary">
+                <div class="card-body">
+                    <h5 class="text-primary">Entradas no Mês</h5>
+                    <h3 class="text-primary">R$ {{ entradas_mes|floatformat:2 }}</h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card shadow-sm border-danger">
+                <div class="card-body">
+                    <h5 class="text-danger">Saídas no Mês</h5>
+                    <h3 class="text-danger">R$ {{ saídas_mes|floatformat:2 }}</h3>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Títulos vencidos -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-danger text-white">
+            <h5 class="mb-0">Títulos Vencidos</h5>
+        </div>
+        <div class="card-body">
+            {% if vencidos %}
+                <ul>
+                    {% for t in vencidos %}
+                        <li>{{ t.descricao }} — R$ {{ t.valor }} ({{ t.data_vencimento|date:"d/m/Y" }})</li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="text-muted">Nenhum título vencido.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Próximos vencimentos -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-warning">
+            <h5 class="mb-0">Próximos Vencimentos (7 dias)</h5>
+        </div>
+        <div class="card-body">
+            {% if proximos %}
+                <ul>
+                    {% for t in proximos %}
+                        <li>{{ t.descricao }} — R$ {{ t.valor }} ({{ t.data_vencimento|date:"d/m/Y" }})</li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="text-muted">Nenhum vencimento próximo.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Gráfico -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Entradas x Saídas (Últimos 6 meses)</h5>
+        </div>
+        <div class="card-body">
+            <canvas id="graficoFinanceiro"></canvas>
+        </div>
+    </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+const ctx = document.getElementById('graficoFinanceiro');
+
+new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: {{ meses|safe }},
+        datasets: [
+            {
+                label: 'Entradas',
+                data: {{ entradas_graf|safe }},
+                borderColor: 'green',
+                backgroundColor: 'rgba(0, 128, 0, 0.2)',
+                tension: 0.3
+            },
+            {
+                label: 'Saídas',
+                data: {{ saídas_graf|safe }},
+                borderColor: 'red',
+                backgroundColor: 'rgba(255, 0, 0, 0.2)',
+                tension: 0.3
+            }
+        ]
+    }
+});
+</script>
+
+{% endblock %}

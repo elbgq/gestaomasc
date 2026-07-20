@@ -1,0 +1,85 @@
+
+{% extends "base.html" %}
+{% load static %}
+{% load widget_tweaks %}
+
+{% block content %}
+
+<h2 class="mb-4">
+    {% if view.object.pk %}
+        Editar Lançamento
+    {% else %}
+        Novo Lançamento
+    {% endif %}
+</h2>
+
+{% if form.errors %}
+<div class="alert alert-danger">
+    <strong>Corrija os erros abaixo:</strong>
+    {{ form.errors }}
+</div>
+{% endif %}
+
+<form method="post" novalidate>
+    {% csrf_token %}
+
+    <div class="card shadow-sm p-4">
+        <!-- Tipo (DESPESA / RECEITA) -->
+        <div class="mb-3">
+            {% if categoria_selecionada %}
+                {% if categoria_selecionada.tipo == "R" %}
+                    <span class="badge bg-success">R</span>
+                {% else %}
+                    <span class="badge bg-danger">D</span>
+                {% endif %}
+            {% else %}
+                <span class="badge bg-secondary">Selecione uma categoria</span>
+            {% endif %}
+        </div>
+
+        <!-- Data -->
+        <div class="mb-3">
+            <label class="form-label">Data</label>
+            {{ form.data|add_class:"form-control" }}
+        </div>
+ 
+        <!-- Descrição -->
+        <div class="mb-3">
+            <label class="form-label">Descrição</label>
+            {{ form.descricao|add_class:"form-control" }}
+        </div>
+
+        <!-- Valor -->
+        <div class="mb-3">
+            <label class="form-label">Valor</label>
+            {{ form.valor|add_class:"form-control" }}
+        </div>
+
+        <!-- Contato -->
+        <div class="mb-3">
+            <label class="form-label">Contato</label>
+            {{ form.contato|add_class:"form-select select2" }}
+        </div>
+        <!-- Categoria -->
+        <div class="mb-3">
+            <label class="form-label">Categoria</label>
+            {{ form.categoria|add_class:"form-select select2" }}
+        </div>
+       
+        <!-- Observação -->        
+        <div class="mb-3">
+            <label class="form-label">Observação</label>
+            {{ form.observacao|add_class:"form-control" }}
+        </div>
+
+        <!-- Botões -->
+        <div class="mt-4 d-flex gap-2">
+            <button type="submit" class="btn btn-success">💾 Salvar</button>
+            <a href="{% url 'financeiro:lancamento_list' %}" class="btn btn-secondary">↩️ Voltar</a>
+        </div>
+
+    </div>
+</form>
+
+{% endblock %}
+ 
