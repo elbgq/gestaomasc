@@ -7,8 +7,6 @@ class LoginRequiredMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        #Teste
-        print("Middleware rodando:", request.path)
         # Permite acesso ao login e ao admin
         if request.path.startswith(settings.LOGIN_URL) or request.path.startswith('/admin/'):
             return self.get_response(request)

@@ -16,21 +16,29 @@
         <thead>
             <tr>
                 <th>Descrição</th>
+                <th>Produto</th>
                 <th>Qtd</th>
+                <th>Entra no estoque</th>
                 <th>Preço</th>
-                <th>Total</th>
+                <th>Total na nota</th>
+                <th>Custo unitário no estoque</th>
                 <th>Status</th>
             </tr>
         </thead>
         <tbody>
             {% for item in itens %}
                 <tr>
-                    <td>{{ item.descricao_importada }}</td>
-                    <td>{{ item.quantidade }}</td>
+                    <td>{{ item.descricao }}</td>
+                    <td>{{ item.produto.descricao|default:"-" }}</td>
+                    <td>{{ item.quantidade|floatformat:"-3" }} {{ item.unidade_fornecedor|default:item.unidade }}</td>
+                    <td>{% if item.produto %}{{ item.quantidade_estoque|floatformat:"-3" }} {{ item.produto.unidade }}{% endif %}</td>
                     <td>R$ {{ item.preco_unitario|floatformat:2 }}</td>
-                    <td>R$ {{ item.total|floatformat:2 }}</td>
+                    <td>R$ {{ item.valor_nota|floatformat:2 }}
+                        {% if item.valor_nota != item.total %}<div class="small text-muted">produtos R$ {{ item.total|floatformat:2 }}</div>{% endif %}
+                    </td>
+                    <td>{% if item.produto %}R$ {{ item.custo_unitario_estoque|floatformat:2 }} / {{ item.produto.unidade }}{% endif %}</td>
                     <td>
-                        {% if item.status == "ok" %}
+                        {% if item.esta_vinculado %}
                             <span class="badge bg-success">OK</span>
                         {% else %}
                             <span class="badge bg-warning text-dark">Pendente</span>
@@ -40,6 +48,22 @@
             {% endfor %}
         </tbody>
     </table>
+    <p class="small text-muted">O custo no estoque inclui frete, seguro, outras despesas, IPI e ICMS-ST da nota e abate o desconto.</p>
+
+    {% if duplicatas %}
+    <h4>Duplicatas da nota</h4>
+    <table class="table table-sm w-auto">
+        <thead><tr><th>Número</th><th>Vencimento</th><th>Valor</th></tr></thead>
+        <tbody>
+            {% for dup in duplicatas %}
+            <tr><td>{{ dup.numero|default:"-" }}</td><td>{{ dup.vencimento|date:"d/m/Y" }}</td><td>R$ {{ dup.valor|floatformat:2 }}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% if not duplicatas_conferem %}
+    <div class="alert alert-warning">As duplicatas não somam o total da compra. Use o parcelamento manual.</div>
+    {% endif %}
+    {% endif %}
 
     <!-- Botão que abre o modal -->
 
@@ -69,6 +93,9 @@
 
                     <label>Forma de pagamento:</label>
                     <select id="forma_pagamento" name="forma_pagamento" class="form-control">
+                        {% if duplicatas_conferem %}
+                        <option value="duplicatas" selected>Conforme as duplicatas da nota ({{ duplicatas|length }})</option>
+                        {% endif %}
                         <option value="avista">À vista</option>
                         <option value="parcelado">Parcelado</option>
                     </select>
@@ -82,7 +109,7 @@
                         <input type="number" name="dias_entre_parcelas" class="form-control" min="1" value="30">
 
                         <label class="mt-2">Primeiro vencimento:</label>
-                        <input type="date" name="data_inicial" class="form-control" required>
+                        <input type="date" name="data_inicial" class="form-control">
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -99,20 +126,19 @@
 const form = document.getElementById("formFinalizar");
 const select = document.getElementById("forma_pagamento");
 
-select.addEventListener("change", function() {
-    const parcelasBox = document.getElementById("parcelas-box");
+const acoes = {
+    avista: "{% url 'comercial:compras_finalizar_avista' compra.id %}",
+    parcelado: "{% url 'comercial:compras_finalizar_parcelado' compra.id %}",
+    duplicatas: "{% url 'comercial:compras_finalizar_duplicatas' compra.id %}",
+};
 
-    if (this.value === "parcelado") {
-        parcelasBox.style.display = "block";
-        form.action = "{% url 'comercial:compras_finalizar_parcelado' compra.id %}";
-    } else {
-        parcelasBox.style.display = "none";
-        form.action = "{% url 'comercial:compras_finalizar_avista' compra.id %}";
-    }
-});
+function atualizarForma() {
+    document.getElementById("parcelas-box").style.display = select.value === "parcelado" ? "block" : "none";
+    form.action = acoes[select.value];
+}
 
-// Define ação inicial como à vista
-form.action = "{% url 'comercial:compras_finalizar_avista' compra.id %}";
+select.addEventListener("change", atualizarForma);
+atualizarForma();
 </script>
 
 </div>

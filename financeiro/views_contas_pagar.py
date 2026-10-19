@@ -5,9 +5,10 @@ from datetime import timedelta
 from django.db.models import Sum
 from django.core.paginator import Paginator
 
-from financeiro.models import (CaixaMovimento, FinanceiroCategoria,
+from financeiro.models import (Caixa, CaixaMovimento, FinanceiroCategoria,
             FinanceiroLancamento, FinanceiroPagar,
         )
+from django.contrib import messages
 from financeiro.forms import PagarVencimentoForm, FinanceiroPagarForm
 from cadastros.models import Contato
 
@@ -225,17 +226,24 @@ Esta view:
 def pagar_titulo(request, pk):
     titulo = get_object_or_404(FinanceiroPagar, pk=pk)
 
+    # Impede pagar duas vezes
+    if titulo.status == "pago" or titulo.esta_pago():
+        messages.warning(request, "Este título já foi pago.")
+        return redirect("financeiro:contas_pagar_lista")
+
     if request.method == "POST":
         data_pag = request.POST.get("data_pagamento") or timezone.localdate()
         valor = titulo.valor
 
         mov = CaixaMovimento.objects.create(
+            caixa=Caixa.objects.filter(nome="Caixa Principal").first(),
             data=data_pag,
             descricao=f"Pagamento: {titulo.descricao}",
             valor=valor,
             tipo="S",
             origem="PAGAMENTO",
             referencia_id=titulo.id,
+            referencia_tipo="D",
         )
 
         titulo.data_pagamento = data_pag
@@ -244,7 +252,7 @@ def pagar_titulo(request, pk):
         titulo.caixa_movimento = mov
         titulo.save()
 
-        return redirect("financeiro:pagar_list")
+        return redirect("financeiro:contas_pagar_lista")
 
     return render(request, "financeiro/pagar_quitacao.html", {"titulo": titulo})
     
@@ -266,15 +274,18 @@ def conta_detalhe(request, conta_id):
 
     # Garante que é uma conta de compra
     if conta.origem != "COMPRA":
-        return render(request, "financeiro/erro.html", {
-            "mensagem": "Esta conta não está vinculada a uma compra."
-        })
+        messages.error(request, "Esta conta não está vinculada a uma compra.")
+        return redirect("financeiro:contas_pagar_lista")
 
     # Todas as parcelas da compra
-    parcelas = FinanceiroPagar.objects.filter(
-        origem="COMPRA",
-        referencia_id=conta.referencia_id
-    ).order_by("data_vencimento")
+    if conta.compra_id:
+        parcelas = FinanceiroPagar.objects.filter(compra_id=conta.compra_id)
+    else:
+        parcelas = FinanceiroPagar.objects.filter(
+            content_type=conta.content_type,
+            object_id=conta.object_id
+        )
+    parcelas = parcelas.filter(origem="COMPRA").order_by("data_vencimento")
 
     # Totais
     total_pago = parcelas.filter(valor_pago__isnull=False).aggregate(

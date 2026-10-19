@@ -5,6 +5,7 @@ from .models import (
     Venda, VendaItem, Estoque
     )
 from django.forms import inlineformset_factory, BaseInlineFormSet
+from django.db.models import Q
 from cadastros.models import Produto, Servico, Contato
 from django.forms import inlineformset_factory
 from gestaomasc.widgets import DatePickerInput
@@ -78,9 +79,11 @@ class VendaItemForm(MoedaMaskMixin, forms.ModelForm):
             "servico": forms.Select(attrs={
                 "class": "form-select item-servico select2-servico"
             }),
+            # Sem "min" no navegador: a linha vazia (quantidade 0) é ignorada no servidor
             "quantidade": forms.NumberInput(attrs={
                 "class": "form-control item-quantidade",
-                "min": "1"
+                "min": "0",
+                "step": "any"
             }),
             "preco_unitario": forms.NumberInput(attrs={
                 "class": "form-control item-preco-unitario",
@@ -91,6 +94,25 @@ class VendaItemForm(MoedaMaskMixin, forms.ModelForm):
                 "step": "0.01"
             }),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Só lista produtos com estoque disponível. O produto já gravado no item
+        # continua na lista para a venda poder ser reaberta mesmo com estoque zerado.
+        com_estoque = Q(estoque__quantidade__gt=0)
+        if self.instance and self.instance.produto_id:
+            com_estoque |= Q(pk=self.instance.produto_id)
+        self.fields["produto"].queryset = Produto.objects.filter(com_estoque).distinct()
+
+    def has_changed(self):
+        # Linha nova sem produto nem serviço conta como vazia: o formset não valida nem salva
+        if self.is_bound and not self.instance.pk:
+            produto = self.data.get(self.add_prefix("produto"))
+            servico = self.data.get(self.add_prefix("servico"))
+            if not produto and not servico:
+                return False
+        return super().has_changed()
 
     def clean(self):
         cleaned_data = super().clean()
@@ -107,6 +129,9 @@ class VendaItemForm(MoedaMaskMixin, forms.ModelForm):
         # 2. Regra: deve escolher produto OU serviço, nunca ambos
         if not produto and not servico:
             raise forms.ValidationError("Selecione um Produto ou um Serviço.")
+
+        if not quantidade or quantidade <= 0:
+            raise forms.ValidationError("Informe uma quantidade maior que zero.")
         
         # 3. Validação de estoque para produtos
         if produto and quantidade:
@@ -209,12 +234,12 @@ class CompraForm(MoedaMaskMixin, forms.ModelForm):
 
     class Meta:
         model = Compra
-        fields = ['fornecedor', 'data', 'numero_nota', 'confirmada']
+        # "confirmada" fica fora do formulário: só a finalização da compra pode marcá-la
+        fields = ['fornecedor', 'data', 'numero_nota']
         widgets = {
             "data": DatePickerInput(),
             "numero_nota": forms.TextInput(attrs={"class": "form-control"}),
             "fornecedor": forms.Select(attrs={"class": "form-select"}),
-            "confirmada": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         }
 
 

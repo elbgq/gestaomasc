@@ -6,9 +6,11 @@ def dre_por_periodo(data_inicio, data_fim):
     # ============================
     # RECEITA BRUTA
     # ============================
+    # Só vendas finalizadas; __date inclui o último dia inteiro do período
     itens = VendaItem.objects.filter(
-        venda__data_emissao__gte=data_inicio,
-        venda__data_emissao__lte=data_fim
+        venda__status="finalizada",
+        venda__data_emissao__date__gte=data_inicio,
+        venda__data_emissao__date__lte=data_fim
     ).select_related("produto", "servico", "venda")
 
     receita_produtos = sum(
@@ -81,7 +83,7 @@ def dre_por_periodo(data_inicio, data_fim):
         elif cat.grupo_dre == "DESPESA_GERAIS":
             despesas_gerais += lanc.valor
 
-        elif cat.grupo_dre == "RECEITAS_PATRIMONIAIS":
+        elif cat.grupo_dre == "RECEITA_PATRIMONIAL":
             outras_receitas += lanc.valor
 
         elif cat.grupo_dre == "RECEITAS_FINANCEIRAS":
@@ -102,8 +104,9 @@ def dre_por_periodo(data_inicio, data_fim):
     cmv = sum(
         (item.total_cmv or 0)
         for item in CMVItem.objects.filter(
-            data__gte=data_inicio,
-            data__lte=data_fim
+            venda__status="finalizada",
+            data__date__gte=data_inicio,
+            data__date__lte=data_fim
         )
     )
 

@@ -4,63 +4,83 @@
 <h2 class="mb-3">Vincular Itens da Compra {{ compra.numero_nota }}</h2>
 
 <div class="mb-2">
-    <p><strong>Fornecedor:</strong> {{ compra.contato.nome }}</p>
-    <p><strong>Data:</strong> {{ compra.data|date:"d/m/Y" }}</p>
+    <p class="mb-1"><strong>Fornecedor:</strong> {{ compra.fornecedor.nome }}{% if compra.fornecedor.documento %} ({{ compra.fornecedor.documento }}){% endif %}</p>
+    <p class="mb-1"><strong>Data:</strong> {{ compra.data|date:"d/m/Y" }}</p>
+    {% if compra.chave_acesso %}<p class="mb-1"><strong>Chave de acesso:</strong> <small>{{ compra.chave_acesso }}</small></p>{% endif %}
+</div>
+
+<div class="alert alert-light border small">
+    Escolha o produto do cadastro para cada item, ou <strong>"Criar produto novo"</strong>.
+    Se o fornecedor vende em embalagem (ex.: caixa com 50), informe em <strong>Fator</strong> quantas unidades do produto vêm em cada unidade da nota.
+    O vínculo fica gravado e a próxima nota deste fornecedor já vem preenchida.
 </div>
 
 <form method="post">
     {% csrf_token %}
-    <!-- Botão para criar novo produto -->
-    <button type="button" class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#modalNovoProduto">
-        ➕ Criar Produto
-    </button>
 
+    <div class="table-responsive">
     <table class="table table-bordered align-middle">
         <thead class="table-light">
             <tr>
-                <th style="width: 35%">Descrição Importada</th>
-                <th style="width: 35%">Produto Vinculado</th>
-                <th style="width: 10%">Qtd</th>
-                <th style="width: 10%">Preço</th>
-                <th style="width: 10%">Status</th>
+                <th style="width: 28%">Item na nota</th>
+                <th style="width: 30%">Produto do cadastro</th>
+                <th style="width: 10%">Qtd na nota</th>
+                <th style="width: 9%">Fator</th>
+                <th style="width: 11%">Entra no estoque</th>
+                <th style="width: 12%">Status</th>
             </tr>
         </thead>
 
         <tbody>
             {% for item in itens %}
             <tr class="{% if item.status == 'pendente' %}table-warning{% endif %}">
-                <td>{{ item.descricao_importada }}</td>
+                <td>
+                    {{ item.descricao_importada }}
+                    <div class="small text-muted">
+                        {% if item.codigo_fornecedor %}Cód. {{ item.codigo_fornecedor }}{% endif %}
+                        {% if item.ean %} · EAN {{ item.ean }}{% endif %}
+                        {% if item.ncm %} · NCM {{ item.ncm }}{% endif %}
+                    </div>
+                </td>
                 <td>
                     <select name="produto_{{ item.id }}" class="form-select select2-produto">
                         <option value="">-- Selecione --</option>
+                        <option value="novo">➕ Criar produto novo com esta descrição</option>
                         {% for produto in produtos %}
                         <option value="{{ produto.id }}"
                             {% if item.produto_id == produto.id %}selected{% endif %}>
-                            {{ produto.descricao }}
+                            {{ produto.descricao }} ({{ produto.unidade }})
                         </option>
                         {% endfor %}
                     </select>
                 </td>
-                <td>{{ item.quantidade }}</td>
-                <td>R$ {{ item.preco_unitario|floatformat:2 }}</td>
+                <td>
+                    {{ item.quantidade|floatformat:"-3" }} {{ item.unidade_fornecedor|default:item.unidade }}
+                    <div class="small text-muted">R$ {{ item.preco_unitario|floatformat:2 }} cada</div>
+                </td>
+                <td>
+                    <input type="number" name="fator_{{ item.id }}" value="{{ item.fator_conversao|floatformat:'-4'|default:'1' }}"
+                           min="0.0001" step="any" class="form-control form-control-sm">
+                </td>
+                <td>
+                    {% if item.produto %}{{ item.quantidade_estoque|floatformat:"-3" }} {{ item.produto.unidade }}{% else %}-{% endif %}
+                </td>
                 <td>
                     {% if item.status == "pendente" %}
-                        <span class="badge bg-warning">Pendente</span>
-
+                        <span class="badge bg-warning text-dark">Pendente</span>
                     {% elif item.status == "vinculado" %}
                         <span class="badge bg-success">Vinculado</span>
-
-                    {% elif item.status == "novo" %}
-                        <span class="badge bg-info">Novo Produto</span>
-
+                    {% elif item.status == "novo_produto" %}
+                        <span class="badge bg-info text-dark">Novo produto</span>
                     {% endif %}
                 </td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
+    </div>
 
-    <div class="mt-3 d-flex gap-2">
+    <div class="mt-3 d-flex flex-wrap gap-2">
         <button class="btn btn-success">💾 Salvar Vinculações</button>
 
         {% if not tem_pendentes %}
@@ -73,37 +93,4 @@
     </div>
 
 </form>
- 
-<!-- Modal Criar Produto -->
-<div class="modal fade" id="modalNovoProduto" tabindex="-1">
-  <div class="modal-dialog">
-    <div class="modal-content">
-
-      <form method="post" action="{% url 'cadastros:produto_create_ajax' %}">
-        {% csrf_token %}
-        <div class="modal-header">
-          <h5 class="modal-title">Novo Produto</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
-
-        <div class="modal-body">
-          <div class="mb-3">
-            <label class="form-label">Descrição</label>
-            <input type="text" name="descricao" class="form-control" required>
-          </div>
-
-          <div class="mb-3">
-            <label class="form-label">Preço de Venda</label>
-            <input type="number" step="0.01" name="preco_venda" class="form-control" required>
-          </div>
-        </div>
-
-        <div class="modal-footer">
-          <button type="submit" class="btn btn-success">Salvar</button>
-        </div>
-      </form>
-
-    </div>
-  </div>
-</div>
 {% endblock %}

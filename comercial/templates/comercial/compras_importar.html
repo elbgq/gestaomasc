@@ -1,4 +1,3 @@
-<!-- DEBUG: INÍCIO DO TEMPLATE -->
 {% extends "base.html" %}
 {% load static %}
 
@@ -11,12 +10,11 @@
     <div class="mb-3">
         <label class="form-label">Selecione o arquivo</label>
         <input type="file" name="arquivo" accept=".csv,.xml" class="form-control" required>
-        <small class="text-muted">Formatos aceitos: CSV (separado por ;) ou XML (NF-e)</small>
+        <small class="text-muted">Formatos aceitos: CSV (separado por ;) ou XML da NF-e autorizada, como o fornecedor envia por e-mail</small>
     </div>
  
     <button type="submit" class="btn btn-primary">📥 Importar</button>
     <a href="{% url 'comercial:compra_list' %}" class="btn btn-secondary">↩️ Voltar</a>
 </form>
-<!-- DEBUG: FIM DO TEMPLATE -->
 {% endblock %}
  

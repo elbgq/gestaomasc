@@ -19,6 +19,9 @@ class Compra(models.Model):
     valor_total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     confirmada = models.BooleanField(default=False)
     importada = models.BooleanField(default=False)
+    # Preenchidos na importação do XML da NF-e
+    chave_acesso = models.CharField("Chave de acesso", max_length=44, unique=True, null=True, blank=True)
+    xml_nfe = models.TextField("XML da NF-e", blank=True, default="")
 
     def __str__(self):
         return f"Compra {self.numero_nota} - {self.fornecedor.nome}"
@@ -29,13 +32,18 @@ class Compra(models.Model):
     def atualizar_valor_total(self):
         total = Decimal("0.00")
         for item in self.itens.all():
-            item.total = Decimal(item.quantidade) * Decimal(item.preco_unitario)
             item.save()
-            total += item.total
+            total += item.valor_nota
 
         self.valor_total = total
         self.save()
     
+    @property
+    def duplicatas_conferem(self):
+        # As duplicatas da nota só são usadas quando somam o total da compra
+        duplicatas = list(self.duplicatas.all())
+        return bool(duplicatas) and sum(d.valor for d in duplicatas) == self.valor_total
+
     # Helpers úteis
     @property
     def tem_itens_pendentes(self):
@@ -88,8 +96,37 @@ class CompraItem(models.Model):
     ('BO', 'Bobina'),
 ]
     unidade = models.CharField("Unidade", max_length=3, choices=UNIDADES_CHOICES, default="UN")
-    quantidade = models.IntegerField()
-    preco_unitario = models.DecimalField(max_digits=10, decimal_places=2)
+    quantidade = models.DecimalField(max_digits=10, decimal_places=3)
+    preco_unitario = models.DecimalField(max_digits=14, decimal_places=4)
+    # Dados do item na nota do fornecedor
+    codigo_fornecedor = models.CharField("Código do fornecedor", max_length=60, blank=True, default="")
+    ean = models.CharField("EAN", max_length=14, blank=True, default="")
+    ncm = models.CharField("NCM", max_length=8, blank=True, default="")
+    unidade_fornecedor = models.CharField("Unidade na nota", max_length=6, blank=True, default="")
+    # Quantas unidades do produto vêm em cada unidade da nota (ex.: 1 CX = 50 UN)
+    fator_conversao = models.DecimalField("Fator de conversão", max_digits=12, decimal_places=4, default=1)
+    # Valores do item na NF-e que somam ou abatem do total
+    valor_frete = models.DecimalField("Frete", max_digits=12, decimal_places=2, default=0)
+    valor_seguro = models.DecimalField("Seguro", max_digits=12, decimal_places=2, default=0)
+    valor_outras = models.DecimalField("Outras despesas", max_digits=12, decimal_places=2, default=0)
+    valor_desconto = models.DecimalField("Desconto", max_digits=12, decimal_places=2, default=0)
+    valor_ipi = models.DecimalField("IPI", max_digits=12, decimal_places=2, default=0)
+    valor_icms_st = models.DecimalField("ICMS-ST e FCP-ST", max_digits=12, decimal_places=2, default=0)
+    # Tributos já embutidos no preço; abatidos do custo só se a empresa tiver crédito (COMPRA_CREDITOS)
+    valor_icms = models.DecimalField("ICMS", max_digits=12, decimal_places=2, default=0)
+    valor_pis = models.DecimalField("PIS", max_digits=12, decimal_places=2, default=0)
+    valor_cofins = models.DecimalField("COFINS", max_digits=12, decimal_places=2, default=0)
+    # Classificação fiscal do item na NF-e, guardada para o módulo fiscal (Fase 7)
+    cfop = models.CharField("CFOP", max_length=4, blank=True, default="")
+    cest = models.CharField("CEST", max_length=7, blank=True, default="")
+    origem = models.CharField("Origem da mercadoria", max_length=1, blank=True, default="")
+    cst_icms = models.CharField("CST/CSOSN do ICMS", max_length=3, blank=True, default="")
+    base_icms = models.DecimalField("Base do ICMS", max_digits=12, decimal_places=2, default=0)
+    aliquota_icms = models.DecimalField("Alíquota do ICMS (%)", max_digits=7, decimal_places=4, default=0)
+    base_icms_st = models.DecimalField("Base do ICMS-ST", max_digits=12, decimal_places=2, default=0)
+    aliquota_ipi = models.DecimalField("Alíquota do IPI (%)", max_digits=7, decimal_places=4, default=0)
+    cst_pis = models.CharField("CST do PIS", max_length=2, blank=True, default="")
+    cst_cofins = models.CharField("CST da COFINS", max_length=2, blank=True, default="")
     total = models.DecimalField(max_digits=12, decimal_places=2)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pendente")
  
@@ -106,8 +143,71 @@ class CompraItem(models.Model):
 
     def save(self, *args, **kwargs):
         # Garante que o total sempre estará correto
-        self.total = Decimal(self.quantidade) * Decimal(self.preco_unitario)
+        self.total = (Decimal(self.quantidade) * Decimal(self.preco_unitario)).quantize(Decimal("0.01"))
         super().save(*args, **kwargs)
+
+    @property
+    def valor_nota(self):
+        # Quanto o item custa na nota: produtos + despesas + IPI + ST - desconto
+        return (
+            Decimal(self.total) + self.valor_frete + self.valor_seguro + self.valor_outras
+            + self.valor_ipi + self.valor_icms_st - self.valor_desconto
+        )
+
+    @property
+    def valor_creditos(self):
+        from django.conf import settings
+        creditos = getattr(settings, "COMPRA_CREDITOS", set())
+        campos = {"ICMS": self.valor_icms, "PIS": self.valor_pis, "COFINS": self.valor_cofins, "IPI": self.valor_ipi}
+        return sum((valor for nome, valor in campos.items() if nome in creditos), Decimal("0"))
+
+    @property
+    def custo_total(self):
+        return self.valor_nota - self.valor_creditos
+
+    @property
+    def quantidade_estoque(self):
+        return Decimal(self.quantidade) * Decimal(self.fator_conversao or 1)
+
+    @property
+    def custo_unitario_estoque(self):
+        if not self.quantidade_estoque:
+            return Decimal("0")
+        return self.custo_total / self.quantidade_estoque
+
+
+# Duplicatas (parcelas) informadas pelo fornecedor na NF-e (grupo cobr/dup)
+class CompraDuplicata(models.Model):
+    compra = models.ForeignKey(Compra, on_delete=models.CASCADE, related_name="duplicatas")
+    numero = models.CharField("Número", max_length=60, blank=True, default="")
+    vencimento = models.DateField("Vencimento")
+    valor = models.DecimalField("Valor", max_digits=12, decimal_places=2)
+
+    class Meta:
+        ordering = ["vencimento", "id"]
+
+    def __str__(self):
+        return f"{self.numero} {self.vencimento:%d/%m/%Y} {self.valor}"
+
+
+# Vínculo entre o código do produto na nota do fornecedor e o produto do cadastro.
+# É gravado na tela de vincular itens e reaproveitado nas próximas importações.
+class ProdutoFornecedor(models.Model):
+    fornecedor = models.ForeignKey("cadastros.Contato", on_delete=models.CASCADE, related_name="produtos_fornecidos")
+    codigo_fornecedor = models.CharField("Código do fornecedor", max_length=60)
+    ean = models.CharField("EAN", max_length=14, blank=True, default="")
+    produto = models.ForeignKey(Produto, on_delete=models.CASCADE, related_name="codigos_fornecedor")
+    unidade_fornecedor = models.CharField("Unidade na nota", max_length=6, blank=True, default="")
+    fator_conversao = models.DecimalField("Fator de conversão", max_digits=12, decimal_places=4, default=1)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Produto do fornecedor"
+        verbose_name_plural = "Produtos dos fornecedores"
+        unique_together = [("fornecedor", "codigo_fornecedor")]
+
+    def __str__(self):
+        return f"{self.fornecedor} {self.codigo_fornecedor} → {self.produto}"
 
 
 #===============================================
@@ -135,8 +235,12 @@ class Estoque(models.Model):
             qtd = Decimal(mov.quantidade)
             preco = Decimal(mov.preco or 0)
             
+            # ESTORNO devolve quantidade sem alterar o preço médio
+            if mov.tipo == "ENTRADA" and mov.origem.startswith("ESTORNO"):
+                saldo += qtd
+
             # ENTRADA NO ESTOQUE
-            if mov.tipo == "ENTRADA":
+            elif mov.tipo == "ENTRADA":
                 total_atual = saldo * preco_medio
                 total_novo = qtd * preco
                 saldo += qtd
@@ -196,7 +300,16 @@ class MovimentacaoEstoque(models.Model):
         qtd_mov = Decimal(self.quantidade)
         preco_mov = Decimal(self.preco or 0)
 
-        if self.tipo == "ENTRADA":
+        # Estorno devolve a quantidade sem alterar o preço médio
+        if self.tipo == "ENTRADA" and self.origem.startswith("ESTORNO"):
+            novo_saldo = qtd_atual + qtd_mov
+            estoque.quantidade = novo_saldo
+            estoque.save()
+
+            self.saldo_apos = novo_saldo
+            self.preco_medio_apos = preco_atual
+
+        elif self.tipo == "ENTRADA":
             if preco_mov <= 0:
                 raise ValidationError("Preço inválido para movimentação de estoque.")
             total_atual = qtd_atual * preco_atual

@@ -27,6 +27,9 @@ class Produto(models.Model):
     unidade = models.CharField('Unidade', max_length=3, choices=UNIDADES_CHOICES)
     preco_venda = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     marca = models.CharField('Marca', max_length=100, blank=True)
+    ean = models.CharField('Código de barras (EAN)', max_length=14, blank=True, default='')
+    ncm = models.CharField('NCM', max_length=8, blank=True, default='')
+    cest = models.CharField('CEST', max_length=7, blank=True, default='')
 
     estoque_minimo = models.PositiveIntegerField(default=0)
      

@@ -33,6 +33,14 @@ DEBUG = os.getenv("DEBUG", "False") == "True"
 # ALLOWED_HOSTS
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "").split(",")
 
+# CNPJ da empresa (só números). Na importação de NF-e, recusa notas destinadas a outro CNPJ.
+EMPRESA_CNPJ = "".join(c for c in os.getenv("EMPRESA_CNPJ", "") if c.isdigit())
+
+# Tributos das compras que a empresa recupera como crédito e que, por isso, não entram no custo do estoque.
+# Simples Nacional: deixe vazio. Lucro Presumido: em geral ICMS. Lucro Real: em geral ICMS,PIS,COFINS.
+# Indústria que credita IPI: acrescente IPI. Confirme com o contador.
+COMPRA_CREDITOS = {t.strip().upper() for t in os.getenv("COMPRA_CREDITOS", "").split(",") if t.strip()}
+
 # Segurança extra quando em produção
 if not DEBUG:
     SECURE_BROWSER_XSS_FILTER = True

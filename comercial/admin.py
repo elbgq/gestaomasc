@@ -1,6 +1,7 @@
 from django.contrib import admin
 from comercial.models import(
-    Compra, CompraItem, Estoque, MovimentacaoEstoque, Venda, VendaItem, CMVItem
+    Compra, CompraItem, Estoque, MovimentacaoEstoque, Venda, VendaItem, CMVItem,
+    ProdutoFornecedor,
     )
 
 
@@ -63,3 +64,8 @@ class CMVItemAdmin(admin.ModelAdmin):
     list_display = ("produto", "quantidade", "custo_medio", "total_cmv", "data")
     search_fields = ("produto",)
     ordering = ("-data",)
+
+@admin.register(ProdutoFornecedor)
+class ProdutoFornecedorAdmin(admin.ModelAdmin):
+    list_display = ("fornecedor", "codigo_fornecedor", "produto", "unidade_fornecedor", "fator_conversao")
+    search_fields = ("codigo_fornecedor", "ean", "produto__descricao", "fornecedor__nome")

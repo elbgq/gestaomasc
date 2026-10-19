@@ -5,13 +5,16 @@ def vendas_por_periodo(data_inicio=None, data_fim=None, cliente=None, numero_not
     itens = VendaItem.objects.select_related("venda", "produto")
 
     if data_inicio:
-        itens = itens.filter(venda__data_emissao__gte=data_inicio)
+        itens = itens.filter(venda__data_emissao__date__gte=data_inicio)
     if data_fim:
-        itens = itens.filter(venda__data_emissao__lte=data_fim)
+        itens = itens.filter(venda__data_emissao__date__lte=data_fim)
     if cliente:
         itens = itens.filter(venda__cliente=cliente)
     if numero_nota:
-        itens = itens.filter(venda__numero_nota__icontains=numero_nota)
+        # Venda não tem número de nota; o filtro usa o número da venda (ex.: V000012)
+        digitos = "".join(c for c in numero_nota if c.isdigit())
+        if digitos:
+            itens = itens.filter(venda__numero=int(digitos))
 
     return itens
 

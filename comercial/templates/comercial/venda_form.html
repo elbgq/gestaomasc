@@ -79,6 +79,26 @@ document.addEventListener("DOMContentLoaded", function() {
 <script>
 document.addEventListener("DOMContentLoaded", function () {
 
+    // jQuery e Select2 são opcionais: sem eles a tela funciona com selects comuns
+    const $ = window.jQuery;
+    const temSelect2 = !!($ && $.fn && $.fn.select2);
+
+    // Escuta mudança no select, inclusive quando feita pelo Select2
+    function aoMudar(campo, handler) {
+        if ($) {
+            $(campo).on("change", handler);
+        } else {
+            campo.addEventListener("change", handler);
+        }
+    }
+
+    // Bloqueia ou libera um select e atualiza o Select2, sem disparar os handlers da linha
+    function definirBloqueio(campo, bloqueado) {
+        if (bloqueado) campo.value = "";
+        campo.disabled = bloqueado;
+        if (temSelect2) $(campo).trigger("change.select2");
+    }
+
     /* ============================================================
        1. CÁLCULO DO ITEM E TOTAL DA VENDA
     ============================================================ */
@@ -104,9 +124,12 @@ document.addEventListener("DOMContentLoaded", function () {
     function calcularTotalVenda() {
         let soma = 0;
 
-        document.querySelectorAll(".item-total").forEach(campo => {
-            const texto = campo.innerText.replace("R$", "").trim();
-            const valor = parseFloat(texto.replace(".", "").replace(",", ".")) || 0;
+        document.querySelectorAll("#formset-body-venda .item-row").forEach(row => {
+            const remover = row.querySelector("input[name$='-DELETE']");
+            if (remover && remover.checked) return;
+
+            const texto = row.querySelector(".item-total").innerText.replace("R$", "").trim();
+            const valor = parseFloat(texto.replace(/\./g, "").replace(",", ".")) || 0;
             soma += valor;
         });
 
@@ -123,47 +146,40 @@ document.addEventListener("DOMContentLoaded", function () {
                     campo.addEventListener(evt, () => calcularTotalItem(row));
                 });
             });
+
+        const remover = row.querySelector("input[name$='-DELETE']");
+        if (remover) remover.addEventListener("change", calcularTotalVenda);
     }
 
     /* ============================================================
-       2. BLOQUEIO PRODUTO ↔ SERVIÇO
+       2. BLOQUEIO PRODUTO ↔ SERVIÇO (cada linha tem um ou outro)
     ============================================================ */
+
+    function aplicarBloqueio(row) {
+        const produto = row.querySelector(".item-produto");
+        const servico = row.querySelector(".item-servico");
+        if (!produto || !servico) return;
+
+        if (produto.value) {
+            definirBloqueio(servico, true);
+        } else if (servico.value) {
+            definirBloqueio(produto, true);
+        } else {
+            definirBloqueio(produto, false);
+            definirBloqueio(servico, false);
+        }
+    }
 
     function bloquearProdutoOuServico(row) {
         const produto = row.querySelector(".item-produto");
         const servico = row.querySelector(".item-servico");
-
         if (!produto || !servico) return;
 
-        function aplicarRegraProduto() {
-            if (produto.value) {
-                servico.disabled = true;
-                servico.value = "";
-                $(servico).val(null).trigger("change");
-            } else {
-                servico.disabled = false;
-            }
-        }
+        aoMudar(produto, () => aplicarBloqueio(row));
+        aoMudar(servico, () => aplicarBloqueio(row));
 
-        function aplicarRegraServico() {
-            if (servico.value) {
-                produto.disabled = true;
-                produto.value = "";
-                $(produto).val(null).trigger("change");
-            } else {
-                produto.disabled = false;
-            }
-        }
-
-        // Eventos nativos
-        produto.addEventListener("change", aplicarRegraProduto);
-        servico.addEventListener("change", aplicarRegraServico);
-
-        // Eventos do Select2 (se estiver ativo)
-        if (typeof $.fn.select2 !== "undefined") {
-            $(produto).on("select2:select", aplicarRegraProduto);
-            $(servico).on("select2:select", aplicarRegraServico);
-        }
+        // Linhas que já vêm preenchidas (edição da venda)
+        aplicarBloqueio(row);
     }
 
     /* ============================================================
@@ -184,32 +200,21 @@ document.addEventListener("DOMContentLoaded", function () {
         const estoqueValor = document.querySelector(".estoque-valor");
 
         if (servico) {
-            const handlerServico = async function () {
-                if (servico.value) {
-                    const info = await buscarInfoItem("servico", servico.value);
-                    preco.value = parseFloat(info.preco).toFixed(2);
-                    preco.dispatchEvent(new Event("input"));
-                    if (alerta) alerta.classList.add("d-none");
-                }
-            };
+            aoMudar(servico, async function () {
+                if (!servico.value) return;
 
-            servico.addEventListener("change", handlerServico);
-
-            if (typeof $.fn.select2 !== "undefined") {
-                $(servico).on("select2:select", handlerServico);
-            }
+                const info = await buscarInfoItem("servico", servico.value);
+                preco.value = parseFloat(info.preco).toFixed(2);
+                preco.dispatchEvent(new Event("input"));
+                if (alerta) alerta.classList.add("d-none");
+            });
         }
 
         if (!produto) return;
 
-        const handlerProduto = async function () {
+        aoMudar(produto, async function () {
             if (!produto.value) {
-                preco.value = "";
-                preco.dispatchEvent(new Event("input"));
-                if (alerta) {
-                    alerta.classList.add("d-none");
-                    alerta.classList.remove("alert-danger", "alert-warning");
-                }
+                if (alerta) alerta.classList.add("d-none");
                 return;
             }
 
@@ -221,22 +226,10 @@ document.addEventListener("DOMContentLoaded", function () {
             if (alerta && estoqueValor) {
                 estoqueValor.innerText = info.estoque;
                 alerta.classList.remove("d-none");
-
-                if (info.estoque <= 0) {
-                    alerta.classList.remove("alert-warning");
-                    alerta.classList.add("alert-danger");
-                } else {
-                    alerta.classList.remove("alert-danger");
-                    alerta.classList.add("alert-warning");
-                }
+                alerta.classList.toggle("alert-danger", info.estoque <= 0);
+                alerta.classList.toggle("alert-warning", info.estoque > 0);
             }
-        };
-
-        produto.addEventListener("change", handlerProduto);
-
-        if (typeof $.fn.select2 !== "undefined") {
-            $(produto).on("select2:select", handlerProduto);
-        }
+        });
     }
 
     /* ============================================================
@@ -244,33 +237,36 @@ document.addEventListener("DOMContentLoaded", function () {
     ============================================================ */
 
     function aplicarSelect2(row) {
-        if (typeof $.fn.select2 !== "undefined") {
-            $(row).find('.select2-produto').select2({
-                theme: 'bootstrap-5',
-                width: '100%',
-                placeholder: "Buscar produto...",
-                allowClear: true
-            });
+        if (!temSelect2) return;
 
-            $(row).find('.select2-servico').select2({
-                theme: 'bootstrap-5',
-                width: '100%',
-                placeholder: "Buscar serviço...",
-                allowClear: true
-            });
-        }
+        $(row).find('.select2-produto').select2({
+            theme: 'bootstrap-5',
+            width: '100%',
+            placeholder: "Buscar produto...",
+            allowClear: true
+        });
+
+        $(row).find('.select2-servico').select2({
+            theme: 'bootstrap-5',
+            width: '100%',
+            placeholder: "Buscar serviço...",
+            allowClear: true
+        });
+    }
+
+    function prepararLinha(row) {
+        aplicarSelect2(row);
+        adicionarListeners(row);
+        configurarPrecoEEstoque(row);
+        bloquearProdutoOuServico(row);
+        calcularTotalItem(row);
     }
 
     /* ============================================================
        5. APLICAR REGRAS AOS ITENS EXISTENTES
     ============================================================ */
 
-    document.querySelectorAll(".item-row").forEach(row => {
-        adicionarListeners(row);
-        configurarPrecoEEstoque(row);
-        bloquearProdutoOuServico(row);
-        aplicarSelect2(row);
-    });
+    document.querySelectorAll("#formset-body-venda .item-row").forEach(prepararLinha);
 
     /* ============================================================
        6. ADICIONAR NOVO ITEM (empty_form_template)
@@ -279,36 +275,39 @@ document.addEventListener("DOMContentLoaded", function () {
     const addBtn = document.getElementById("add-item-btn-venda");
     const tableBody = document.getElementById("formset-body-venda");
     const totalForms = document.querySelector("#id_itens-TOTAL_FORMS");
+    const avisoItem = document.getElementById("aviso-item-venda");
 
-    if (addBtn) {
+    function linhaPreenchida(row) {
+        const produto = row.querySelector(".item-produto");
+        const servico = row.querySelector(".item-servico");
+        const qtd = row.querySelector(".item-quantidade");
+        return (produto?.value || servico?.value) && parseFloat(qtd?.value) > 0;
+    }
+
+    if (addBtn && tableBody && totalForms) {
         addBtn.addEventListener("click", function () {
+            // Só abre uma nova linha depois que a anterior estiver preenchida
+            const ultima = tableBody.querySelector(".item-row:last-child");
+            if (ultima && !linhaPreenchida(ultima)) {
+                if (avisoItem) avisoItem.classList.remove("d-none");
+                return;
+            }
+            if (avisoItem) avisoItem.classList.add("d-none");
+
             const formIndex = parseInt(totalForms.value);
 
             let template = document.getElementById("empty-form-template").innerHTML;
             template = template.replace(/__prefix__/g, formIndex);
 
             tableBody.insertAdjacentHTML("beforeend", template);
-
-            const newRow = tableBody.querySelector("tr:last-child");
-
-            adicionarListeners(newRow);
-            configurarPrecoEEstoque(newRow);
-            bloquearProdutoOuServico(newRow);
-            aplicarSelect2(newRow);
-
             totalForms.value = formIndex + 1;
 
+            prepararLinha(tableBody.querySelector(".item-row:last-child"));
             calcularTotalVenda();
         });
     }
 
     calcularTotalVenda();
-
-    console.log("VENDA FORM SCRIPT CARREGOU!");
-    console.log("jQuery existe?", typeof $ !== "undefined");
-    console.log("Select2 existe?", typeof $.fn.select2 !== "undefined");
-
 });
 </script>
 {% endblock scripts %}
-

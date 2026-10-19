@@ -13,7 +13,7 @@ from .views.views_estoque import (
 from .views.views_compras import (
     criar_compra, editar_compra, compra_excluir, compra_list, compra_detalhe,
     importar_compra, vincular_itens, confirmar_compra, compra_finalizar_avista,
-    compra_finalizar_parcelada
+    compra_finalizar_parcelada, compra_finalizar_duplicatas, compra_xml
 )
 
 
@@ -33,6 +33,8 @@ urlpatterns = [
     path("compras/<int:compra_id>/excluir/", compra_excluir, name="compra_excluir"),  # se existir
     path("compras/<int:compra_id>/finalizar/avista/", compra_finalizar_avista, name="compras_finalizar_avista"),
     path("compras/<int:compra_id>/finalizar/parcelado/", compra_finalizar_parcelada, name="compras_finalizar_parcelado"),
+    path("compras/<int:compra_id>/xml/", compra_xml, name="compra_xml"),
+    path("compras/<int:compra_id>/finalizar/duplicatas/", compra_finalizar_duplicatas, name="compras_finalizar_duplicatas"),
     path("compras/<int:compra_id>/vincular_itens/", vincular_itens, name="vincular_itens"),
     path("compras/<int:compra_id>/confirmar_compra/", confirmar_compra, name="compras_confirmar"),
     

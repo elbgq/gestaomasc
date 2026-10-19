@@ -45,7 +45,7 @@
             </td>
 
             <td class="item-total">
-                R$ {{ f.instance.total_item|default:"0,00" }}
+                R$ 0,00
             </td>
 
             <td>
@@ -60,6 +60,9 @@
 <button type="button" class="btn btn-secondary" id="add-item-btn-venda">
     ➕ Adicionar Item
 </button>
+<div class="alert alert-warning mt-2 d-none" id="aviso-item-venda">
+    Preencha o produto ou serviço e a quantidade da linha atual antes de adicionar outra.
+</div>
 
 <!-- Template correto do empty_form -->
 <script type="text/template" id="empty-form-template">

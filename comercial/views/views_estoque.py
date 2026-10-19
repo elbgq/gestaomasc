@@ -5,7 +5,8 @@ from django.http import JsonResponse
 from django.db import models
 from decimal import Decimal, ROUND_HALF_UP
 from cadastros.models import Produto
-from comercial.models import MovimentacaoEstoque, Estoque, Venda, CMVItem
+from comercial.models import MovimentacaoEstoque, Estoque, Venda, VendaItem, CMVItem
+from django.db import transaction
 from django.db.models import Sum
 from django.core.paginator import Paginator
 
@@ -155,66 +156,93 @@ def estoque_relatorio(request):
 
 # AJAX endpoint para consultar estoque de um produto "REVISADO"
 def ajax_estoque(request, produto_id):
-    try:
-        produto = Produto.objects.get(id=produto_id)
-        estoque = Estoque.objects.filter(produto=produto).first()
-        quantidade = estoque.quantidade if estoque else 0
-        return JsonResponse({"estoque": quantidade})
-    except Produto.DoesNotExist:
-        return JsonResponse({
-            "estoque": float(quantidade),
-            "preco_medio": float(estoque.preco_medio if estoque else 0)
-        })
-     
+    produto = Produto.objects.filter(id=produto_id).first()
+    if not produto:
+        return JsonResponse({"erro": "Produto não encontrado."}, status=404)
+
+    estoque = Estoque.objects.filter(produto=produto).first()
+    return JsonResponse({
+        "estoque": float(estoque.quantidade if estoque else 0),
+        "preco_medio": float(estoque.preco_medio if estoque else 0),
+    })
+
+
+# Desfaz as saídas de estoque já lançadas para a venda.
+# A saída original fica no histórico como "VENDA_ESTORNADA" e uma entrada
+# "ESTORNO_VENDA" devolve a quantidade sem alterar o preço médio.
+def estornar_saidas_venda(venda):
+    itens_com_cmv = CMVItem.objects.filter(venda=venda).values_list("item_id", flat=True)
+
+    saidas = MovimentacaoEstoque.objects.filter(origem="VENDA", tipo="SAIDA").filter(
+        models.Q(referencia_id=venda.id) |
+        # Saídas antigas eram gravadas com o id do item da venda
+        models.Q(referencia_id__in=list(itens_com_cmv))
+    )
+
+    for mov in saidas:
+        MovimentacaoEstoque.objects.create(
+            produto=mov.produto,
+            tipo="ENTRADA",
+            quantidade=mov.quantidade,
+            preco=mov.preco_medio_apos,
+            origem="ESTORNO_VENDA",
+            referencia_id=venda.id
+        )
+
+    saidas.update(origem="VENDA_ESTORNADA")
+
+
 # Função auxiliar para baixa de estoque após venda "REVISADA"
 """
     Registra movimentações de estoque (SAÍDA) para cada item de produto
-    e calcula o CMV total da venda.
+    e calcula o CMV total da venda. Pode ser chamada mais de uma vez para a
+    mesma venda: as saídas anteriores são estornadas antes de lançar as novas.
 """
 def registrar_cmv(venda):
     cmv_total = Decimal("0.00")
 
-    # IDs dos itens da venda
-    itens_ids = venda.itens.values_list("id", flat=True)
+    with transaction.atomic():
+        # 1. Estornar estoque e CMV antigos
+        estornar_saidas_venda(venda)
+        CMVItem.objects.filter(venda=venda).delete()
 
-    # 1. Estornar CMV antigo
-    CMVItem.objects.filter(item_id__in=itens_ids).delete()
+        # 2. Registrar novas movimentações e calcular CMV
+        for item in venda.itens.all():
+            # Serviços não têm CMV
+            if not item.produto:
+                continue # serviços não têm CMV
 
-    # 2. Registrar novas movimentações e calcular CMV
-    for item in venda.itens.all():
-        # Serviços não têm CMV
-        if not item.produto:
-            continue # serviços não têm CMV
-        
-        # Registrar saída no estoque
-        mov = MovimentacaoEstoque.objects.create(
-            produto=item.produto,
-            tipo="SAIDA",
-            quantidade=item.quantidade,
-            preco=None,
-            origem="VENDA",
-            referencia_id=item.id
-        )
+            # Registrar saída no estoque
+            mov = MovimentacaoEstoque.objects.create(
+                produto=item.produto,
+                tipo="SAIDA",
+                quantidade=item.quantidade,
+                preco=None,
+                origem="VENDA",
+                referencia_id=venda.id
+            )
 
-        # Criar registro de CMV congelado
-        cmv_item = CMVItem.objects.create(
-            venda=venda,
-            item=item,
-            produto=item.produto,
-            quantidade=item.quantidade,
-            custo_medio=mov.preco_medio_apos,
-            total_cmv=mov.preco_medio_apos * item.quantidade,
-            data=venda.data_emissao
-        )
+            # Criar registro de CMV congelado
+            cmv_item = CMVItem.objects.create(
+                venda=venda,
+                item=item,
+                produto=item.produto,
+                quantidade=item.quantidade,
+                custo_medio=mov.preco_medio_apos,
+                total_cmv=mov.preco_medio_apos * item.quantidade,
+                data=venda.data_emissao
+            )
 
-        # CMV do item
-        cmv_total += cmv_item.total_cmv
-        
-    # Atualiza venda
-    
-    venda.cmv = cmv_total
-    venda.lucro_bruto = venda.total - venda.cmv
-    venda.save()
+            # Guarda o custo usado no item (sem disparar o save do item)
+            VendaItem.objects.filter(pk=item.pk).update(custo_medio=mov.preco_medio_apos)
+
+            # CMV do item
+            cmv_total += cmv_item.total_cmv
+
+        # Atualiza venda
+        venda.cmv = cmv_total
+        venda.lucro_bruto = venda.total - venda.cmv
+        venda.save()
 
 #====================================
 # CMV detalhado

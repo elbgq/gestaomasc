@@ -7,7 +7,7 @@ from gestaomasc.utils.forms_mixins import MoedaMaskMixin
 class ProdutoForm(MoedaMaskMixin, forms.ModelForm):
     class Meta:
         model = Produto
-        fields = ["codor", "descricao", "unidade", "preco_venda", "marca"]
+        fields = ["codor", "descricao", "unidade", "preco_venda", "marca", "ean", "ncm", "cest"]
 
 class ServicoForm(MoedaMaskMixin, forms.ModelForm):
     class Meta:

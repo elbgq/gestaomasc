@@ -52,12 +52,6 @@ class TituloDetailView(DetailView):
             obj = get_object_or_404(FinanceiroReceber, pk=pk)
         else:
             raise Http404("Tipo inválido")
-
-        # Debug
-        print("TIPO NA URL:", tipo)
-        print("PK NA URL:", pk)
-        print("VALOR_PAGO NO BANCO:", obj.valor_pago)
-        print("STATUS NO BANCO:", obj.status)
         return obj
         
     def get_context_data(self, **kwargs):
@@ -106,7 +100,10 @@ def titulo_quitacao_view(request, tipo, pk):
 
     # POST → processa quitação
     
-    caixa = Caixa.objects.get(nome="Caixa Principal")
+    caixa = Caixa.objects.filter(nome="Caixa Principal").first()
+    if caixa is None:
+        messages.error(request, "Cadastre o caixa \"Caixa Principal\" antes de quitar títulos.")
+        return redirect("financeiro:titulo_detalhe", titulo.tipo, titulo.id)
     saldo = caixa.saldo_atual()
 
     # Verifica saldo para despesas
@@ -137,7 +134,7 @@ def titulo_quitacao_view(request, tipo, pk):
         valor=titulo.valor,
         origem=origem_mov,  # ← AGORA SIM
         referencia_id=titulo.id,
-        referencia_tipo=titulo.categoria.tipo,
+        referencia_tipo=titulo.tipo,
     )
 
     messages.success(request, "Título quitado com sucesso!")

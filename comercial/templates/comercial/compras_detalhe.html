@@ -8,6 +8,11 @@
     <p><strong>Compra nº:</strong> {{ compra.numero_formatado }}</p>
     <p><strong>Data:</strong> {{ compra.data|date:"d/m/Y" }}</p>
     <p><strong>Valor Total:</strong> R$ {{ compra.valor_total }}</p>
+    {% if compra.chave_acesso %}
+    <p><strong>Chave de acesso:</strong> <small>{{ compra.chave_acesso }}</small>
+        {% if compra.xml_nfe %}<a class="btn btn-sm btn-outline-secondary ms-2" href="{% url 'comercial:compra_xml' compra.id %}">⬇️ Baixar XML</a>{% endif %}
+    </p>
+    {% endif %}
 
     <p><strong>Status:</strong>
         {% if compra.confirmada %}
@@ -28,6 +33,7 @@
             <th>Qtd</th>
             <th>Preço</th>
             <th>Total</th>
+            {% if compra.importada %}<th>NCM</th><th>CFOP</th><th>CST/CSOSN</th><th>ICMS</th><th>IPI</th><th>ST</th>{% endif %}
         </tr>
     </thead>
     <tbody>
@@ -38,6 +44,14 @@
             <td>{{ item.quantidade }}</td>
             <td>R$ {{ item.preco_unitario }}</td>
             <td>R$ {{ item.total }}</td>
+            {% if compra.importada %}
+            <td>{{ item.ncm|default:"—" }}</td>
+            <td>{{ item.cfop|default:"—" }}</td>
+            <td>{{ item.origem }}{{ item.cst_icms|default:"—" }}</td>
+            <td>R$ {{ item.valor_icms|floatformat:2 }}{% if item.aliquota_icms %} <small class="text-muted">({{ item.aliquota_icms|floatformat:"-2" }}%)</small>{% endif %}</td>
+            <td>R$ {{ item.valor_ipi|floatformat:2 }}</td>
+            <td>R$ {{ item.valor_icms_st|floatformat:2 }}</td>
+            {% endif %}
         </tr>
         {% endfor %}
     </tbody>
