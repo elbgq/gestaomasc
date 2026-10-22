@@ -36,7 +36,7 @@
                     <th>Codor</th>
                     <th>Produto</th>
                     <th>Quantidade</th>
-                    <th>Preço Médio</th>
+                    {% if perms.comercial.ver_custos %}<th>Preço Médio</th>{% endif %}
                 </tr>
             </thead>
 
@@ -46,7 +46,7 @@
                     <td>{{ item.produto.codor }}</td>
                     <td>{{ item.produto.descricao }}</td>
                     <td>{{ item.quantidade }}</td>
-                    <td>R$ {{ item.preco_medio|floatformat:2 }}</td>
+                    {% if perms.comercial.ver_custos %}<td>R$ {{ item.preco_medio|floatformat:2 }}</td>{% endif %}
                 </tr>
                 {% empty %}
                 <tr>

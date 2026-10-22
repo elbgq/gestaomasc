@@ -16,7 +16,8 @@ from .views_receber import (
 from .views_caixa import(
     caixa_detalhe, caixa_list, caixa_historico,
     CaixaCreateView, CaixaUpdateView, CaixaDeleteView,
-    dashboard_financeiro, caixa_movimento_detalhe, caixa_abrir
+    dashboard_financeiro, caixa_movimento_detalhe, caixa_abrir,
+    caixa_fechar, caixa_sangria, caixa_reforco
 )
 
 from .views_contas_pagar import (
@@ -24,7 +25,8 @@ from .views_contas_pagar import (
     pagar_delete, pagar_update, conta_detalhe
 )
 from .views_titulos import(
-    TituloListView, TituloDetailView, titulo_quitacao_view
+    TituloListView, TituloDetailView, titulo_quitacao_view, titulo_estornar_quitacao,
+    titulo_reclassificar, api_categoria_sugerida
 )
 
 app_name = "financeiro"
@@ -78,6 +80,9 @@ urlpatterns = [
     path("caixa/movimento/<int:pk>/", caixa_movimento_detalhe, name="caixa_movimento_detalhe"),
     
     path("caixa/<int:pk>/abrir/", caixa_abrir, name="caixa_abrir"),
+    path("caixa/<int:pk>/fechar/", caixa_fechar, name="caixa_fechar"),
+    path("caixa/<int:pk>/sangria/", caixa_sangria, name="caixa_sangria"),
+    path("caixa/<int:pk>/reforco/", caixa_reforco, name="caixa_reforco"),
     
     # DASHBOARD FINANCEIRO
     path("dashboard/", dashboard_financeiro, name="dashboard"),
@@ -85,6 +90,9 @@ urlpatterns = [
     # Títulos 
     path("titulos/", TituloListView.as_view(), name="titulo_list"),
     path("titulos/<str:tipo>/<int:pk>/quitar/", titulo_quitacao_view, name="titulo_confirmar_quitacao"),
+    path("titulos/<str:tipo>/<int:pk>/estornar/", titulo_estornar_quitacao, name="titulo_estornar_quitacao"),
+    path("titulos/<str:tipo>/<int:pk>/categoria/", titulo_reclassificar, name="titulo_reclassificar"),
+    path("api/categoria-sugerida/<int:contato_id>/", api_categoria_sugerida, name="api_categoria_sugerida"),
     path("titulos/<str:tipo>/<int:pk>/", TituloDetailView.as_view(), name="titulo_detalhe"),
 ]
 

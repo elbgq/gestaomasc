@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load permissoes %}
 
 {% block title %}Movimento de Caixa{% endblock %}
 
@@ -23,8 +24,10 @@
         <p><strong>Valor:</strong> R$ {{ movimento.valor|floatformat:2 }}</p>
 
         <p><strong>Origem:</strong> {{ movimento.get_origem_display }}</p>
-        {{ movimento.referencia.categoria.tipo }}
-        {% if movimento.referencia_id %}
+        {% if movimento.caixa %}
+            <p><strong>Caixa:</strong> {{ movimento.caixa.nome }}</p>
+        {% endif %}
+        {% if movimento.referencia_id and movimento.referencia_tipo %}
             <p><strong>Referência:</strong>
                 <a href="{% url 'financeiro:titulo_detalhe' movimento.referencia_tipo movimento.referencia_id %}">
                     Detalhes do Título #{{ movimento.referencia_id }}
@@ -39,6 +42,10 @@
             <a href="{% url 'financeiro:caixa_historico' %}" class="btn btn-secondary">
                 <i class="bi bi-arrow-left"></i> Voltar
             </a>
+            {% if movimento.origem == "MANUAL" %}
+                {% pode "financeiro:caixa_update" as pode_caixa_update %}{% if pode_caixa_update %}<a href="{% url 'financeiro:caixa_update' movimento.id %}" class="btn btn-warning">Editar</a>{% endif %}
+                {% pode "financeiro:caixa_delete" as pode_caixa_delete %}{% if pode_caixa_delete %}<a href="{% url 'financeiro:caixa_delete' movimento.id %}" class="btn btn-danger">Excluir</a>{% endif %}
+            {% endif %}
         </div>
 
     </div>

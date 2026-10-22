@@ -44,6 +44,7 @@
         <div class="mb-3">
             <label class="form-label">Categoria</label>
             {{ form.categoria|add_class:"form-select select2" }}
+            {% include "financeiro/_sugestao_categoria.html" with campo_contato="id_contato" tipo="D" %}
         </div>
         
         <div class="mt-4 d-flex gap-2">

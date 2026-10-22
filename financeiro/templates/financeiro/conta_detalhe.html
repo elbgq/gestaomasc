@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load permissoes %}
 {% block content %}
 
 <h2>Conta a Pagar – Compra #{{ conta.compra.id }}</h2>
@@ -45,12 +46,12 @@
             </td>
             <td>
                 {% if not p.esta_pago %}
-                    <a href="{% url 'financeiro:pagar_titulo' p.id %}" class="btn btn-sm btn-danger">
+                    {% pode "financeiro:pagar_titulo" as pode_pagar_titulo %}{% if pode_pagar_titulo %}<a href="{% url 'financeiro:pagar_titulo' p.id %}" class="btn btn-sm btn-danger">
                         Pagar
-                    </a>
+                    </a>{% endif %}
                 {% else %}
                     {% if p.caixa_movimento %}
-                        <a href="{% url 'financeiro:caixa_detalhe' p.caixa_movimento.id %}" class="btn btn-sm btn-secondary">
+                        <a href="{% url 'financeiro:caixa_movimento_detalhe' p.caixa_movimento.id %}" class="btn btn-sm btn-secondary">
                             Ver no Caixa
                         </a>
                     {% endif %}

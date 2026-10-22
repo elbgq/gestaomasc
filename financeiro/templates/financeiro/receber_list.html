@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load permissoes %}
 
 {% block title %}Contas a Receber{% endblock %}
 
@@ -93,18 +94,18 @@
 
                                     <td class="text-center align-middle">
                                         <div class="d-flex justify-content-center gap-2">
-                                        {% if r.referencia_id %}
-                                            <a href="{% url 'comercial:venda_editar' r.referencia_id %}"
+                                        {% if r.object_id and not r.esta_pago %}
+                                            {% pode "comercial:venda_editar" as pode_venda_editar %}{% if pode_venda_editar %}<a href="{% url 'comercial:venda_editar' r.object_id %}"
                                                 class="btn btn-sm btn-outline-warning">
                                                 Editar Venda
-                                            </a>
+                                            </a>{% endif %}
                                         {% endif %}
 
                                         {% if not r.esta_pago %}
-                                            <a href="{% url 'financeiro:titulo_confirmar_quitacao' 'R' r.id %}"
+                                            {% pode "financeiro:titulo_confirmar_quitacao" as pode_titulo_confirmar_quitacao %}{% if pode_titulo_confirmar_quitacao %}<a href="{% url 'financeiro:titulo_confirmar_quitacao' 'R' r.id %}"
                                                 class="btn btn-sm btn-success">
                                                 Quitar
-                                            </a>
+                                            </a>{% endif %}
                                         {% endif %}
                                             <a href="{% url 'financeiro:titulo_detalhe' r.tipo r.id %}"
                                                 class="btn btn-sm btn-primary">Detalhes</a>
@@ -138,9 +139,9 @@
 
             <div class="d-flex justify-content-between align-items-center mb-2">
 
-                <a href="{% url 'financeiro:receber_create' %}" class="btn btn-primary">
+                {% pode "financeiro:receber_create" as pode_receber_create %}{% if pode_receber_create %}<a href="{% url 'financeiro:receber_create' %}" class="btn btn-primary">
                     Nova Receita Avulsa
-                </a> 
+                </a>{% endif %} 
             </div>
 
             <div class="card border-primary">
@@ -196,10 +197,10 @@
                                         <div class="btn-group" role="group">
 
                                             {% if not r.esta_pago %}
-                                                <a href="{% url 'financeiro:titulo_confirmar_quitacao' 'R' r.id %}"
+                                                {% pode "financeiro:titulo_confirmar_quitacao" as pode_titulo_confirmar_quitacao %}{% if pode_titulo_confirmar_quitacao %}<a href="{% url 'financeiro:titulo_confirmar_quitacao' 'R' r.id %}"
                                                    class="btn btn-sm btn-success">
                                                     Quitar
-                                                </a>
+                                                </a>{% endif %}
                                             {% endif %}
                                             <a href="{% url 'financeiro:titulo_detalhe' r.tipo r.id %}"
                                                 class="btn btn-sm btn-primary">Detalhes</a>

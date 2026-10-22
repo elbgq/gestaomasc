@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load permissoes %}
 
 {% block title %}Caixa - {{ caixa.nome }}{% endblock %}
 
@@ -15,29 +16,30 @@
 
     {% if not caixa_aberto %}
         <!-- Caixa fechado → só pode abrir -->
-        <a href="{% url 'financeiro:caixa_abrir' caixa.id %}" class="btn btn-success">
+        {% pode "financeiro:caixa_abrir" as pode_caixa_abrir %}{% if pode_caixa_abrir %}<a href="{% url 'financeiro:caixa_abrir' caixa.id %}" class="btn btn-success">
             Abrir Caixa
-        </a>
+        </a>{% endif %}
     {% endif %}
 
     {% if caixa_aberto %}
         <!-- Caixa aberto → pode fechar -->
-        <a href="{% url 'financeiro:caixa_fechar' caixa.id %}" class="btn btn-danger">
+        {% pode "financeiro:caixa_fechar" as pode_caixa_fechar %}{% if pode_caixa_fechar %}<a href="{% url 'financeiro:caixa_fechar' caixa.id %}" class="btn btn-danger">
             Fechar Caixa
-        </a>
+        </a>{% endif %}
 
         <!-- Caixa aberto → pode sangria e reforço -->
-        <a href="{% url 'financeiro:caixa_sangria' caixa.id %}" class="btn btn-warning">
+        {% pode "financeiro:caixa_sangria" as pode_caixa_sangria %}{% if pode_caixa_sangria %}<a href="{% url 'financeiro:caixa_sangria' caixa.id %}" class="btn btn-warning">
             Sangria
-        </a>
+        </a>{% endif %}
 
-        <a href="{% url 'financeiro:caixa_reforco' caixa.id %}" class="btn btn-primary">
+        {% pode "financeiro:caixa_reforco" as pode_caixa_reforco %}{% if pode_caixa_reforco %}<a href="{% url 'financeiro:caixa_reforco' caixa.id %}" class="btn btn-primary">
             Reforço
-        </a>
+        </a>{% endif %}
     {% endif %}
 
-</div>
- 
+        {% pode "financeiro:caixa_create" as pode_caixa_create %}{% if pode_caixa_create %}<a href="{% url 'financeiro:caixa_create' %}" class="btn btn-outline-secondary">
+            Novo Movimento
+        </a>{% endif %}
     </div>
     <!-- FIM DOS BOTÕES -->
 
@@ -67,6 +69,7 @@
                 <th>Tipo</th>
                 <th>Valor</th>
                 <th>Origem</th>
+                <th class="text-center">Ações</th>
             </tr>
         </thead>
 
@@ -84,10 +87,17 @@
                 </td>
                 <td>R$ {{ m.valor|floatformat:2 }}</td>
                 <td>{{ m.get_origem_display }}</td>
+                <td class="text-center">
+                    <a href="{% url 'financeiro:caixa_movimento_detalhe' m.id %}" class="btn btn-sm btn-info">Detalhes</a>
+                    {% if m.origem == "MANUAL" %}
+                        {% pode "financeiro:caixa_update" as pode_caixa_update %}{% if pode_caixa_update %}<a href="{% url 'financeiro:caixa_update' m.id %}" class="btn btn-sm btn-warning">Editar</a>{% endif %}
+                        {% pode "financeiro:caixa_delete" as pode_caixa_delete %}{% if pode_caixa_delete %}<a href="{% url 'financeiro:caixa_delete' m.id %}" class="btn btn-sm btn-danger">Excluir</a>{% endif %}
+                    {% endif %}
+                </td>
             </tr>
             {% empty %}
             <tr>
-                <td colspan="5" class="text-center text-muted">Nenhum movimento encontrado.</td>
+                <td colspan="6" class="text-center text-muted">Nenhum movimento encontrado.</td>
             </tr>
             {% endfor %}
         </tbody>

@@ -16,7 +16,7 @@ from financeiro.models import FinanceiroPagar, FinanceiroReceber
 
 class BaseComercialTest(TestCase):
     def setUp(self):
-        user = get_user_model().objects.create_user("teste", password="teste")
+        user = get_user_model().objects.create_superuser("teste", password="teste")
         self.client.force_login(user)
         self.fornecedor = Contato.objects.create(nome="Fornecedor", tipo="FORNECEDOR")
         self.cliente = Contato.objects.create(nome="Cliente", tipo="CLIENTE")
@@ -48,14 +48,14 @@ class BaseComercialTest(TestCase):
         )
         return venda
 
-    def post_editar_venda(self, venda, quantidade, continuar="0"):
+    def post_editar_venda(self, venda, quantidade, continuar="0", desconto="0", acrescimo="0"):
         item = venda.itens.first()
         return self.client.post(reverse("comercial:venda_editar", args=[venda.id]), {
             "cliente": self.cliente.id,
             "data_emissao": date.today().isoformat(),
             "forma_pagamento": "avista",
-            "desconto": "0",
-            "acrescimo": "0",
+            "desconto": desconto,
+            "acrescimo": acrescimo,
             "continuar": continuar,
             "itens-TOTAL_FORMS": "1",
             "itens-INITIAL_FORMS": "1",
@@ -227,6 +227,19 @@ class VendaTests(BaseComercialTest):
         registrar_cmv(venda)
         self.assertEqual(self.estoque().quantidade, Decimal("8"))
 
+    def test_estorno_de_venda_com_entrada_devolve_a_entrada_uma_vez(self):
+        from financeiro.models import Caixa
+        from comercial.views.views_vendas import estornar_venda
+        caixa = Caixa.objects.create(nome="Caixa Principal", saldo_inicial=Decimal("100.00"))
+        self.dar_entrada(10)
+        venda = self.criar_venda(quantidade=1, preco="100.00")
+        venda.entrada = Decimal("30.00")
+        registrar_financeiro_venda(venda, parcelas=2, dias=30, data_inicial=date.today())
+        self.assertEqual(caixa.saldo_atual(), Decimal("130.00"))
+        estornar_venda(venda)
+        self.assertEqual(caixa.saldo_atual(), Decimal("100.00"))
+        self.assertFalse(FinanceiroReceber.objects.exists())
+
     def test_estorno_devolve_estoque_sem_alterar_custo(self):
         self.dar_entrada(10, preco="5.00")
         venda = self.criar_venda(quantidade=2)
@@ -307,7 +320,7 @@ class ImportacaoXmlTests(BaseComercialTest):
         compra = Compra.objects.get()
         self.assertRedirects(resp, reverse("comercial:vincular_itens", args=[compra.id]))
         self.assertEqual(compra.chave_acesso, "35261012345678000199550010000012341000012345")
-        self.assertEqual(compra.fornecedor.documento, "12345678000199")
+        self.assertEqual(compra.fornecedor.documento, "12.345.678/0001-99")
         self.assertEqual(compra.fornecedor.tipo, "FORNECEDOR")
         self.assertEqual(compra.valor_total, Decimal("100.00"))
         item = compra.itens.get()
@@ -594,3 +607,44 @@ class CorrecaoCompraNfeTests(BaseComercialTest):
         self.assertEqual(self.estoque().quantidade, Decimal("100"))
         self.assertEqual(sorted(FinanceiroPagar.objects.values_list("valor", flat=True)),
                          [Decimal("62.00"), Decimal("62.00")])
+
+
+class VendaDescontoTests(BaseComercialTest):
+    def test_desconto_e_acrescimo_da_venda_entram_no_total_e_no_receber(self):
+        self.dar_entrada()
+        venda = self.criar_venda()  # 2 × 20
+        self.post_editar_venda(venda, 2, desconto="5.00", acrescimo="1.50")
+        venda.refresh_from_db()
+        self.assertEqual(venda.status, "finalizada")
+        self.assertEqual(venda.total, Decimal("36.50"))
+        titulo = FinanceiroReceber.objects.get(origem="VENDA", object_id=venda.id)
+        self.assertEqual(titulo.valor, Decimal("36.50"))
+
+    def test_desconto_maior_que_os_itens_e_recusado(self):
+        self.dar_entrada()
+        venda = self.criar_venda()
+        resp = self.post_editar_venda(venda, 2, desconto="50.00")
+        self.assertContains(resp, "maior que o total dos itens")
+        venda.refresh_from_db()
+        self.assertEqual(venda.status, "rascunho")
+        self.assertEqual(venda.desconto, Decimal("0"))
+        self.assertFalse(FinanceiroReceber.objects.filter(origem="VENDA", object_id=venda.id).exists())
+
+
+class CorrigirCMVTests(BaseComercialTest):
+    def test_cria_cmv_que_falta_a_partir_da_saida(self):
+        from django.core.management import call_command
+        from comercial.models import CMVItem
+        self.dar_entrada(preco="4.00")
+        venda = self.criar_venda()
+        venda.status = "finalizada"
+        venda.save()
+        MovimentacaoEstoque.objects.create(produto=self.produto, tipo="SAIDA", quantidade=2,
+                                           origem="VENDA", referencia_id=venda.id)
+        call_command("corrigir_cmv", stdout=io.StringIO())
+        self.assertFalse(CMVItem.objects.exists())  # sem --aplicar não grava
+        call_command("corrigir_cmv", aplicar=True, stdout=io.StringIO())
+        cmv = CMVItem.objects.get()
+        self.assertEqual(cmv.total_cmv, Decimal("8.00"))
+        venda.refresh_from_db()
+        self.assertEqual(venda.cmv, Decimal("8.00"))

@@ -1,14 +1,15 @@
-from django.db.models import F, Sum
-from decimal import Decimal
-from comercial.models import VendaItem, MovimentacaoEstoque, CMVItem
+from comercial.models import CMVItem
 
+
+# CMV das vendas finalizadas, pela data da venda (as mesmas regras do DRE).
+# __date inclui o último dia inteiro do período.
 def cmv_por_periodo(data_inicio=None, data_fim=None, produto=None):
-    qs = CMVItem.objects.select_related("venda", "item", "produto")
+    qs = CMVItem.objects.filter(venda__status="finalizada").select_related("venda", "produto")
 
     if data_inicio:
-        qs = qs.filter(venda__data_emissao__date__gte=data_inicio)
+        qs = qs.filter(data__date__gte=data_inicio)
     if data_fim:
-        qs = qs.filter(venda__data_emissao__date__lte=data_fim)
+        qs = qs.filter(data__date__lte=data_fim)
     if produto:
         qs = qs.filter(produto=produto)
 

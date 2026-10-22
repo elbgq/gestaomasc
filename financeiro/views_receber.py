@@ -5,7 +5,8 @@ from .models import FinanceiroReceber, CaixaMovimento
 from comercial.models import Venda
 from django.utils import timezone
 from django.core.paginator import Paginator
-from .forms import FinanceiroReceberForm
+from .forms import FinanceiroReceberForm, ReceberVencimentoForm
+from .services import titulo_pago
 from django.shortcuts import render, get_object_or_404, redirect
 from decimal import Decimal
 from django.contrib.contenttypes.models import ContentType
@@ -85,24 +86,42 @@ class ReceberCreateView(CreateView):
         return super().form_valid(form)
 
 # Atualizar título a receber - REVISADO
+# Título de venda ou de lançamento só tem o vencimento alterado aqui; o resto muda na origem
 class ReceberUpdateView(UpdateView):
     model = FinanceiroReceber
-    form_class = FinanceiroReceberForm
-    template_name = "financeiro/receber_form.html"
     success_url = reverse_lazy("financeiro:receber_list")
 
+    def dispatch(self, request, *args, **kwargs):
+        titulo = self.get_object()
+        if titulo_pago(titulo):
+            messages.error(request, "Título recebido não pode ser alterado. Estorne a quitação antes.")
+            return redirect("financeiro:titulo_detalhe", titulo.tipo, titulo.id)
+        return super().dispatch(request, *args, **kwargs)
 
+    def get_form_class(self):
+        return FinanceiroReceberForm if self.object.origem == "MANUAL" else ReceberVencimentoForm
+
+    def get_template_names(self):
+        if self.object.origem == "MANUAL":
+            return ["financeiro/receber_form.html"]
+        return ["financeiro/receber_vencimento_form.html"]
+
+
+# Só títulos manuais e ainda não recebidos podem ser excluídos
 class ReceberDeleteView(DeleteView):
     model = FinanceiroReceber
     template_name = "financeiro/receber_confirm_delete.html"
     success_url = reverse_lazy("financeiro:receber_list")
-    
-    def delete(self, request, *args, **kwargs):
-        obj = self.get_object()
-        if obj.origem != "Manual":
+
+    def dispatch(self, request, *args, **kwargs):
+        titulo = self.get_object()
+        if titulo.origem != "MANUAL":
             messages.error(request, "Este título só pode ser excluído na sua origem.")
             return redirect("financeiro:receber_list")
-        return super().delete(request, *args, **kwargs)
+        if titulo_pago(titulo):
+            messages.error(request, "Título recebido não pode ser excluído. Estorne a quitação antes.")
+            return redirect("financeiro:titulo_detalhe", titulo.tipo, titulo.id)
+        return super().dispatch(request, *args, **kwargs)
 
 # Receber título - REVISADO
  

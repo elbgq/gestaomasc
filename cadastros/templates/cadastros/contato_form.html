@@ -46,6 +46,12 @@
                     {{ form.email|add_class:"form-control" }}
                 </div>
 
+                <div class="col-md-8">
+                    <label class="form-label">Categoria financeira padrão</label>
+                    {{ form.categoria_padrao|add_class:"form-select" }}
+                    <div class="form-text">Já vem preenchida nos lançamentos e contas deste contato (ex.: RGE Sul → Energia elétrica).</div>
+                </div>
+
             </div>
 
             <div class="mt-4 d-flex gap-2">

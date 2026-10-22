@@ -1,0 +1,6 @@
+{# Selos do preço de venda: manual para todos; abaixo do custo / fora do sugerido só para quem vê custos #}
+{% if produto.preco_manual %}<span class="badge bg-secondary">manual</span>{% endif %}
+{% if perms.comercial.ver_custos %}
+{% if situacao == "abaixo_custo" %}<span class="badge bg-danger">abaixo do custo</span>
+{% elif situacao == "fora_sugerido" %}<span class="badge bg-warning text-dark">fora do sugerido</span>{% endif %}
+{% endif %}

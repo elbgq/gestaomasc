@@ -31,6 +31,8 @@
             <form method="post">
                 {% csrf_token %}
 
+                {% include "financeiro/_quitacao_campos.html" %}
+
                 <button type="submit" class="btn btn-success">
                     Confirmar Quitação
                 </button>

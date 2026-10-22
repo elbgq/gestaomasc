@@ -1,6 +1,7 @@
 from django.db import models, transaction
 from django.core.exceptions import ValidationError
 from cadastros.models import Produto, Servico, Contato
+from cadastros.precos import atualizar_preco_venda
 from decimal import Decimal
 from django.db import models
 from django.utils import timezone
@@ -22,6 +23,9 @@ class Compra(models.Model):
     # Preenchidos na importação do XML da NF-e
     chave_acesso = models.CharField("Chave de acesso", max_length=44, unique=True, null=True, blank=True)
     xml_nfe = models.TextField("XML da NF-e", blank=True, default="")
+
+    class Meta:
+        permissions = [("importar_nfe", "Pode importar compras pelo XML da NF-e")]
 
     def __str__(self):
         return f"Compra {self.numero_nota} - {self.fornecedor.nome}"
@@ -65,13 +69,10 @@ class Compra(models.Model):
         self.confirmada = False
         self.save()
     
+    # Número da nota como foi gravado; "—" quando não há número
     @property
     def numero_formatado(self):
-        try:
-            numero_int = int(self.numero_nota)
-        except (TypeError, ValueError):
-            numero_int = 0
-        return f"C{numero_int:06d}"
+        return (self.numero_nota or "").strip() or "—"
 
 
 
@@ -257,6 +258,8 @@ class Estoque(models.Model):
         self.quantidade = saldo
         self.preco_medio = preco_medio
         self.save()
+        # O custo mudou: produto com preço automático acompanha
+        atualizar_preco_venda(self.produto)
 
 #====================================
 # Models de movimentações de estoques
@@ -320,6 +323,7 @@ class MovimentacaoEstoque(models.Model):
             estoque.quantidade = novo_saldo
             estoque.preco_medio = novo_preco_medio
             estoque.save()
+            atualizar_preco_venda(self.produto)
 
             self.saldo_apos = novo_saldo
             self.preco_medio_apos = novo_preco_medio
@@ -402,13 +406,20 @@ class Venda(models.Model):
     vendedor = models.ForeignKey(Contato, on_delete=models.PROTECT, null=True,
         blank=True, related_name="vendas_realizadas"
     )
+
+    class Meta:
+        permissions = [("emitir_recibo", "Pode emitir recibo de venda")]
  
     def __str__(self):
         return f"Venda #{self.id} - {self.cliente}"
     
+    # Total da venda: itens (já com o desconto de cada item) - desconto da venda + acréscimo da venda
+    @property
+    def total_itens(self):
+        return sum((item.total for item in self.itens.all()), Decimal("0.00"))
+
     def atualizar_total(self):
-        itens_total = sum(item.total for item in self.itens.all())
-        self.total = itens_total
+        self.total = self.total_itens - (self.desconto or 0) + (self.acrescimo or 0)
         self.save()
     
     def save(self, *args, **kwargs):
@@ -475,6 +486,7 @@ class CMVItem(models.Model):
         ordering = ["data"]
         verbose_name = "CMV do Item"
         verbose_name_plural = "CMV dos Itens"
+        permissions = [("ver_custos", "Pode ver preço de custo e CMV")]
 
     def __str__(self):
         return f"CMV {self.produto} - {self.quantidade} un"

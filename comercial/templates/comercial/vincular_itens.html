@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load permissoes %}
 {% block content %}
 
 <h2 class="mb-3">Vincular Itens da Compra {{ compra.numero_nota }}</h2>
@@ -84,9 +85,9 @@
         <button class="btn btn-success">💾 Salvar Vinculações</button>
 
         {% if not tem_pendentes %}
-            <a href="{% url 'comercial:compras_confirmar' compra.id %}" class="btn btn-primary">
+            {% pode "comercial:compras_confirmar" as pode_compras_confirmar %}{% if pode_compras_confirmar %}<a href="{% url 'comercial:compras_confirmar' compra.id %}" class="btn btn-primary">
                 ✅ Confirmar Compra
-            </a>
+            </a>{% endif %}
         {% endif %}
 
         <a href="{% url 'comercial:compra_list' %}" class="btn btn-secondary">↩️ Voltar</a>

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load permissoes %}
 
 {% block content %}
 <div class="container mt-4">
@@ -28,8 +29,9 @@
         </tr>
     </table>
 
-    <a href="{% url 'cadastros:contato_update' obj.id %}" class="btn btn-primary">Editar</a>
-    <a href="{% url 'cadastros:contato_delete' obj.id %}" class="btn btn-danger">Excluir</a>
+    {% pode "cadastros:contato_update" as pode_contato_update %}{% if pode_contato_update %}<a href="{% url 'cadastros:contato_update' obj.id %}" class="btn btn-primary">Editar</a>{% endif %}
+    {% pode "cadastros:contato_unificar" as pode_contato_unificar %}{% if pode_contato_unificar %}<a href="{% url 'cadastros:contato_unificar' obj.id %}" class="btn btn-outline-warning">Unificar com outro</a>{% endif %}
+    {% pode "cadastros:contato_delete" as pode_contato_delete %}{% if pode_contato_delete %}<a href="{% url 'cadastros:contato_delete' obj.id %}" class="btn btn-danger">Excluir</a>{% endif %}
     <a href="{% url 'cadastros:contato_list' %}" class="btn btn-secondary">Voltar</a>
 
 </div>

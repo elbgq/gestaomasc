@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block title %}Revisão de Preços{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1 class="h3">Revisão de preços de venda</h1>
+        <a href="{% url 'cadastros:produto_list' %}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Produtos
+        </a>
+    </div>
+
+    <!-- Markup e tolerância -->
+    <div class="card shadow-sm p-3 mb-4">
+        <form method="post" class="row g-3 align-items-end">
+            {% csrf_token %}
+            <input type="hidden" name="acao" value="config">
+            <div class="col-md-3">
+                <label for="id_markup" class="form-label">{{ form_config.markup.label }}</label>
+                {{ form_config.markup }}
+                {% for erro in form_config.markup.errors %}<div class="text-danger small">{{ erro }}</div>{% endfor %}
+            </div>
+            <div class="col-md-3">
+                <label for="id_tolerancia" class="form-label">{{ form_config.tolerancia.label }}</label>
+                {{ form_config.tolerancia }}
+                {% for erro in form_config.tolerancia.errors %}<div class="text-danger small">{{ erro }}</div>{% endfor %}
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary">Salvar</button>
+            </div>
+            <div class="col-12 form-text">
+                Preço automático = custo médio × (1 + markup). Ao mudar o markup, todos os produtos automáticos
+                são recalculados; os manuais não mudam.
+            </div>
+        </form>
+    </div>
+
+    <!-- Filtro -->
+    <ul class="nav nav-tabs mb-3">
+        <li class="nav-item">
+            <a class="nav-link {% if mostrar == 'sinalizados' %}active{% endif %}" href="?mostrar=sinalizados">Sinalizados</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if mostrar == 'manuais' %}active{% endif %}" href="?mostrar=manuais">Todos os manuais ({{ total_manuais }})</a>
+        </li>
+    </ul>
+
+    <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="acao" value="aplicar">
+        <input type="hidden" name="mostrar" value="{{ mostrar }}">
+
+        <div class="table-responsive">
+            <table class="table table-striped table-hover align-middle">
+                <thead class="table-dark">
+                    <tr>
+                        <th><input type="checkbox" id="marcar-todos" class="form-check-input" title="Marcar todos"></th>
+                        <th>Produto</th>
+                        <th class="text-end">Custo médio</th>
+                        <th class="text-end">Preço atual</th>
+                        <th class="text-end">Sugerido</th>
+                        <th class="text-end">Diferença</th>
+                        <th>Situação</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for linha in linhas %}
+                    <tr>
+                        <td><input type="checkbox" name="produtos" value="{{ linha.produto.pk }}" class="form-check-input marcar"></td>
+                        <td>{{ linha.produto }}</td>
+                        <td class="text-end">{% if linha.custo %}R$ {{ linha.custo|floatformat:2 }}{% else %}—{% endif %}</td>
+                        <td class="text-end">R$ {{ linha.produto.preco_venda|floatformat:2 }}</td>
+                        <td class="text-end">{% if linha.sugerido %}R$ {{ linha.sugerido|floatformat:2 }}{% else %}—{% endif %}</td>
+                        <td class="text-end">{% if linha.diferenca is not None %}{{ linha.diferenca|floatformat:1 }}%{% endif %}</td>
+                        <td>{% include "cadastros/_selo_preco.html" with produto=linha.produto situacao=linha.situacao %}</td>
+                        <td><a href="{% url 'cadastros:produto_update' linha.produto.pk %}" class="btn btn-sm btn-warning">Editar</a></td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center text-muted">Nenhum produto para revisar.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if linhas %}
+        <button type="submit" class="btn btn-success">
+            <i class="bi bi-check-circle"></i> Aplicar preço sugerido nos marcados
+        </button>
+        <div class="form-text">Os marcados voltam ao preço automático e passam a acompanhar o custo nas próximas compras.</div>
+        {% endif %}
+    </form>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ block.super }}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const todos = document.getElementById("marcar-todos");
+    if (!todos) return;
+    todos.addEventListener("change", function () {
+        document.querySelectorAll(".marcar").forEach(c => c.checked = todos.checked);
+    });
+});
+</script>
+{% endblock scripts %}

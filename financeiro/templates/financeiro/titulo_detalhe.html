@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load permissoes %}
 
 {% block title %}Detalhes do Título{% endblock %}
 
@@ -18,6 +19,17 @@
 
         {% if titulo.esta_pago %}
             <p><strong>Data de Quitação:</strong> {{ titulo.data_pagamento|date:"d/m/Y" }}</p>
+            {% if titulo.valor_juros or titulo.valor_multa or titulo.valor_desconto %}
+                <p><strong>Juros:</strong> R$ {{ titulo.valor_juros|floatformat:2 }}
+                   · <strong>Multa:</strong> R$ {{ titulo.valor_multa|floatformat:2 }}
+                   · <strong>Desconto:</strong> R$ {{ titulo.valor_desconto|floatformat:2 }}</p>
+                <p><strong>Total {% if titulo.tipo == "R" %}recebido{% else %}pago{% endif %}:</strong> R$ {{ titulo.total_quitado|floatformat:2 }}</p>
+            {% endif %}
+            {% if titulo.caixa_movimento %}
+                <p><strong>Movimento no caixa:</strong>
+                    <a href="{% url 'financeiro:caixa_movimento_detalhe' titulo.caixa_movimento.id %}">#{{ titulo.caixa_movimento.id }}</a>
+                </p>
+            {% endif %}
         {% endif %}
  
         <p>
@@ -40,16 +52,28 @@
 
         <p><strong>Origem:</strong> {{ titulo.origem }}</p>
 
+        {% if titulo.observacao %}
+            <p class="mb-1"><strong>Histórico de alterações:</strong></p>
+            <p class="small text-muted" style="white-space: pre-line">{{ titulo.observacao }}</p>
+        {% endif %}
+
 
         <div class="mt-4 d-flex gap-2">
 
             {% if not titulo.esta_pago %}
-                <a href="{% url 'financeiro:titulo_confirmar_quitacao' titulo.tipo titulo.id %}"
+                {% pode "financeiro:titulo_confirmar_quitacao" as pode_titulo_confirmar_quitacao %}{% if pode_titulo_confirmar_quitacao %}<a href="{% url 'financeiro:titulo_confirmar_quitacao' titulo.tipo titulo.id %}"
                    class="btn btn-success">
                     Quitar Título
-                </a>
+                </a>{% endif %}
+            {% else %}
+                {% pode "financeiro:titulo_estornar_quitacao" as pode_titulo_estornar_quitacao %}{% if pode_titulo_estornar_quitacao %}<a href="{% url 'financeiro:titulo_estornar_quitacao' titulo.tipo titulo.id %}"
+                   class="btn btn-outline-danger">
+                    Estornar Quitação
+                </a>{% endif %}
             {% endif %}
-<!-- DEBUG: tipo={{ object.tipo }} id={{ object.id }} valor_pago={{ object.valor_pago }} -->
+            {% pode "financeiro:titulo_reclassificar" as pode_titulo_reclassificar %}{% if pode_titulo_reclassificar %}<a href="{% url 'financeiro:titulo_reclassificar' titulo.tipo titulo.id %}" class="btn btn-outline-primary">
+                Alterar Categoria
+            </a>{% endif %}
             <a href="{% url 'financeiro:titulo_list' %}" class="btn btn-secondary">
                 Voltar
             </a>

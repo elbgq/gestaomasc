@@ -14,11 +14,17 @@ from cadastros.models import Contato
 
 from django.http import HttpResponseForbidden
 from .models import FinanceiroPagar
+from .services import FinanceiroErro, quitar_titulo, titulo_pago
+from .views_titulos import ler_quitacao
 
 
 # Views para Contas a Pagar
 def pagar_update(request, pk):
     titulo = get_object_or_404(FinanceiroPagar, pk=pk)
+
+    if titulo_pago(titulo):
+        messages.error(request, "Título pago não pode ser alterado. Estorne a quitação antes.")
+        return redirect("financeiro:titulo_detalhe", titulo.tipo, titulo.id)
 
     # Se for COMPRA ou LANCAMENTO, só permite editar vencimento
     if titulo.origem in ["COMPRA", "LANCAMENTO"]:
@@ -44,6 +50,10 @@ def pagar_delete(request, pk):
     if titulo.origem != "MANUAL":
         return HttpResponseForbidden("Somente títulos manuais podem ser excluídos.")
 
+    if titulo_pago(titulo):
+        messages.error(request, "Título pago não pode ser excluído. Estorne a quitação antes.")
+        return redirect("financeiro:titulo_detalhe", titulo.tipo, titulo.id)
+
     if request.method == "POST":
         titulo.delete()
         return redirect("financeiro:contas_pagar_lista")
@@ -64,12 +74,13 @@ def contas_pagar_lista(request):
     
     # Filtro por vencimento
     vencimento = request.GET.get("vencimento")
+    # Os filtros de vencimento mostram só o que está em aberto
     if vencimento == "vencidos":
-        titulos = titulos.filter(data_vencimento__lt=hoje, valor_pago__isnull=True)
+        titulos = titulos.filter(status="pendente", data_vencimento__lt=hoje)
     elif vencimento == "hoje":
-        titulos = titulos.filter(data_vencimento=hoje)
+        titulos = titulos.filter(status="pendente", data_vencimento=hoje)
     elif vencimento == "amanha":
-        titulos = titulos.filter(data_vencimento=hoje + timezone.timedelta(days=1))
+        titulos = titulos.filter(status="pendente", data_vencimento=hoje + timedelta(days=1))
   
     # ===== Separação entre abas ======
     contas_compras = titulos.filter(origem="COMPRA")
@@ -89,11 +100,16 @@ def contas_pagar_lista(request):
     page_obj_avulsas = paginator_avulsas.get_page(page_avulsas)
 
     # Cálculo para o resumo
-    total_compras = contas_compras.aggregate(total=Sum("valor"))["total"] or 0
-    total_avulsas = contas_avulsas.aggregate(total=Sum("valor"))["total"] or 0
+    def soma(qs, campo="valor"):
+        return qs.aggregate(total=Sum(campo))["total"] or 0
 
-    vencidos_compras = contas_compras.filter(data_vencimento__lt=hoje, valor_pago__isnull=True).count()
-    vencidos_avulsas = contas_avulsas.filter(data_vencimento__lt=hoje, valor_pago__isnull=True).count()
+    aberto_compras = soma(contas_compras.filter(status="pendente"))
+    aberto_avulsas = soma(contas_avulsas.filter(status="pendente"))
+    pago_compras = soma(contas_compras.filter(status="pago"), "valor_pago")
+    pago_avulsas = soma(contas_avulsas.filter(status="pago"), "valor_pago")
+
+    vencidos_compras = contas_compras.filter(status="pendente", data_vencimento__lt=hoje).count()
+    vencidos_avulsas = contas_avulsas.filter(status="pendente", data_vencimento__lt=hoje).count()
 
 
     contexto = {
@@ -107,9 +123,11 @@ def contas_pagar_lista(request):
         "paginator_avulsas": paginator_avulsas,
         
         # Resumos
-        "total_compras": total_compras,
+        "aberto_compras": aberto_compras,
+        "pago_compras": pago_compras,
         "vencidos_compras": vencidos_compras,
-        "total_avulsas": total_avulsas,
+        "aberto_avulsas": aberto_avulsas,
+        "pago_avulsas": pago_avulsas,
         "vencidos_avulsas": vencidos_avulsas,
         
         # Para manter filtros nos links do paginator
@@ -211,52 +229,27 @@ def estornar_financeiro_pagar(compra):
 
         titulo.delete()
 
-''' 
-Esta view:
-- abre uma tela de confirmação
-- registra o pagamento
-- cria o movimento no caixa
-- marca o título como pago
-- impede pagar duas vezes
-- funciona para qualquer origem (COMPRA, LANCAMENTO, MANUAL)
-'''
-# Esse é o coração do módulo financeiro: transformar um compromisso (FinanceiroPagar)
-# em um pagamento efetivo (CaixaMovimento)
-# REVISADO
+# "Pagar" em Contas a Pagar: usa a mesma quitação da tela de Títulos
 def pagar_titulo(request, pk):
     titulo = get_object_or_404(FinanceiroPagar, pk=pk)
 
     # Impede pagar duas vezes
-    if titulo.status == "pago" or titulo.esta_pago():
+    if titulo_pago(titulo):
         messages.warning(request, "Este título já foi pago.")
         return redirect("financeiro:contas_pagar_lista")
 
     if request.method == "POST":
-        data_pag = request.POST.get("data_pagamento") or timezone.localdate()
-        valor = titulo.valor
-
-        mov = CaixaMovimento.objects.create(
-            caixa=Caixa.objects.filter(nome="Caixa Principal").first(),
-            data=data_pag,
-            descricao=f"Pagamento: {titulo.descricao}",
-            valor=valor,
-            tipo="S",
-            origem="PAGAMENTO",
-            referencia_id=titulo.id,
-            referencia_tipo="D",
-        )
-
-        titulo.data_pagamento = data_pag
-        titulo.valor_pago = valor
-        titulo.status = "pago"
-        titulo.caixa_movimento = mov
-        titulo.save()
-
+        try:
+            quitar_titulo(titulo, **ler_quitacao(request.POST))
+        except FinanceiroErro as erro:
+            messages.error(request, str(erro))
+            return redirect("financeiro:pagar_titulo", pk=pk)
+        messages.success(request, "Pagamento registrado.")
         return redirect("financeiro:contas_pagar_lista")
 
-    return render(request, "financeiro/pagar_quitacao.html", {"titulo": titulo})
-    
- 
+    return render(request, "financeiro/pagar_quitacao.html", {"titulo": titulo, "hoje": timezone.localdate()})
+
+
 def titulo_detalhe(request, pk):
     titulo = get_object_or_404(FinanceiroPagar, pk=pk)
 

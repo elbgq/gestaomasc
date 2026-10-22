@@ -34,6 +34,20 @@
                 <div class="col-md-4">
                     <label for="id_preco_venda" class="form-label">Preço Venda</label>
                     {{ form.preco_venda|add_class:"form-control" }}
+                    <div class="form-check mt-1">
+                        {{ form.preco_manual|add_class:"form-check-input" }}
+                        <label for="id_preco_manual" class="form-check-label">Preço manual (não recalcular pelo custo)</label>
+                    </div>
+                    {% if perms.comercial.ver_custos and preco_sugerido %}
+                    <div class="form-text">
+                        Custo médio R$ {{ custo_medio|floatformat:2 }} ·
+                        sugerido R$ {{ preco_sugerido|floatformat:2 }} ({{ config_preco.markup|floatformat:"-2" }}%)
+                        <button type="button" id="usar-sugerido" class="btn btn-link btn-sm p-0 align-baseline"
+                                data-sugerido="{{ preco_sugerido|stringformat:'.2f' }}">Voltar ao automático</button>
+                    </div>
+                    {% elif form.instance.pk and not preco_sugerido %}
+                    <div class="form-text">Sem custo ainda: o preço automático é calculado na primeira compra.</div>
+                    {% endif %}
                 </div>
 
                 <div class="col-md-4">
@@ -64,3 +78,20 @@
 
 </div>
 {% endblock %}
+
+{% block scripts %}
+{{ block.super }}
+<script>
+// "Voltar ao automático": aplica o preço sugerido e desmarca o preço manual
+document.addEventListener("DOMContentLoaded", function () {
+    const botao = document.getElementById("usar-sugerido");
+    if (!botao) return;
+    botao.addEventListener("click", function () {
+        const preco = document.getElementById("id_preco_venda");
+        if (preco.inputmask) preco.inputmask.setValue(botao.dataset.sugerido);
+        else preco.value = botao.dataset.sugerido;
+        document.getElementById("id_preco_manual").checked = false;
+    });
+});
+</script>
+{% endblock scripts %}

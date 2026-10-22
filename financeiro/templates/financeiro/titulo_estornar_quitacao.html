@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}Estornar Quitação{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-danger text-white">
+            <h4 class="mb-0">Estornar Quitação</h4>
+        </div>
+
+        <div class="card-body">
+
+            <p>
+                O título volta para <strong>em aberto</strong> e o caixa recebe um lançamento inverso
+                {% if titulo.tipo == "R" %}(saída){% else %}(entrada){% endif %}
+                de R$ {{ titulo.total_quitado|floatformat:2 }}, com a data de hoje. O movimento original continua no histórico.
+            </p>
+
+            <ul>
+                <li><strong>Descrição:</strong> {{ titulo.descricao }}</li>
+                <li><strong>Valor quitado:</strong> R$ {{ titulo.total_quitado|floatformat:2 }}</li>
+                <li><strong>Quitado em:</strong> {{ titulo.data_pagamento|date:"d/m/Y" }}</li>
+            </ul>
+
+            <form method="post">
+                {% csrf_token %}
+
+                <button type="submit" class="btn btn-danger">
+                    Confirmar Estorno
+                </button>
+
+                <a href="{% url 'financeiro:titulo_detalhe' titulo.tipo titulo.id %}"
+                   class="btn btn-secondary ms-2">
+                    Cancelar
+                </a>
+            </form>
+
+        </div>
+    </div>
+
+</div>
+{% endblock %}

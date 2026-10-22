@@ -161,10 +161,11 @@ def ajax_estoque(request, produto_id):
         return JsonResponse({"erro": "Produto não encontrado."}, status=404)
 
     estoque = Estoque.objects.filter(produto=produto).first()
-    return JsonResponse({
-        "estoque": float(estoque.quantidade if estoque else 0),
-        "preco_medio": float(estoque.preco_medio if estoque else 0),
-    })
+    dados = {"estoque": float(estoque.quantidade if estoque else 0)}
+    # Preço de custo só para quem pode ver custos
+    if request.user.has_perm("comercial.ver_custos"):
+        dados["preco_medio"] = float(estoque.preco_medio if estoque else 0)
+    return JsonResponse(dados)
 
 
 # Desfaz as saídas de estoque já lançadas para a venda.

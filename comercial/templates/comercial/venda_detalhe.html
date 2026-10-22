@@ -9,6 +9,7 @@
     <div class="card shadow-sm p-4 mb-4">
         <h4 class="mb-3">Informações Gerais</h4>
         <p><strong>Cliente:</strong> {{ venda.cliente }}</p>
+        <p><strong>CPF/CNPJ:</strong> {{ venda.cliente.documento|default:"não informado" }}</p>
         <p><strong>Venda nº:</strong> {{ venda.numero_formatado }}</p>
         <p><strong>Data de Emissão:</strong> {{ venda.data_emissao|date:"d/m/Y H:i" }}</p>
         <p><strong>Forma de Pagamento:</strong> 
@@ -18,6 +19,11 @@
                 <span class="badge bg-success">Parcelado</span>
             {% endif %}
         </p>
+        {% if venda.desconto or venda.acrescimo %}
+        <p class="mb-1">Itens: R$ {{ venda.total_itens|floatformat:2 }}</p>
+        {% if venda.desconto %}<p class="mb-1">(-) Desconto na venda: R$ {{ venda.desconto|floatformat:2 }}</p>{% endif %}
+        {% if venda.acrescimo %}<p class="mb-1">(+) Acréscimo na venda: R$ {{ venda.acrescimo|floatformat:2 }}</p>{% endif %}
+        {% endif %}
         <p><strong>Total:</strong> R$ {{ venda.total|floatformat:2 }} </p>
     </div>
     <hr>

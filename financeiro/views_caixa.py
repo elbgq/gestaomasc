@@ -4,20 +4,43 @@ from django.db.models import Sum
 from .models import CaixaMovimento
 from django.contrib import messages
 from django.views.generic import CreateView, UpdateView, DeleteView
-from django.urls import reverse_lazy
+from django.urls import reverse, reverse_lazy
+from django.core.validators import MinValueValidator
+from financeiro.services import saldo_geral
 from .models import CaixaMovimento
 from django.utils import timezone
-from datetime import timedelta
+from datetime import date, timedelta
+from decimal import Decimal, InvalidOperation
 from financeiro.models import (
     FinanceiroReceber, FinanceiroPagar, CaixaMovimento, Caixa, CaixaAbertura, CaixaFechamento                        
 )
  
+# Lê um valor em reais digitado no formulário; devolve None se vazio ou inválido
+def ler_valor(texto, permitir_zero=False):
+    try:
+        valor = Decimal(str(texto).replace(",", "."))
+    except (InvalidOperation, TypeError):
+        return None
+    if valor < 0 or (valor == 0 and not permitir_zero):
+        return None
+    return valor.quantize(Decimal("0.01"))
+
+
 # Abertura de caixa
 def caixa_abrir(request, pk):
     caixa = get_object_or_404(Caixa, pk=pk)
 
+    if CaixaAbertura.objects.filter(caixa=caixa, aberto=True).exists():
+        messages.warning(request, "Este caixa já está aberto.")
+        return redirect("financeiro:caixa_detalhe", pk=pk)
+
+    saldo = caixa.saldo_atual()
+
     if request.method == "POST":
-        valor = request.POST.get("valor_abertura")
+        valor = ler_valor(request.POST.get("valor_abertura"), permitir_zero=True)
+        if valor is None:
+            messages.error(request, "Informe um valor de abertura válido.")
+            return redirect("financeiro:caixa_abrir", pk=pk)
         operador = request.user.username
 
         CaixaAbertura.objects.create(
@@ -27,10 +50,15 @@ def caixa_abrir(request, pk):
             aberto=True
         )
 
-        messages.success(request, "Caixa aberto com sucesso.")
+        # O valor contado na abertura não altera o saldo; só avisa se não confere
+        diferenca = valor - Decimal(saldo).quantize(Decimal("0.01"))
+        if diferenca:
+            messages.warning(request, f"Caixa aberto com diferença de R$ {diferenca:.2f} em relação ao saldo do sistema.")
+        else:
+            messages.success(request, "Caixa aberto com sucesso.")
         return redirect("financeiro:caixa_detalhe", pk=pk)
 
-    return render(request, "financeiro/caixa_abrir.html", {"caixa": caixa})
+    return render(request, "financeiro/caixa_abrir.html", {"caixa": caixa, "saldo": saldo})
 
 # Fechamento de caixa
 def caixa_fechar(request, pk):
@@ -44,10 +72,13 @@ def caixa_fechar(request, pk):
     saldo_atual = caixa.saldo_atual()
 
     if request.method == "POST":
-        valor_fechamento = request.POST.get("valor_fechamento")
+        valor_fechamento = ler_valor(request.POST.get("valor_fechamento"), permitir_zero=True)
+        if valor_fechamento is None:
+            messages.error(request, "Informe o valor contado no caixa.")
+            return redirect("financeiro:caixa_fechar", pk=pk)
         operador = request.user.username
 
-        diferenca = float(valor_fechamento) - float(saldo_atual)
+        diferenca = valor_fechamento - Decimal(saldo_atual).quantize(Decimal("0.01"))
 
         CaixaFechamento.objects.create(
             abertura=abertura,
@@ -73,10 +104,13 @@ def caixa_sangria(request, pk):
     caixa = get_object_or_404(Caixa, pk=pk)
 
     if request.method == "POST":
-        valor = request.POST.get("valor")
+        valor = ler_valor(request.POST.get("valor"))
+        if valor is None:
+            messages.error(request, "Informe um valor de sangria maior que zero.")
+            return redirect("financeiro:caixa_sangria", pk=pk)
         CaixaMovimento.objects.create(
             caixa=caixa,
-            data=timezone.now(),
+            data=timezone.localdate(),
             descricao="Sangria de caixa",
             tipo="S",
             valor=valor,
@@ -92,10 +126,13 @@ def caixa_reforco(request, pk):
     caixa = get_object_or_404(Caixa, pk=pk)
 
     if request.method == "POST":
-        valor = request.POST.get("valor")
+        valor = ler_valor(request.POST.get("valor"))
+        if valor is None:
+            messages.error(request, "Informe um valor de reforço maior que zero.")
+            return redirect("financeiro:caixa_reforco", pk=pk)
         CaixaMovimento.objects.create(
             caixa=caixa,
-            data=timezone.now(),
+            data=timezone.localdate(),
             descricao="Reforço de caixa",
             tipo="E",
             valor=valor,
@@ -167,6 +204,7 @@ def caixa_historico(request):
     total_entradas = movimentos.filter(tipo="E").aggregate(total=Sum("valor"))["total"] or 0
     total_saidas = movimentos.filter(tipo="S").aggregate(total=Sum("valor"))["total"] or 0
     saldo = total_entradas - total_saidas
+    saldo_atual = saldo_geral()
     
      # Adicionando paginação
     paginator = Paginator(movimentos, 20)  # 20 itens por página
@@ -179,6 +217,7 @@ def caixa_historico(request):
         "total_entradas": total_entradas,
         "total_saidas": total_saidas,
         "saldo": saldo,
+        "saldo_atual": saldo_atual,
         "data_ini": data_ini,
         "data_fim": data_fim,
     })
@@ -190,55 +229,66 @@ def caixa_movimento_detalhe(request, pk):
         "movimento": movimento
     })
 
-# Criação de um caixa
-class CaixaCreateView(CreateView):
+# Movimento manual no caixa (sempre ligado a um caixa)
+class CaixaMovimentoFormMixin:
     model = CaixaMovimento
     template_name = "financeiro/caixa_form.html"
-    fields = ["data", "descricao", "tipo", "valor", "origem", "observacao"]
-    success_url = reverse_lazy("financeiro:caixa_list")
+    fields = ["caixa", "data", "descricao", "tipo", "valor", "observacao"]
+
+    def get_form(self, form_class=None):
+        form = super().get_form(form_class)
+        form.fields["caixa"].required = True
+        form.fields["caixa"].queryset = Caixa.objects.filter(ativo=True)
+        form.fields["valor"].validators.append(MinValueValidator(Decimal("0.01")))
+        return form
+
+    def get_success_url(self):
+        return reverse("financeiro:caixa_detalhe", args=[self.object.caixa_id])
+
+
+class CaixaCreateView(CaixaMovimentoFormMixin, CreateView):
+    def get_initial(self):
+        return {"caixa": Caixa.objects.filter(nome="Caixa Principal").first(), "data": timezone.localdate()}
 
     def form_valid(self, form):
         # Movimentos manuais sempre têm origem "MANUAL"
-        mov = form.save(commit=False)
-        mov.origem = "MANUAL"
-        mov.save()
+        form.instance.origem = "MANUAL"
         return super().form_valid(form)
-    
-class CaixaUpdateView(UpdateView):
-    model = CaixaMovimento
-    template_name = "financeiro/caixa_form.html"
-    fields = ["data", "descricao", "tipo", "valor", "origem", "observacao"]
-    success_url = reverse_lazy("financeiro:caixa_list")
 
+
+class CaixaUpdateView(CaixaMovimentoFormMixin, UpdateView):
     def dispatch(self, request, *args, **kwargs):
         mov = self.get_object()
         if mov.origem != "MANUAL":
             messages.error(request, "Somente movimentos manuais podem ser editados.")
-            return redirect("financeiro:caixa_list")
+            return redirect("financeiro:caixa_movimento_detalhe", pk=mov.pk)
         return super().dispatch(request, *args, **kwargs)
+
 
 class CaixaDeleteView(DeleteView):
     model = CaixaMovimento
     template_name = "financeiro/caixa_confirm_delete.html"
-    success_url = reverse_lazy("financeiro:caixa_list")
 
     def dispatch(self, request, *args, **kwargs):
         mov = self.get_object()
         if mov.origem != "MANUAL":
             messages.error(request, "Somente movimentos manuais podem ser excluídos.")
-            return redirect("financeiro:caixa_list")
+            return redirect("financeiro:caixa_movimento_detalhe", pk=mov.pk)
         return super().dispatch(request, *args, **kwargs)
-    
+
+    def get_success_url(self):
+        if self.object.caixa_id:
+            return reverse("financeiro:caixa_detalhe", args=[self.object.caixa_id])
+        return reverse("financeiro:caixa_historico")
+
 # DASHBOARD FINANCEIRO
 
 
 def dashboard_financeiro(request):
     hoje = timezone.localdate()
 
-    # Saldo atual do caixa
-    entradas = CaixaMovimento.objects.filter(tipo="E").aggregate(total=Sum("valor"))["total"] or 0
-    saídas = CaixaMovimento.objects.filter(tipo="S").aggregate(total=Sum("valor"))["total"] or 0
-    saldo_atual = entradas - saídas
+    # Saldo atual: o mesmo da tela do caixa (saldo inicial + movimentos)
+    saldo_atual = saldo_geral()
 
     # Entradas e saídas do mês atual
     primeiro_dia = hoje.replace(day=1)
@@ -257,13 +307,13 @@ def dashboard_financeiro(request):
 
     # Títulos vencidos
     vencidos = FinanceiroReceber.objects.filter(
-        esta_pago=False,
+        status="pendente",
         data_vencimento__lt=hoje
-    )
+    ).order_by("data_vencimento")
 
     # Próximos vencimentos (7 dias)
     proximos = FinanceiroReceber.objects.filter(
-        esta_pago=False,
+        status="pendente",
         data_vencimento__gte=hoje,
         data_vencimento__lte=hoje + timedelta(days=7)
     )
@@ -274,8 +324,9 @@ def dashboard_financeiro(request):
     saídas_graf = []
 
     for i in range(5, -1, -1):
-        mes_ref = (hoje.replace(day=1) - timedelta(days=30 * i))
-        mes_inicio = mes_ref.replace(day=1)
+        # Volta i meses do calendário a partir do mês atual
+        ano, mes = divmod(hoje.year * 12 + hoje.month - 1 - i, 12)
+        mes_inicio = date(ano, mes + 1, 1)
         mes_fim = (mes_inicio + timedelta(days=32)).replace(day=1) - timedelta(days=1)
 
         meses.append(mes_inicio.strftime("%b/%Y"))

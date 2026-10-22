@@ -6,7 +6,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import transaction
 
-from cadastros.models import Contato, Produto, UNIDADES_CHOICES
+from cadastros.models import Contato, Produto, UNIDADES_CHOICES, formatar_documento
 
 NS = {"nfe": "http://www.portalfiscal.inf.br/nfe"}
 
@@ -18,14 +18,6 @@ UNIDADES_VALIDAS = {codigo for codigo, _ in UNIDADES_CHOICES}
 
 def somente_digitos(valor):
     return "".join(c for c in (valor or "") if c.isdigit())
-
-
-def formatar_documento(doc):
-    if len(doc) == 14:
-        return f"{doc[:2]}.{doc[2:5]}.{doc[5:8]}/{doc[8:12]}-{doc[12:]}"
-    if len(doc) == 11:
-        return f"{doc[:3]}.{doc[3:6]}.{doc[6:9]}-{doc[9:]}"
-    return doc
 
 
 def buscar_fornecedor(documento):
@@ -237,7 +229,7 @@ class XmlCompraImporter:
         with transaction.atomic():
             if fornecedor is None:
                 fornecedor = Contato.objects.create(
-                    nome=nome_fornecedor, tipo="FORNECEDOR", documento=documento,
+                    nome=nome_fornecedor, tipo="FORNECEDOR", documento=formatar_documento(documento),
                 )
 
             compra = Compra.objects.create(

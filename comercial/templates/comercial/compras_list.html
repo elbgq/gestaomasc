@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load permissoes %}
 
 {% block title %}Lista de Compras{% endblock %}
 
@@ -10,13 +11,13 @@
         <h1 class="h3">Compras</h1>
 
         <div class="d-flex gap-2">
-            <a href="{% url 'comercial:compras_importar' %}" class="btn btn-secondary">
+            {% pode "comercial:compras_importar" as pode_compras_importar %}{% if pode_compras_importar %}<a href="{% url 'comercial:compras_importar' %}" class="btn btn-secondary">
                 <i class="bi bi-upload"></i> Importar Compra (CSV/XML)
-            </a>
+            </a>{% endif %}
 
-            <a href="{% url 'comercial:compra_criar' %}" class="btn btn-primary">
+            {% pode "comercial:compra_criar" as pode_compra_criar %}{% if pode_compra_criar %}<a href="{% url 'comercial:compra_criar' %}" class="btn btn-primary">
                 <i class="bi bi-plus-circle"></i> Nova Compra
-            </a>
+            </a>{% endif %}
         </div>
     </div>
 
@@ -66,24 +67,24 @@
                         <div class="center-flex-cell">
 
                             {% if compra.importada and not compra.confirmada %}
-                            <a href="{% url 'comercial:vincular_itens' compra.id %}" class="btn btn-sm btn-info">
+                            {% pode "comercial:vincular_itens" as pode_vincular_itens %}{% if pode_vincular_itens %}<a href="{% url 'comercial:vincular_itens' compra.id %}" class="btn btn-sm btn-info">
                                 Vincular Itens
-                            </a>
+                            </a>{% endif %}
                             {% endif %}
 
                             {% if not compra.confirmada %}
 
-                            <a href="{% url 'comercial:compra_editar' compra.pk %}" class="btn btn-sm btn-warning">
+                            {% pode "comercial:compra_editar" as pode_compra_editar %}{% if pode_compra_editar %}<a href="{% url 'comercial:compra_editar' compra.pk %}" class="btn btn-sm btn-warning">
                                 Editar
-                            </a>
+                            </a>{% endif %}
                             {% endif %}
                             
                             {% if not compra.confirmada %}
-                            <a href="{% url 'comercial:compra_excluir' compra.id %}"
+                            {% pode "comercial:compra_excluir" as pode_compra_excluir %}{% if pode_compra_excluir %}<a href="{% url 'comercial:compra_excluir' compra.id %}"
                             class="btn btn-sm btn-danger"
                             onclick="return confirm('Tem certeza que deseja excluir esta compra? Esta ação não pode ser desfeita.');">
                                 Excluir
-                            </a>
+                            </a>{% endif %}
                             {% endif %}
                             <a href="{% url 'comercial:compra_detalhe' compra.id %}" 
                                 class="btn btn-sm btn-primary">

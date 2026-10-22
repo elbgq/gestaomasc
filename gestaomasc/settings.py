@@ -76,6 +76,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'core.middleware.LoginRequiredMiddleware',
+    'core.middleware.PermissaoMiddleware',
 ]
 
 ROOT_URLCONF = 'gestaomasc.urls'

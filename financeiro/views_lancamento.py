@@ -1,10 +1,13 @@
 from django.urls import reverse_lazy
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 from django.core.paginator import Paginator
-from django.shortcuts import render
+from django.shortcuts import render, redirect
+from django.contrib import messages
+from django.db import transaction
 from django.utils import timezone
 from .models import FinanceiroLancamento, FinanceiroPagar, FinanceiroReceber, FinanceiroCategoria
 from .forms import LancamentoForm
+from .services import titulo_pago
 from django.contrib.contenttypes.models import ContentType
 
 class LancamentoListView(ListView):
@@ -62,6 +65,53 @@ class LancamentoListView(ListView):
 
         return context
  
+# Títulos (a pagar e a receber) gerados por um lançamento
+def titulos_do_lancamento(lanc):
+    filtro = {
+        "origem": "LANCAMENTO",
+        "content_type": ContentType.objects.get_for_model(FinanceiroLancamento),
+        "object_id": lanc.id,
+    }
+    return FinanceiroPagar.objects.filter(**filtro), FinanceiroReceber.objects.filter(**filtro)
+
+
+def lancamento_tem_titulo_pago(lanc):
+    return any(titulo_pago(t) for qs in titulos_do_lancamento(lanc) for t in qs)
+
+
+# Cria ou atualiza o título do lançamento: despesa gera conta a pagar, receita gera conta a receber.
+# Se a categoria trocou de tipo, o título do tipo antigo (ainda em aberto) é apagado.
+def sincronizar_titulo(lanc):
+    pagar, receber = titulos_do_lancamento(lanc)
+    despesa = lanc.categoria.tipo == "D"
+
+    (receber if despesa else pagar).delete()
+    modelo, contato = (FinanceiroPagar, "contato") if despesa else (FinanceiroReceber, "cliente")
+
+    titulo, created = modelo.objects.get_or_create(
+        origem="LANCAMENTO",
+        content_type=ContentType.objects.get_for_model(FinanceiroLancamento),
+        object_id=lanc.id,
+        defaults={
+            "data_lancamento": lanc.data,
+            "data_vencimento": lanc.data,
+            "descricao": lanc.descricao,
+            "valor": lanc.valor,
+            "categoria": lanc.categoria,
+            contato: lanc.contato,
+        }
+    )
+    if not created:
+        titulo.data_lancamento = lanc.data
+        titulo.data_vencimento = lanc.data  # ou outra regra
+        setattr(titulo, contato, lanc.contato)
+        titulo.descricao = lanc.descricao
+        titulo.valor = lanc.valor
+        titulo.categoria = lanc.categoria
+        titulo.save()
+    return titulo
+
+
 class LancamentoCreateView(CreateView):
     model = FinanceiroLancamento
     form_class = LancamentoForm
@@ -69,60 +119,10 @@ class LancamentoCreateView(CreateView):
     success_url = reverse_lazy("financeiro:lancamento_list")
 
     def form_valid(self, form):
-        lanc = form.save(commit=False)
-        
-        lanc.save()
- 
-        # DESPESA → cria FinanceiroPagar
-        if lanc.categoria.tipo == "D":            
-            titulo, created = FinanceiroPagar.objects.get_or_create(
-                origem="LANCAMENTO",
-                content_type=ContentType.objects.get_for_model(lanc),
-                object_id=lanc.id,
- 
-                defaults={
-                    "data_lancamento": lanc.data,
-                    "data_vencimento": lanc.data,
-                    "descricao": lanc.descricao,
-                    "valor": lanc.valor,
-                    "categoria": lanc.categoria,
-                    "contato": lanc.contato,
-                }
-            )
-            if not created:
-                titulo.data_lancamento = lanc.data
-                titulo.data_vencimento = lanc.data  # ou outra regra
-                titulo.contato = lanc.contato  # Lançamentos avulsos não têm fornecedor
-                titulo.descricao = lanc.descricao
-                titulo.valor = lanc.valor
-                titulo.categoria = lanc.categoria
-                titulo.save()
-        
-        # RECEITA → cria FinanceiroReceber
-        elif lanc.categoria.tipo == "R":
-            titulo, created = FinanceiroReceber.objects.get_or_create(
-                origem="LANCAMENTO",
-                content_type=ContentType.objects.get_for_model(lanc),
-                object_id=lanc.id,
-                defaults={
-                    "data_lancamento": lanc.data,
-                    "data_vencimento": lanc.data,
-                    "descricao": lanc.descricao,
-                    "valor": lanc.valor,
-                    "categoria": lanc.categoria,
-                    "cliente": lanc.contato,
-                }
-            )  
-            if not created:
-                titulo.data_lancamento = lanc.data
-                titulo.data_vencimento = lanc.data  # ou outra regra
-                titulo.cliente = lanc.contato  # Lançamentos avulsos não têm cliente
-                titulo.descricao = lanc.descricao
-                titulo.valor = lanc.valor
-                titulo.categoria = lanc.categoria
-                titulo.save()
-
-        return super().form_valid(form)
+        with transaction.atomic():
+            lanc = form.save()
+            sincronizar_titulo(lanc)
+        return redirect(self.success_url)
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -138,77 +138,42 @@ class LancamentoCreateView(CreateView):
         context["categoria_selecionada"] = categoria
         return context
 
-# Atualizar lançamento financeiro
+# Atualizar lançamento financeiro (bloqueado se o título já foi quitado)
 class LancamentoUpdateView(UpdateView):
     model = FinanceiroLancamento
     form_class = LancamentoForm
     template_name = "financeiro/lancamento_form.html"
     success_url = reverse_lazy("financeiro:lancamento_list")
 
+    def dispatch(self, request, *args, **kwargs):
+        if lancamento_tem_titulo_pago(self.get_object()):
+            messages.error(request, "O título deste lançamento já foi quitado. Estorne a quitação antes de alterar; "
+                           "para trocar só a categoria, use Alterar Categoria no detalhe do título.")
+            return redirect("financeiro:lancamento_list")
+        return super().dispatch(request, *args, **kwargs)
+
     def form_valid(self, form):
-        lanc = form.save(commit=False)
-        lanc.save()
-
-        lancamento_ct = ContentType.objects.get_for_model(FinanceiroLancamento)
-        # ============================
-        # ATUALIZAR TÍTULO DE DESPESA
-        # ============================
-        if lanc.categoria.tipo == "D":
-            try:                
-                titulo = FinanceiroPagar.objects.get(
-                    origem="LANCAMENTO",
-                    content_type=lancamento_ct,
-                    object_id=lanc.id
-                )
-                titulo.data_lancamento = lanc.data
-                titulo.data_vencimento = lanc.data
-                titulo.descricao = lanc.descricao
-                titulo.valor = lanc.valor
-                titulo.categoria = lanc.categoria
-                titulo.save()
-            except FinanceiroPagar.DoesNotExist:
-                pass
-
-        # ============================
-        # ATUALIZAR TÍTULO DE RECEITA
-        # ============================
-        elif lanc.categoria.tipo == "R":
-            try:
-                titulo = FinanceiroReceber.objects.get(
-                    origem="LANCAMENTO",
-                    content_type=lancamento_ct,
-                    object_id=lanc.id
-                )
-                titulo.data_lancamento = lanc.data
-                titulo.data_vencimento = lanc.data
-                titulo.descricao = lanc.descricao
-                titulo.valor = lanc.valor
-                titulo.categoria = lanc.categoria
-                titulo.save()
-            except FinanceiroReceber.DoesNotExist:
-                pass
-
-        return super().form_valid(form)
+        with transaction.atomic():
+            lanc = form.save()
+            sincronizar_titulo(lanc)
+        return redirect(self.success_url)
 
 
+# Excluir lançamento exclui o título dele (bloqueado se o título já foi quitado)
 class LancamentoDeleteView(DeleteView):
     model = FinanceiroLancamento
     template_name = "financeiro/lancamento_confirm_delete.html"
     success_url = reverse_lazy("financeiro:lancamento_list")
 
-    def delete(self, request, *args, **kwargs):
-        lanc = self.get_object()
+    def dispatch(self, request, *args, **kwargs):
+        if lancamento_tem_titulo_pago(self.get_object()):
+            messages.error(request, "O título deste lançamento já foi quitado. Estorne a quitação antes de excluir.")
+            return redirect("financeiro:lancamento_list")
+        return super().dispatch(request, *args, **kwargs)
 
-        if lanc.tipo == "DESPESA":
-            FinanceiroPagar.objects.filter(
-                origem="LANCAMENTO",
-                referencia_id=lanc.id
-            ).delete()
-        else:
-            FinanceiroReceber.objects.filter(
-                origem="LANCAMENTO",
-                referencia_id=lanc.id
-            ).delete()
-
-        return super().delete(request, *args, **kwargs)
-
+    def form_valid(self, form):
+        with transaction.atomic():
+            for qs in titulos_do_lancamento(self.object):
+                qs.delete()
+            self.object.delete()
+        return redirect(self.success_url)

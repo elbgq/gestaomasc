@@ -1,6 +1,50 @@
 from decimal import Decimal
+from django.db.models import Sum
 from comercial.models import VendaItem, CMVItem, Venda
-from financeiro.models import FinanceiroLancamento
+from financeiro.models import FinanceiroCategoria, FinanceiroLancamento, FinanceiroPagar, FinanceiroReceber
+
+GRUPOS_DRE = {codigo for codigo, _ in FinanceiroCategoria.GRUPO_DRE_CHOICES}
+
+
+# Soma por grupo do DRE, pela data de competência (data do lançamento), de:
+# - lançamentos financeiros;
+# - contas a pagar e a receber criadas direto (manuais), que não têm lançamento.
+# Títulos de venda, de compra e de lançamento ficam de fora: a venda entra pela receita e
+# pelo CMV, a compra vira estoque e o lançamento já foi contado. A data de pagamento não importa.
+# Devolve também o que ficou fora do DRE (categoria sem grupo), para a tela avisar.
+def valores_por_grupo_dre(data_inicio, data_fim):
+    valores = []
+    for lanc in FinanceiroLancamento.objects.filter(
+        data__gte=data_inicio, data__lte=data_fim
+    ).select_related("categoria"):
+        valores.append((lanc.categoria, lanc.valor))
+
+    for modelo, origens in ((FinanceiroPagar, ["MANUAL"]), (FinanceiroReceber, ["MANUAL", "RECEITA"])):
+        for titulo in modelo.objects.filter(
+            origem__in=origens, data_lancamento__gte=data_inicio, data_lancamento__lte=data_fim
+        ).exclude(status="cancelado").select_related("categoria"):
+            valores.append((titulo.categoria, titulo.valor))
+
+    grupos, fora = {}, {}
+    for categoria, valor in valores:
+        grupo = categoria.grupo_dre if categoria else None
+        if grupo in GRUPOS_DRE:
+            grupos[grupo] = grupos.get(grupo, Decimal("0")) + valor
+        else:
+            nome = categoria.nome if categoria else "Sem categoria"
+            fora[nome] = fora.get(nome, Decimal("0")) + valor
+    return grupos, sorted(fora.items())
+
+def acrescimos_das_quitacoes(data_inicio, data_fim):
+    totais = {}
+    for prefixo, modelo in (("pagar", FinanceiroPagar), ("receber", FinanceiroReceber)):
+        somas = modelo.objects.filter(
+            status="pago", data_pagamento__gte=data_inicio, data_pagamento__lte=data_fim
+        ).aggregate(juros=Sum("valor_juros"), multa=Sum("valor_multa"), desconto=Sum("valor_desconto"))
+        for campo, valor in somas.items():
+            totais[f"{prefixo}_{campo}"] = valor or Decimal("0")
+    return totais
+
 
 def dre_por_periodo(data_inicio, data_fim):
     # ============================
@@ -25,77 +69,51 @@ def dre_por_periodo(data_inicio, data_fim):
         if item.servico_id is not None
     )
 
-    receita_bruta = receita_produtos + receita_servicos
+    # Desconto e acréscimo dados na venda inteira (fora dos itens): o acréscimo é receita da venda;
+    # o desconto é dedução da receita bruta (desconto incondicional)
+    vendas = Venda.objects.filter(
+        status="finalizada",
+        data_emissao__date__gte=data_inicio,
+        data_emissao__date__lte=data_fim,
+    ).aggregate(desconto=Sum("desconto"), acrescimo=Sum("acrescimo"))
+    descontos_vendas = vendas["desconto"] or Decimal("0")
+    receita_acrescimos = vendas["acrescimo"] or Decimal("0")
+
+    receita_bruta = receita_produtos + receita_servicos + receita_acrescimos
     
     # ============================
-    # IMPOSTOS SEPARADOS
+    # LANÇAMENTOS E TÍTULOS MANUAIS (regime de competência)
     # ============================
-    icms = Decimal("0")
-    iss = Decimal("0")
-    pis = Decimal("0")
-    cofins = Decimal("0")
-    irpj = Decimal("0")
-    csll = Decimal("0")
+    grupos, fora_do_dre = valores_por_grupo_dre(data_inicio, data_fim)
+    g = lambda *nomes: sum((grupos.get(n, Decimal("0")) for n in nomes), Decimal("0"))
 
-    # ============================
-    # LANÇAMENTOS FINANCEIROS
-    # ============================
-    lancamentos = FinanceiroLancamento.objects.filter(
-        data__gte=data_inicio,
-        data__lte=data_fim
-    ).select_related("categoria")
+    receita_outras = g("RECEITA_BRUTA")
+    receita_bruta += receita_outras
 
-    despesas_vendas = Decimal("0")
-    despesas_adm = Decimal("0")
-    despesas_gerais = Decimal("0")
-    outras_receitas = Decimal("0")
-    outras_despesas = Decimal("0")
+    icms, iss, pis, cofins = g("ICMS"), g("ISS"), g("PIS"), g("COFINS")
+    pis_cofins_juntos = g("PIS_COFINS")
+    irpj, csll, irpj_csll_juntos = g("IRPJ"), g("CSLL"), g("IRPJ_CSLL")
 
-    for lanc in lancamentos:
-        cat = lanc.categoria
-        if not cat or not cat.grupo_dre:
-            continue
+    despesas_vendas = g("DESPESA_VENDAS")
+    despesas_adm = g("DESPESA_ADM")
+    despesas_gerais = g("DESPESA_GERAIS")
+    outras_receitas = g("RECEITA_PATRIMONIAL", "RECEITAS_FINANCEIRAS")
+    outras_despesas = g("DESPESAS_FINANCEIRAS")
 
-        if cat.grupo_dre == "ICMS":
-            icms += lanc.valor
-
-        elif cat.grupo_dre == "ISS":
-            iss += lanc.valor
-
-        elif cat.grupo_dre == "PIS":
-            pis += lanc.valor
-
-        elif cat.grupo_dre == "COFINS":
-            cofins += lanc.valor
-
-        elif cat.grupo_dre == "IRPJ":
-            irpj += lanc.valor
-
-        elif cat.grupo_dre == "CSLL":
-            csll += lanc.valor
-
-        elif cat.grupo_dre == "DESPESA_VENDAS":
-            despesas_vendas += lanc.valor
-
-        elif cat.grupo_dre == "DESPESA_ADM":
-            despesas_adm += lanc.valor
-
-        elif cat.grupo_dre == "DESPESA_GERAIS":
-            despesas_gerais += lanc.valor
-
-        elif cat.grupo_dre == "RECEITA_PATRIMONIAL":
-            outras_receitas += lanc.valor
-
-        elif cat.grupo_dre == "RECEITAS_FINANCEIRAS":
-            outras_receitas += lanc.valor
-        
-        elif cat.grupo_dre == "DESPESAS_FINANCEIRAS":
-            outras_despesas += lanc.valor
+    # Juros, multa e desconto das quitações, pela data da quitação (é quando ocorrem):
+    # pagos e descontos concedidos são despesa financeira; recebidos e descontos obtidos, receita financeira
+    acrescimos = acrescimos_das_quitacoes(data_inicio, data_fim)
+    juros_multas_pagos = acrescimos["pagar_juros"] + acrescimos["pagar_multa"]
+    juros_multas_recebidos = acrescimos["receber_juros"] + acrescimos["receber_multa"]
+    descontos_obtidos = acrescimos["pagar_desconto"]
+    descontos_concedidos = acrescimos["receber_desconto"]
+    outras_receitas += juros_multas_recebidos + descontos_obtidos
+    outras_despesas += juros_multas_pagos + descontos_concedidos
 
     # ============================
     # DEDUÇÕES DA RECEITA BRUTA
     # ============================
-    deducoes = icms + iss + pis + cofins
+    deducoes = descontos_vendas + icms + iss + pis + cofins + pis_cofins_juntos
     receita_liquida = receita_bruta - deducoes
 
     # ============================
@@ -110,7 +128,12 @@ def dre_por_periodo(data_inicio, data_fim):
         )
     )
 
-    lucro_bruto = receita_liquida - cmv
+    # Custos lançados à mão (categorias do grupo Custos, ex.: CSP). O CMV das vendas já vem acima,
+    # calculado pelo estoque; a tela avisa para não lançar o mesmo custo de novo
+    custos_lancados = g("CUSTOS")
+    custo_total = cmv + custos_lancados
+
+    lucro_bruto = receita_liquida - custo_total
 
     # ============================
     # DESPESAS OPERACIONAIS
@@ -126,8 +149,8 @@ def dre_por_periodo(data_inicio, data_fim):
     # ============================
     # IR/CSLL (se houver)
     # ============================
-    ir_csll = irpj + csll  # Placeholder para IR/CSLL
-    pis_cofins = pis + cofins  # Placeholder para PIS/COFINS
+    ir_csll = irpj + csll + irpj_csll_juntos
+    pis_cofins = pis + cofins + pis_cofins_juntos
 
     lucro_liquido = resultado_antes_ir - ir_csll
 
@@ -138,15 +161,21 @@ def dre_por_periodo(data_inicio, data_fim):
         "receita_bruta": receita_bruta,
         "receita_produtos": receita_produtos,
         "receita_servicos": receita_servicos,
+        "receita_outras": receita_outras,
+        "receita_acrescimos": receita_acrescimos,
+        "descontos_vendas": descontos_vendas,
         
         "icms": icms,
         "iss": iss,
         "pis": pis,
         "cofins": cofins,
+        "pis_cofins_juntos": pis_cofins_juntos,
         "deducoes": deducoes,
         "receita_liquida": receita_liquida,
         
         "cmv": cmv,
+        "custos_lancados": custos_lancados,
+        "custo_total": custo_total,
         "lucro_bruto": lucro_bruto,
         
         "despesas_vendas": despesas_vendas,
@@ -157,9 +186,17 @@ def dre_por_periodo(data_inicio, data_fim):
         "resultado_operacional": resultado_operacional,
         "outras_receitas": outras_receitas,
         "outras_despesas": outras_despesas,
+        "juros_multas_pagos": juros_multas_pagos,
+        "juros_multas_recebidos": juros_multas_recebidos,
+        "descontos_obtidos": descontos_obtidos,
+        "descontos_concedidos": descontos_concedidos,
         "resultado_antes_ir": resultado_antes_ir,
         
+        "irpj": irpj,
+        "csll": csll,
+        "irpj_csll_juntos": irpj_csll_juntos,
         "ir_csll": ir_csll,
-        "pis_cofins": pis_cofins,  # Placeholder para PIS/COFINS
+        "pis_cofins": pis_cofins,
+        "fora_do_dre": fora_do_dre,
         "lucro_liquido": lucro_liquido,
     }

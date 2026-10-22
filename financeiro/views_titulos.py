@@ -5,7 +5,15 @@ from django.contrib import messages
 from django.views.generic import DetailView, TemplateView
 from django.urls import reverse_lazy
 from django.utils import timezone
-from financeiro.models import FinanceiroReceber, FinanceiroPagar, CaixaMovimento, Caixa
+from django.http import JsonResponse
+from cadastros.models import Contato
+from financeiro.models import FinanceiroCategoria, FinanceiroReceber, FinanceiroPagar
+from financeiro.services import (
+    FinanceiroErro, buscar_titulo, categoria_sugerida, estornar_quitacao, quitar_titulo,
+    reclassificar_categoria, titulo_pago
+)
+from datetime import date
+from decimal import Decimal, InvalidOperation
 from django.core.paginator import Paginator
 
 
@@ -72,71 +80,113 @@ class TituloDetailView(DetailView):
 
         # raise Http404("Título não encontrado")
     
+# Lê a data da quitação digitada; vazia ou inválida vira hoje
+def ler_data(texto):
+    try:
+        return date.fromisoformat(texto)
+    except (TypeError, ValueError):
+        return timezone.localdate()
+
+
+# Campos da quitação: valor quitado (vazio = tudo), juros, multa e desconto
+def ler_quitacao(post):
+    def numero(nome):
+        texto = (post.get(nome) or "").strip().replace(",", ".")
+        if not texto:
+            return None
+        try:
+            return Decimal(texto)
+        except InvalidOperation:
+            raise FinanceiroErro("Valor inválido na quitação.")
+    return {
+        "data": ler_data(post.get("data_pagamento")),
+        "valor": numero("valor_quitado"),
+        "juros": numero("valor_juros") or 0,
+        "multa": numero("valor_multa") or 0,
+        "desconto": numero("valor_desconto") or 0,
+    }
+
+
 def titulo_quitacao_view(request, tipo, pk):
-
-    # Carrega o título correto
-    if tipo == "D":
-        titulo = get_object_or_404(FinanceiroPagar, pk=pk)
-    elif tipo == "R":
-        titulo = get_object_or_404(FinanceiroReceber, pk=pk)
-    else:
-        raise Http404("Tipo Inválido!")
-
-    # Impede quitação duplicada
-    if not titulo:
+    titulo = buscar_titulo(tipo, pk)
+    if titulo is None:
         raise Http404("Título não encontrado")
 
-    if titulo.esta_pago():
+    if titulo_pago(titulo):
         messages.warning(request, "Este título já foi quitado.")
         return redirect("financeiro:titulo_detalhe", titulo.tipo, titulo.id)
-    
+
     # GET → mostra tela de confirmação
     if request.method != "POST":
-        return render(
-            request,
-            "financeiro/titulo_confirmar_quitacao.html",
-            {"titulo": titulo}
-        )
+        return render(request, "financeiro/titulo_confirmar_quitacao.html", {
+            "titulo": titulo,
+            "hoje": timezone.localdate(),
+        })
 
-    # POST → processa quitação
-    
-    caixa = Caixa.objects.filter(nome="Caixa Principal").first()
-    if caixa is None:
-        messages.error(request, "Cadastre o caixa \"Caixa Principal\" antes de quitar títulos.")
-        return redirect("financeiro:titulo_detalhe", titulo.tipo, titulo.id)
-    saldo = caixa.saldo_atual()
-
-    # Verifica saldo para despesas
-    if isinstance(titulo, FinanceiroPagar) and saldo < titulo.valor:
-        messages.error(request, "Saldo insuficiente no caixa para quitar este título.")
-        return redirect("financeiro:titulo_detalhe", titulo.tipo, titulo.id)
-
-    # # Define tipo e origem do movimento
-    if isinstance(titulo, FinanceiroPagar):
-        tipo_mov = "S"  # Saída
-        origem_mov = "PAGAMENTO"
+    try:
+        quitar_titulo(titulo, **ler_quitacao(request.POST))
+    except FinanceiroErro as erro:
+        messages.error(request, str(erro))
+        return redirect("financeiro:titulo_confirmar_quitacao", titulo.tipo, titulo.id)
     else:
-        tipo_mov = "E"  # Entrada
-        origem_mov = "RECEITA"
-
-    # Marca título como quitado
-    titulo.status = "pago"
-    titulo.valor_pago = titulo.valor
-    titulo.data_pagamento = timezone.now().date()
-    titulo.save()
-    
-    # Cria movimento no caixa
-    CaixaMovimento.objects.create(
-        caixa=caixa,
-        data=timezone.localdate(),
-        descricao=f"{titulo.descricao} (Quitação de Título)",
-        tipo=tipo_mov, 
-        valor=titulo.valor,
-        origem=origem_mov,  # ← AGORA SIM
-        referencia_id=titulo.id,
-        referencia_tipo=titulo.tipo,
-    )
-
-    messages.success(request, "Título quitado com sucesso!")
+        messages.success(request, "Título quitado com sucesso!")
     return redirect("financeiro:titulo_detalhe", titulo.tipo, titulo.id)
 
+
+# Desfaz uma quitação lançada errado
+def titulo_estornar_quitacao(request, tipo, pk):
+    titulo = buscar_titulo(tipo, pk)
+    if titulo is None:
+        raise Http404("Título não encontrado")
+
+    if not titulo_pago(titulo):
+        messages.warning(request, "Este título não está quitado.")
+        return redirect("financeiro:titulo_detalhe", titulo.tipo, titulo.id)
+
+    if request.method != "POST":
+        return render(request, "financeiro/titulo_estornar_quitacao.html", {"titulo": titulo})
+
+    try:
+        estornar_quitacao(titulo)
+    except FinanceiroErro as erro:
+        messages.error(request, str(erro))
+    else:
+        messages.success(request, "Quitação estornada. O título voltou para em aberto.")
+    return redirect("financeiro:titulo_detalhe", titulo.tipo, titulo.id)
+
+
+# Troca a categoria de um título, inclusive já quitado (não mexe no caixa)
+def titulo_reclassificar(request, tipo, pk):
+    titulo = buscar_titulo(tipo, pk)
+    if titulo is None:
+        raise Http404("Título não encontrado")
+
+    categorias = FinanceiroCategoria.objects.filter(tipo=titulo.tipo).order_by("nome")
+
+    if request.method == "POST":
+        categoria = categorias.filter(pk=request.POST.get("categoria")).first()
+        if categoria is None:
+            messages.error(request, "Escolha uma categoria.")
+            return redirect("financeiro:titulo_reclassificar", titulo.tipo, titulo.id)
+        try:
+            reclassificar_categoria(titulo, categoria, request.user.get_username())
+        except FinanceiroErro as erro:
+            messages.error(request, str(erro))
+            return redirect("financeiro:titulo_reclassificar", titulo.tipo, titulo.id)
+        messages.success(request, f"Categoria alterada para {categoria.nome}.")
+        return redirect("financeiro:titulo_detalhe", titulo.tipo, titulo.id)
+
+    return render(request, "financeiro/titulo_reclassificar.html", {"titulo": titulo, "categorias": categorias})
+
+
+# Categoria sugerida para o contato escolhido no formulário (usada pelo JavaScript)
+def api_categoria_sugerida(request, contato_id):
+    contato = get_object_or_404(Contato, pk=contato_id)
+    tipo = request.GET.get("tipo") or None
+    categoria, origem = categoria_sugerida(contato, tipo if tipo in ("D", "R") else None)
+    return JsonResponse({
+        "contato": contato.nome,
+        "categoria_id": categoria.id if categoria else None,
+        "categoria": categoria.nome if categoria else None,
+        "origem": origem,
+    })

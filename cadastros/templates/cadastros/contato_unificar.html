@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <h2>Unificar contato: {{ obj.nome }}</h2>
+    <p class="text-muted">Documento: {{ obj.documento|default:"sem documento" }}</p>
+
+    {% if bloqueado %}
+    <div class="alert alert-warning">
+        Este contato não pode ser excluído porque tem registros ligados a ele.
+        Se ele é um cadastro repetido, unifique-o com o contato certo: os registros passam para o outro e este é apagado.
+    </div>
+    {% endif %}
+
+    {% if vinculos %}
+    <p>Registros ligados a este contato:</p>
+    <ul>
+        {% for nome, total in vinculos.items %}
+        <li>{{ nome }}: {{ total }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+
+    <form method="post" action="{% url 'cadastros:contato_unificar' obj.id %}" class="card p-4 shadow-sm"
+          onsubmit="return confirm('Todos os registros de {{ obj.nome|escapejs }} passam para o contato escolhido e este cadastro é apagado. Confirma?');">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label class="form-label">{{ form.manter.label }}</label>
+            {{ form.manter }}
+            {% for erro in form.manter.errors %}<div class="text-danger small">{{ erro }}</div>{% endfor %}
+            <div class="form-text">
+                Fica o contato escolhido. Telefone, e-mail, documento e categoria padrão que ele não tiver são copiados deste.
+            </div>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'cadastros:contato_detail' obj.id %}" class="btn btn-secondary">Cancelar</a>
+            <button type="submit" class="btn btn-warning">Unificar e apagar este contato</button>
+        </div>
+    </form>
+
+</div>
+{% endblock %}

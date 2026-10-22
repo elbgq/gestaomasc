@@ -1,0 +1,47 @@
+{# Sugere a categoria do contato e pede confirmação se o usuário escolher outra.
+   Variáveis: campo_contato (id do select do contato), tipo ("D", "R" ou vazio) #}
+<div id="aviso-categoria" class="form-text text-primary"></div>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const contato = document.getElementById("{{ campo_contato }}");
+    const categoria = document.getElementById("id_categoria");
+    const aviso = document.getElementById("aviso-categoria");
+    if (!contato || !categoria) return;
+    categoria.parentNode.appendChild(aviso);
+
+    let sugerida = null;
+    const nomeDaCategoria = id => (categoria.querySelector(`option[value="${id}"]`) || {}).textContent || "";
+
+    function definirCategoria(id) {
+        categoria.value = id;
+        if (window.jQuery) jQuery(categoria).trigger("change"); else categoria.dispatchEvent(new Event("change"));
+    }
+
+    function buscar(preencher) {
+        sugerida = null;
+        aviso.textContent = "";
+        if (!contato.value) return;
+        fetch(`{% url 'financeiro:api_categoria_sugerida' 0 %}`.replace("/0/", `/${contato.value}/`) + "?tipo={{ tipo }}")
+            .then(r => r.json())
+            .then(dados => {
+                if (!dados.categoria_id) return;
+                sugerida = dados;
+                if (preencher && !categoria.value) definirCategoria(dados.categoria_id);
+                aviso.textContent = (dados.origem === "padrao" ? "Categoria padrão de " : "Última categoria usada com ")
+                    + dados.contato + ": " + dados.categoria + ".";
+            });
+    }
+
+    if (window.jQuery) jQuery(contato).on("change", () => buscar(true));
+    else contato.addEventListener("change", () => buscar(true));
+    buscar(false);
+
+    categoria.form.addEventListener("submit", function (e) {
+        if (sugerida && categoria.value && String(categoria.value) !== String(sugerida.categoria_id)) {
+            const ok = confirm(`${sugerida.contato} costuma ser "${sugerida.categoria}". `
+                + `Confirmar a categoria "${nomeDaCategoria(categoria.value).trim()}"?`);
+            if (!ok) e.preventDefault();
+        }
+    });
+});
+</script>

@@ -1,79 +1,119 @@
+{% load permissoes %}
 <div id="sidebar" class="erp-sidebar">
-    
+
     <h4 class="text-center mb-4">
         <a href="{% url 'home' %}" class="text-white text-decoration-none">
             MASC
         </a>
-    </h4>                       
+    </h4>
 
-   
+    <!-- Cada link só aparece para quem tem a permissão da tela (core/permissoes.py);
+         o grupo inteiro some quando nenhum link dele está liberado -->
+    {% pode "cadastros:contato_list" as ver_contatos %}
+    {% pode "cadastros:produto_list" as ver_produtos %}
+    {% pode "cadastros:revisao_precos" as ver_revisao_precos %}
+    {% pode "cadastros:servico_list" as ver_servicos %}
+    {% pode "comercial:venda_list" as ver_vendas %}
+    {% pode "comercial:compra_list" as ver_compras %}
+    {% pode "comercial:estoque_list" as ver_estoque %}
+    {% pode "comercial:cmv_lista" as ver_cmv %}
+    {% pode "financeiro:categoria_list" as ver_categorias %}
+    {% pode "financeiro:lancamento_list" as ver_lancamentos %}
+    {% pode "financeiro:receber_list" as ver_receber %}
+    {% pode "financeiro:contas_pagar_lista" as ver_pagar %}
+    {% pode "financeiro:titulo_list" as ver_titulos %}
+    {% pode "financeiro:caixa_historico" as ver_caixa %}
+    {% pode "relatorios:compras_por_periodo" as ver_rel_comercial %}
+    {% pode "relatorios:dre" as ver_rel_gerencial %}
 
     <ul class="nav flex-column">
 
         <!-- Cadastros -->
+        {% if ver_contatos or ver_produtos or ver_servicos %}
         <li class="nav-item mb-2">
             <a class="nav-link text-white" data-bs-toggle="collapse" href="#menuCadastros" role="button">
                 <i class="bi bi-people"></i>  ☰ Cadastros
             </a>
             <div class="collapse" id="menuCadastros">
                 <ul class="nav flex-column ms-3">
-                    <li><a class="nav-link text-white" href="{% url 'cadastros:contato_list' %}">Contatos</a></li>
-                    <li><a class="nav-link text-white" href="{% url 'cadastros:produto_list' %}">Produtos</a></li>
-                    <li><a class="nav-link text-white" href="{% url 'cadastros:servico_list' %}">Serviços</a></li>
+                    {% if ver_contatos %}<li><a class="nav-link text-white" href="{% url 'cadastros:contato_list' %}">Contatos</a></li>{% endif %}
+                    {% if ver_produtos %}<li><a class="nav-link text-white" href="{% url 'cadastros:produto_list' %}">Produtos</a></li>{% endif %}
+                    {% if ver_revisao_precos %}<li><a class="nav-link text-white" href="{% url 'cadastros:revisao_precos' %}">Revisão de preços</a></li>{% endif %}
+                    {% if ver_servicos %}<li><a class="nav-link text-white" href="{% url 'cadastros:servico_list' %}">Serviços</a></li>{% endif %}
                 </ul>
             </div>
         </li>
+        {% endif %}
 
         <!-- Comercial -->
+        {% if ver_vendas or ver_compras or ver_estoque or ver_cmv %}
         <li class="nav-item mb-2">
             <a class="nav-link text-white" data-bs-toggle="collapse" href="#menuComercial" role="button">
                 <i class="bi bi-cart"></i>  ☰ Comercial
             </a>
             <div class="collapse" id="menuComercial">
                 <ul class="nav flex-column ms-3">
-                    <li><a class="nav-link text-white" href="{% url 'comercial:venda_list' %}">Vendas</a></li>
-                    <li><a class="nav-link text-white" href="{% url 'comercial:compra_list' %}">Compras</a></li>                  
-                    <li><a class="nav-link text-white" href="{% url 'comercial:estoque_list' %}">Estoque</a></li>
-                    <li><a class="nav-link text-white" href="{% url 'comercial:cmv_lista' %}">CMV</a></li>
+                    {% if ver_vendas %}<li><a class="nav-link text-white" href="{% url 'comercial:venda_list' %}">Vendas</a></li>{% endif %}
+                    {% if ver_compras %}<li><a class="nav-link text-white" href="{% url 'comercial:compra_list' %}">Compras</a></li>{% endif %}
+                    {% if ver_estoque %}<li><a class="nav-link text-white" href="{% url 'comercial:estoque_list' %}">Estoque</a></li>{% endif %}
+                    {% if ver_cmv %}<li><a class="nav-link text-white" href="{% url 'comercial:cmv_lista' %}">CMV</a></li>{% endif %}
                 </ul>
-            </div> 
-        </li> 
+            </div>
+        </li>
+        {% endif %}
 
         <!-- Financeiro -->
+        {% if ver_categorias or ver_lancamentos or ver_receber or ver_pagar or ver_titulos or ver_caixa %}
         <li class="nav-item mb-2">
             <a class="nav-link text-white" data-bs-toggle="collapse" href="#menuFinanceiro" role="button">
                 <i class="bi bi-cash-stack"></i>  ☰ Financeiro
             </a>
             <div class="collapse" id="menuFinanceiro">
                 <ul class="nav flex-column ms-3">
-                    <li><a class="nav-link text-white" href="{% url 'financeiro:categoria_list' %}">Plano de Contas</a></li>
-                    <li><a class="nav-link text-white" href="{% url 'financeiro:lancamento_list' %}">Lançamentos</a></li>
-                    <li><a class="nav-link text-white" href="{% url 'financeiro:receber_list' %}">Contas a Receber</a></li>
-                    <li><a class="nav-link text-white" href="{% url 'financeiro:contas_pagar_lista' %}">Contas a Pagar</a></li>
-                    <li><a class="nav-link text-white" href="{% url 'financeiro:titulo_list' %}">Titulos</a></li>
-                    <li><a class="nav-link text-white" href="{% url 'financeiro:caixa_historico' %}">Caixa</a></li>
+                    {% if ver_categorias %}<li><a class="nav-link text-white" href="{% url 'financeiro:categoria_list' %}">Plano de Contas</a></li>{% endif %}
+                    {% if ver_lancamentos %}<li><a class="nav-link text-white" href="{% url 'financeiro:lancamento_list' %}">Lançamentos</a></li>{% endif %}
+                    {% if ver_receber %}<li><a class="nav-link text-white" href="{% url 'financeiro:receber_list' %}">Contas a Receber</a></li>{% endif %}
+                    {% if ver_pagar %}<li><a class="nav-link text-white" href="{% url 'financeiro:contas_pagar_lista' %}">Contas a Pagar</a></li>{% endif %}
+                    {% if ver_titulos %}<li><a class="nav-link text-white" href="{% url 'financeiro:titulo_list' %}">Titulos</a></li>{% endif %}
+                    {% if ver_caixa %}<li><a class="nav-link text-white" href="{% url 'financeiro:caixa_historico' %}">Caixa</a></li>{% endif %}
                 </ul>
             </div>
-        </li> 
+        </li>
+        {% endif %}
 
         <!-- Relatórios -->
+        {% if ver_rel_comercial or ver_rel_gerencial %}
         <li class="nav-item mb-2">
             <a class="nav-link text-white" data-bs-toggle="collapse" href="#menuRelatorios" role="button">
                 <i class="bi bi-bar-chart"></i>  ☰ Relatórios
             </a>
             <div class="collapse" id="menuRelatorios">
                 <ul class="nav flex-column ms-3">
+                    {% if ver_rel_comercial %}
                     <li><a class="nav-link text-white" href="{% url 'relatorios:compras_por_periodo' %}">Compras por Período</a></li>
                     <li><a class="nav-link text-white" href="{% url 'relatorios:vendas_por_periodo' %}">Vendas por Período</a></li>
-                    <li><a class="nav-link text-white" href="{% url 'relatorios:cmv_relatorio' %}">CMV - Relatório</a></li>
-                    <li><a class="nav-link text-white" href="{% url 'relatorios:dre' %}">DRE</a></li>
+                    {% endif %}
+                    {% if ver_rel_gerencial %}<li><a class="nav-link text-white" href="{% url 'relatorios:cmv_relatorio' %}">CMV - Relatório</a></li>{% endif %}
+                    {% if ver_rel_comercial %}<li><a class="nav-link text-white" href="{% url 'relatorios:movimentacoes_estoque' %}">Movimentações de Estoque</a></li>{% endif %}
+                    {% if ver_rel_gerencial %}<li><a class="nav-link text-white" href="{% url 'relatorios:dre' %}">DRE</a></li>{% endif %}
                 </ul>
             </div>
         </li>
+        {% endif %}
+
+        <!-- Administração de usuários e grupos (admin do Django) -->
+        {% if user.is_staff %}
+        <li class="nav-item mb-2">
+            <a class="nav-link text-white" href="{% url 'admin:index' %}">
+                <i class="bi bi-person-gear"></i>  Usuários e permissões
+            </a>
+        </li>
+        {% endif %}
 
     </ul>
     <br>
      {% if user.is_authenticated %}
+    <div class="text-white-50 small mb-2"><i class="bi bi-person"></i> {{ user.get_full_name|default:user.get_username }}</div>
     <form action="{% url 'logout' %}" method="post" style="display:inline;">
         {% csrf_token %}
         <button type="submit" class="btn btn-sm btn-outline-light">Sair</button>

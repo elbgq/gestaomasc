@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load permissoes %}
 
 {% block title %}Detalhes do Serviço{% endblock %}
 
@@ -29,12 +30,12 @@
                 <i class="bi bi-arrow-left"></i> Voltar
             </a>
             <div class="btn-group">
-                <a href="{% url 'cadastros:servico_update' obj.pk %}" class="btn btn-warning">
+                {% pode "cadastros:servico_update" as pode_servico_update %}{% if pode_servico_update %}<a href="{% url 'cadastros:servico_update' obj.pk %}" class="btn btn-warning">
                     <i class="bi bi-pencil-square"></i> Editar
-                </a>
-                <a href="{% url 'cadastros:servico_delete' obj.pk %}" class="btn btn-danger">
+                </a>{% endif %}
+                {% pode "cadastros:servico_delete" as pode_servico_delete %}{% if pode_servico_delete %}<a href="{% url 'cadastros:servico_delete' obj.pk %}" class="btn btn-danger">
                     <i class="bi bi-trash"></i> Excluir
-                </a>
+                </a>{% endif %}
             </div>
         </div>
     </div>

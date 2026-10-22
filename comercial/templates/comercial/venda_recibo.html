@@ -35,6 +35,11 @@
         </tbody>
     </table>
 
+    {% if venda.desconto or venda.acrescimo %}
+    <p class="text-end mb-1">Itens: R$ {{ venda.total_itens|floatformat:2 }}</p>
+    {% if venda.desconto %}<p class="text-end mb-1">(-) Desconto na venda: R$ {{ venda.desconto|floatformat:2 }}</p>{% endif %}
+    {% if venda.acrescimo %}<p class="text-end mb-1">(+) Acréscimo na venda: R$ {{ venda.acrescimo|floatformat:2 }}</p>{% endif %}
+    {% endif %}
     <h4 class="text-end">Total: R$ {{ venda.total|floatformat:2 }}</h4>
 
     <hr>

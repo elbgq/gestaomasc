@@ -1,0 +1,11 @@
+{# Avisos do sistema (messages.success / info / warning / error das views) #}
+{% if messages %}
+<div class="erp-mensagens">
+    {% for message in messages %}
+    <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags|default:'info' }}{% endif %} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}

@@ -65,6 +65,22 @@ class VendaForm(MoedaMaskMixin, forms.ModelForm):
 
         # Filtra apenas contatos que são clientes
         self.fields["cliente"].queryset = Contato.objects.filter(tipo="CLIENTE")
+        self.fields["desconto"].label = "Desconto na venda (R$)"
+        self.fields["acrescimo"].label = "Acréscimo na venda (R$)"
+        self.fields["desconto"].help_text = "Abatido do total dos itens."
+        self.fields["acrescimo"].help_text = "Somado ao total dos itens (ex.: frete cobrado do cliente)."
+
+    def clean_desconto(self):
+        valor = self.cleaned_data.get("desconto") or 0
+        if valor < 0:
+            raise forms.ValidationError("O desconto não pode ser negativo.")
+        return valor
+
+    def clean_acrescimo(self):
+        valor = self.cleaned_data.get("acrescimo") or 0
+        if valor < 0:
+            raise forms.ValidationError("O acréscimo não pode ser negativo.")
+        return valor
 
 # Venda de itens - formset - Tem a função de gerenciar cada item individualmente.
 class VendaItemForm(MoedaMaskMixin, forms.ModelForm):

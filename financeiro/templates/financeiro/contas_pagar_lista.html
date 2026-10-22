@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load permissoes %}
 
 {% block title %}Contas a Pagar{% endblock %}
 
@@ -90,8 +91,8 @@
                                     <td class="text-center align-middle">
                                         <div class="d-flex justify-content-center gap-2">
                                         {% if not conta.esta_pago %}
-                                            <a href="{% url 'financeiro:titulo_confirmar_quitacao' conta.tipo conta.id %}"
-                                            class="btn btn-sm btn-success">Quitar</a>
+                                            {% pode "financeiro:titulo_confirmar_quitacao" as pode_titulo_confirmar_quitacao %}{% if pode_titulo_confirmar_quitacao %}<a href="{% url 'financeiro:titulo_confirmar_quitacao' conta.tipo conta.id %}"
+                                            class="btn btn-sm btn-success">Quitar</a>{% endif %}
                                         {% endif %}
                                             <a href="{% url 'financeiro:titulo_detalhe' conta.tipo conta.id %}"
                                             class="btn btn-sm btn-primary">Detalhes</a>
@@ -124,9 +125,9 @@
 
             <div class="d-flex justify-content-between align-items-center mb-2">                
 
-                <a href="{% url 'financeiro:lancamento_create' %}" class="btn btn-primary">
+                {% pode "financeiro:lancamento_create" as pode_lancamento_create %}{% if pode_lancamento_create %}<a href="{% url 'financeiro:lancamento_create' %}" class="btn btn-primary">
                     Nova Despesa Avulsa
-                </a>
+                </a>{% endif %}
             </div>
 
             <div class="card border-primary">
@@ -154,8 +155,8 @@
                                 <tr>
                                     <td>{{ p.data_lancamento|date:"d/m/Y" }}</td>
                                     <td>
-                                        {{ r.data_vencimento|date:"d/m/Y" }}
-                                        {% if not r.esta_pago and r.data_vencimento < hoje %}
+                                        {{ p.data_vencimento|date:"d/m/Y" }}
+                                        {% if not p.esta_pago and p.data_vencimento < hoje %}
                                             <span class="badge bg-danger ms-2">Atrasado</span>
                                         {% endif %}
                                     </td>
@@ -175,8 +176,8 @@
                                     <td class="text-center align-middle">
                                         <div class="d-flex justify-content-center gap-2">
                                             {% if not p.esta_pago %}
-                                                <a href="{% url 'financeiro:titulo_confirmar_quitacao' p.tipo p.id %}"
-                                                class="btn btn-sm btn-success">Quitar</a>
+                                                {% pode "financeiro:titulo_confirmar_quitacao" as pode_titulo_confirmar_quitacao %}{% if pode_titulo_confirmar_quitacao %}<a href="{% url 'financeiro:titulo_confirmar_quitacao' p.tipo p.id %}"
+                                                class="btn btn-sm btn-success">Quitar</a>{% endif %}
                                             {% endif %}
                                             <a href="{% url 'financeiro:titulo_detalhe' p.tipo p.id %}"
                                             class="btn btn-sm btn-primary">Detalhes</a>
@@ -208,8 +209,8 @@
          RESUMO
     ============================= -->
     <div class="alert alert-info mt-4">
-        <strong>Total de contas de compras:</strong> R$ {{ total_compras|floatformat:2 }}<br>
-        <strong>Total de contas avulsas:</strong> R$ {{ total_avulsas|floatformat:2 }}
+        <strong>Contas de compras:</strong> R$ {{ aberto_compras|floatformat:2 }} em aberto, R$ {{ pago_compras|floatformat:2 }} pagos<br>
+        <strong>Contas avulsas:</strong> R$ {{ aberto_avulsas|floatformat:2 }} em aberto, R$ {{ pago_avulsas|floatformat:2 }} pagos
     </div>
 
     <div class="alert alert-warning">

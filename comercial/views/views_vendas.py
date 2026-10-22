@@ -25,7 +25,7 @@ from cadastros.models import Produto, Servico
 from comercial.forms import FiltroDashboardForm
 # Integração das vendas com o financeiro
 from financeiro.models import (
-    FinanceiroCategoria, FinanceiroReceber, CaixaMovimento
+    FinanceiroCategoria, FinanceiroReceber, CaixaMovimento, Caixa
 )
 from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
@@ -51,14 +51,20 @@ def venda_create(request):
         itens_formset = VendaItemFormSet(request.POST, prefix="itens")
 
         if form.is_valid() and itens_formset.is_valid():
-            venda = form.save(commit=False)
-            venda.status = "rascunho"
-            venda.save()
+            try:
+                with transaction.atomic():
+                    venda = form.save(commit=False)
+                    venda.status = "rascunho"
+                    venda.save()
 
-            itens_formset.instance = venda
-            itens_formset.save()
-
-            return redirect("comercial:venda_editar", venda.id)
+                    itens_formset.instance = venda
+                    itens_formset.save()
+                    venda.atualizar_total()
+                    conferir_desconto_venda(venda)
+            except DescontoVendaErro as erro:
+                form.add_error("desconto", erro)
+            else:
+                return redirect("comercial:venda_editar", venda.id)
 
         # Se chegou aqui → algum dos dois é inválido
         return render(request, "comercial/venda_form.html", {
@@ -116,40 +122,45 @@ def venda_editar(request, venda_id):
         formset = VendaItemFormSet(request.POST, instance=venda, prefix="itens")
 
         if form.is_valid() and formset.is_valid():
-            with transaction.atomic():
-                form.save()
+            try:
+                with transaction.atomic():
+                    form.save()
 
-                # Processa itens (custo médio, validações, etc.)
-                processar_itens_venda(venda, formset)
+                    # Processa itens (custo médio, validações, etc.)
+                    processar_itens_venda(venda, formset)
 
-                # Remove itens deletados
-                for obj in formset.deleted_objects:
-                    obj.delete()
+                    # Remove itens deletados
+                    for obj in formset.deleted_objects:
+                        obj.delete()
 
-                # 5. Atualiza total
-                venda.atualizar_total()
+                    # 5. Atualiza total (itens - desconto + acréscimo da venda)
+                    venda.atualizar_total()
+                    conferir_desconto_venda(venda)
 
-                # Parcelada → vai para tela de parcelamento
-                if continuar_fluxo:
-                    return redirect("comercial:venda_parcelamento", venda.id)
+                    # Parcelada → vai para tela de parcelamento
+                    if continuar_fluxo:
+                        return redirect("comercial:venda_parcelamento", venda.id)
 
-                # À vista → finaliza e registra financeiro
-                registrar_financeiro_venda(
-                    venda,
-                    parcelas=1,
-                    dias=0,
-                    data_inicial=date.today()
-                )
-                # Registra o CMV (estorna a baixa anterior se a venda já estava finalizada)
-                registrar_cmv(venda)
+                    # À vista → finaliza e registra financeiro
+                    registrar_financeiro_venda(
+                        venda,
+                        parcelas=1,
+                        dias=0,
+                        data_inicial=date.today()
+                    )
+                    # Registra o CMV (estorna a baixa anterior se a venda já estava finalizada)
+                    registrar_cmv(venda)
 
-                if venda.forma_pagamento in (None, "", "parcelado"):
-                    venda.forma_pagamento = "avista"
-                venda.status = "finalizada"
-                venda.data_finalizacao = venda.data_finalizacao or timezone.now()
-                venda.save()
+                    if venda.forma_pagamento in (None, "", "parcelado"):
+                        venda.forma_pagamento = "avista"
+                    venda.status = "finalizada"
+                    venda.data_finalizacao = venda.data_finalizacao or timezone.now()
+                    venda.save()
 
-            return redirect("comercial:venda_detalhe", venda.id)
+                return redirect("comercial:venda_detalhe", venda.id)
+            except DescontoVendaErro as erro:
+                venda.refresh_from_db()
+                form.add_error("desconto", erro)
 
     else:
         initial = {}
@@ -196,7 +207,7 @@ def venda_detalhe(request, venda_id):
 
     # Recebimentos das parcelas no caixa
     movimento_caixa = CaixaMovimento.objects.filter(
-        origem="RECEITA",
+        origem__in=["RECEITA", "ESTORNO"],
         referencia_tipo="R",
         referencia_id__in=list(parcelas.values_list("id", flat=True))
     ).order_by("data")
@@ -268,8 +279,20 @@ def processar_itens_venda(venda, formset):
         item.save()
 
     # Recalcular total da venda
-    venda.total = sum(i.total for i in venda.itens.all())
-    venda.save()
+    venda.atualizar_total()
+
+
+class DescontoVendaErro(ValidationError):
+    pass
+
+
+# O desconto da venda não pode passar do valor dos itens
+def conferir_desconto_venda(venda):
+    if venda.total < 0:
+        raise DescontoVendaErro(
+            f"O desconto da venda (R$ {venda.desconto:.2f}) é maior que o total dos itens "
+            f"(R$ {venda.total_itens:.2f})."
+        )
     
 
 # Função auxiliar par registrar financeiro da venda "REVISADA"
@@ -295,6 +318,17 @@ def registrar_financeiro_venda(venda, parcelas, dias, data_inicial):
     # 2. Se houver entrada (sinal)
 
     if entrada > 0:
+        # Registra entrada no caixa
+        mov = CaixaMovimento.objects.create(
+            caixa=Caixa.objects.filter(nome="Caixa Principal").first(),
+            data=date.today(),
+            descricao=f"Entrada da venda #{venda.id}",
+            tipo="E",  # Entrada
+            valor=entrada,
+            origem="VENDA",
+            referencia_id=venda.id
+        )
+
         # Título pago na entrada
         FinanceiroReceber.objects.create(
             data_lancamento=date.today(),
@@ -304,20 +338,12 @@ def registrar_financeiro_venda(venda, parcelas, dias, data_inicial):
             descricao=f"Venda #{venda.id} - Entrada",
             valor=entrada,
             valor_pago=entrada,
+            status="pago",
+            caixa_movimento=mov,
             categoria=categoria_receita,
             origem="VENDA",
             content_type=ct,
             object_id=venda.id
-        )
-        
-        # Registra entrada no caixa
-        CaixaMovimento.objects.create(
-            data=date.today(),
-            descricao=f"Entrada da venda #{venda.id}",
-            tipo="E",  # Entrada
-            valor=entrada,
-            origem="VENDA",  # ou "VENDA", se quiser adicionar essa origem
-            referencia_id=venda.id
         )
 
         total -= entrada
@@ -414,8 +440,8 @@ def venda_parcelamento(request, venda_id):
 def estornar_venda(venda):
     with transaction.atomic():
 
-        # 1. Impedir estorno de venda com parcelas recebidas
-        if titulos_da_venda(venda).filter(valor_pago__gt=0).exists():
+        # 1. Impedir estorno de venda com parcelas recebidas (a entrada/sinal é devolvida abaixo)
+        if titulos_da_venda(venda).filter(valor_pago__gt=0).exclude(descricao__endswith=" - Entrada").exists():
             raise ValueError("Não é possível estornar venda com parcelas já recebidas.")
 
         # 2 a 4. Devolver ao estoque as saídas desta venda e apagar o CMV
@@ -426,27 +452,27 @@ def estornar_venda(venda):
         # 5. Estornar contas a receber (parcelas pendentes)
         titulos = titulos_da_venda(venda)
 
-        # Nenhum título deve ter valor_pago > 0 (já validado acima)
+        # Só a entrada/sinal pode estar recebida (já validado acima)
         titulos.delete()
 
-        # 6. Estornar caixa (se houve entrada à vista ou entrada/sinal)
+        # 6. Devolver a entrada/sinal: uma saída no caixa para cada entrada.
+        #    O movimento original fica no histórico; apagá-lo e lançar a saída descontaria duas vezes.
         movimentos_caixa = CaixaMovimento.objects.filter(
             origem="VENDA",
+            tipo="E",
             referencia_id=venda.id
         )
 
         for mov in movimentos_caixa:
-            # Criar movimento inverso (SAÍDA)
             CaixaMovimento.objects.create(
+                caixa=mov.caixa or Caixa.objects.filter(nome="Caixa Principal").first(),
                 data=date.today(),
-                descricao=f"Estorno da venda #{venda.id}",
+                descricao=f"Estorno da venda #{venda.id} (devolução da entrada)",
                 tipo="S",
                 valor=mov.valor,
-                origem="ESTORNO_VENDA",
+                origem="ESTORNO",
                 referencia_id=venda.id
             )
-
-            mov.delete()
 
         # 7. Atualizar status da venda
         venda.status = "cancelada"
@@ -494,6 +520,8 @@ def api_preco(request, tipo, pk):
         return JsonResponse({
             "preco": float(produto.preco_venda),
             "estoque": float(estoque_qtd),
+            # Só o aviso, sem o valor do custo (o vendedor não vê custos)
+            "abaixo_custo": produto.situacao_preco() == "abaixo_custo",
         })
 
     # SERVIÇO → apenas preço

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load permissoes %}
 
 {% block title %}Detalhes do Produto{% endblock %}
 
@@ -20,7 +21,18 @@
                 <dd class="col-sm-9">{{ produto.unidade }}</dd>
 
                 <dt class="col-sm-3">Preço Venda</dt>
-                <dd class="col-sm-9">{{ produto.preco_venda }}</dd>
+                <dd class="col-sm-9">
+                    {{ produto.preco_venda }}
+                    {% include "cadastros/_selo_preco.html" with situacao=situacao_preco %}
+                </dd>
+
+                {% if perms.comercial.ver_custos %}
+                <dt class="col-sm-3">Custo médio</dt>
+                <dd class="col-sm-9">{% if custo_medio %}R$ {{ custo_medio|floatformat:2 }}{% else %}Sem compra ainda{% endif %}</dd>
+
+                <dt class="col-sm-3">Preço sugerido</dt>
+                <dd class="col-sm-9">{% if preco_sugerido %}R$ {{ preco_sugerido|floatformat:2 }} (custo + {{ config_preco.markup|floatformat:"-2" }}%){% else %}—{% endif %}</dd>
+                {% endif %}
 
                 <dt class="col-sm-3">Marca</dt>
                 <dd class="col-sm-9">{{ produto.marca }}</dd>
@@ -33,12 +45,12 @@
                 <i class="bi bi-arrow-left"></i> Voltar
             </a>
             <div class="btn-group">
-                <a href="{% url 'cadastros:produto_update' produto.pk %}" class="btn btn-warning">
+                {% pode "cadastros:produto_update" as pode_produto_update %}{% if pode_produto_update %}<a href="{% url 'cadastros:produto_update' produto.pk %}" class="btn btn-warning">
                     <i class="bi bi-pencil-square"></i> Editar
-                </a> 
-                <a href="{% url 'cadastros:produto_delete' produto.pk %}" class="btn btn-danger">
+                </a>{% endif %} 
+                {% pode "cadastros:produto_delete" as pode_produto_delete %}{% if pode_produto_delete %}<a href="{% url 'cadastros:produto_delete' produto.pk %}" class="btn btn-danger">
                     <i class="bi bi-trash"></i> Excluir
-                </a>
+                </a>{% endif %}
             </div>
         </div>
     </div>

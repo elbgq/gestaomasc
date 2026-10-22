@@ -17,6 +17,7 @@ from datetime import timedelta, date
 import csv
 from django.contrib import messages
 from cadastros.models import Produto, Contato
+from cadastros.precos import produtos_sinalizados
 from django.core.paginator import Paginator
 from django.db.models import Count, Q, F, Sum
 from decimal import Decimal, ROUND_HALF_UP
@@ -228,11 +229,12 @@ def compra_finalizar_avista(request, compra_id):
         )
 
         # Atualizar estoque
-        registrar_compra(compra)
+        resumo = registrar_compra(compra)
 
         # Finalizar compra
         compra.marcar_confirmada()
 
+    avisar_precos(request, resumo)
     return redirect("comercial:compra_detalhe", compra.id)
 
 # Criação de ContarPagar e ParcelaCompra na finalização parcelado
@@ -274,11 +276,12 @@ def compra_finalizar_parcelada(request, compra_id):
             )
 
         # Atualizar estoque
-        registrar_compra(compra)
+        resumo = registrar_compra(compra)
 
         # Finalizar compra
         compra.marcar_confirmada()
 
+    avisar_precos(request, resumo)
     return redirect("comercial:compra_detalhe", compra.id)
 
 
@@ -324,9 +327,10 @@ def compra_finalizar_duplicatas(request, compra_id):
                 referencia=compra,
             )
 
-        registrar_compra(compra)
+        resumo = registrar_compra(compra)
         compra.marcar_confirmada()
 
+    avisar_precos(request, resumo)
     return redirect("comercial:compra_detalhe", compra.id)
 
 
@@ -750,13 +754,16 @@ def gravar_vinculo_fornecedor(fornecedor, item):
 
 
 # Lança a entrada de cada item no estoque.
-# O saldo e o preço médio são atualizados por MovimentacaoEstoque.save().
+# O saldo e o preço médio são atualizados por MovimentacaoEstoque.save(), que também
+# recalcula o preço de venda dos produtos automáticos. Devolve o resumo desses preços.
 def registrar_compra(compra):
+    precos_antes = {}
     for item in compra.itens.all():
 
         if not item.produto:
             continue
 
+        precos_antes.setdefault(item.produto_id, item.produto.preco_venda)
         MovimentacaoEstoque.objects.create(
             produto=item.produto,
             tipo="ENTRADA",
@@ -765,3 +772,30 @@ def registrar_compra(compra):
             origem="COMPRA",
             referencia_id=compra.id
         )
+
+    return resumo_precos(precos_antes)
+
+
+# Preços que a compra alterou e produtos que ficaram com o preço sinalizado
+def resumo_precos(precos_antes):
+    produtos = list(Produto.objects.filter(pk__in=precos_antes).order_by("descricao"))
+    return {
+        "atualizados": [
+            (p, precos_antes[p.pk], p.preco_venda) for p in produtos if p.preco_venda != precos_antes[p.pk]
+        ],
+        "sinalizados": produtos_sinalizados(produtos),
+    }
+
+
+def _reais(valor):
+    return f"R$ {valor:.2f}".replace(".", ",")
+
+
+# Mostra o resumo de preços depois de finalizar a compra
+def avisar_precos(request, resumo):
+    if resumo["atualizados"]:
+        lista = "; ".join(f"{p.descricao}: {_reais(antes)} → {_reais(novo)}" for p, antes, novo in resumo["atualizados"])
+        messages.info(request, f"Preço de venda atualizado pelo novo custo: {lista}.")
+    if resumo["sinalizados"]:
+        nomes = ", ".join(linha["produto"].descricao for linha in resumo["sinalizados"])
+        messages.warning(request, f"Preço de venda para conferir em Revisão de preços: {nomes}.")

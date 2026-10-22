@@ -19,6 +19,7 @@ class FinanceiroCategoria(models.Model):
     )
     GRUPO_DRE_CHOICES = (
         ('RECEITA_BRUTA', 'Receita Bruta'),
+        ('CUSTOS', 'Custos (CMV/CSP lançados à mão)'),
         ('DESPESA_VENDAS', 'Despesas com Vendas'),
         ('DESPESA_ADM', 'Despesas Administrativas'),
         ('DESPESA_GERAIS', 'Despesas Gerais'),
@@ -29,8 +30,10 @@ class FinanceiroCategoria(models.Model):
         ("ISS", "ISS"),
         ("PIS", "PIS"),
         ("COFINS", "COFINS"),
+        ("PIS_COFINS", "PIS/COFINS (juntos)"),
         ("IRPJ", "IRPJ"),
         ("CSLL", "CSLL"),
+        ("IRPJ_CSLL", "IRPJ/CSLL (juntos)"),
     )
 
     nome = models.CharField(max_length=100)
@@ -133,7 +136,18 @@ class FinanceiroReceber(models.Model):
         related_name="titulos_receber"
     )
     tipo = models.CharField(max_length=1, default="R")  # Receita
- 
+
+    # Registro de alterações feitas depois da criação (ex.: reclassificação de categoria)
+    observacao = models.TextField(blank=True, default="")
+
+    # Acréscimos e desconto lançados na quitação (o valor do título não muda)
+    valor_juros = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
+    valor_multa = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
+    valor_desconto = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
+
+    def total_quitado(self):
+        return (self.valor_pago or 0) + self.valor_juros + self.valor_multa - self.valor_desconto
+
     def esta_pago(self):
         return self.valor_pago and self.valor_pago >= self.valor
     
@@ -184,7 +198,17 @@ class FinanceiroPagar(models.Model):
     content_type = models.ForeignKey(ContentType, on_delete=models.SET_NULL, null=True)
     object_id = models.PositiveIntegerField(null=True)
     referencia = GenericForeignKey("content_type", "object_id")
-    
+
+    # Registro de alterações feitas depois da criação (ex.: reclassificação de categoria)
+    observacao = models.TextField(blank=True, default="")
+
+    # Acréscimos e desconto lançados na quitação (o valor do título não muda)
+    valor_juros = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
+    valor_multa = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
+    valor_desconto = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
+
+    def total_quitado(self):
+        return (self.valor_pago or 0) + self.valor_juros + self.valor_multa - self.valor_desconto
 
     def esta_pago(self):
         if self.valor_pago is None:
@@ -197,6 +221,12 @@ class FinanceiroPagar(models.Model):
     class Meta:
         verbose_name = "Conta a Pagar"
         verbose_name_plural = "Contas a Pagar"
+        # Ações sobre títulos; valem tanto para contas a pagar quanto a receber
+        permissions = [
+            ("quitar_titulo", "Pode quitar títulos"),
+            ("estornar_quitacao", "Pode estornar quitação de títulos"),
+            ("reclassificar_titulo", "Pode alterar a categoria de títulos pagos"),
+        ]
 
 
 #====================================
@@ -214,6 +244,8 @@ class CaixaMovimento(models.Model):
         ("MANUAL", "Ajuste Manual"),
         ("COMPRA", "Compra"),
         ("TRANSFERENCIA", "Transferência"),
+        ("VENDA", "Entrada de Venda"),
+        ("ESTORNO", "Estorno"),
     )
 
     data = models.DateField()
@@ -274,6 +306,9 @@ class Caixa(models.Model):
         saidas = totals["saidas"] or 0
 
         return self.saldo_inicial + entradas - saidas
+
+    class Meta:
+        permissions = [("operar_caixa", "Pode abrir, fechar, fazer sangria e reforço de caixa")]
 
     def __str__(self):
         return self.nome

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load permissoes %}
 
 {% block title %}Títulos Financeiros{% endblock %}
 
@@ -88,8 +89,8 @@
                                                 {% if t.esta_pago %}
                                                     <span></span>
                                                 {% else %}
-                                                    <a href="{% url 'financeiro:titulo_confirmar_quitacao' t.tipo t.id %}"
-                                                class="btn btn-sm btn-success">Quitar</a>
+                                                    {% pode "financeiro:titulo_confirmar_quitacao" as pode_titulo_confirmar_quitacao %}{% if pode_titulo_confirmar_quitacao %}<a href="{% url 'financeiro:titulo_confirmar_quitacao' t.tipo t.id %}"
+                                                class="btn btn-sm btn-success">Quitar</a>{% endif %}
                                                 {% endif %}
                                                 <a href="{% url 'financeiro:titulo_detalhe' t.tipo t.id %}"
                                                 class="btn btn-sm btn-info">Detalhes</a>
@@ -161,8 +162,8 @@
                                                 {% if t.esta_pago %}
                                                     <span></span>
                                                 {% else %}
-                                                    <a href="{% url 'financeiro:titulo_confirmar_quitacao' t.tipo t.id %}"
-                                                class="btn btn-sm btn-success">Quitar</a>
+                                                    {% pode "financeiro:titulo_confirmar_quitacao" as pode_titulo_confirmar_quitacao %}{% if pode_titulo_confirmar_quitacao %}<a href="{% url 'financeiro:titulo_confirmar_quitacao' t.tipo t.id %}"
+                                                class="btn btn-sm btn-success">Quitar</a>{% endif %}
                                                 {% endif %}
                                                 <a href="{% url 'financeiro:titulo_detalhe' t.tipo t.id %}"
                                                 class="btn btn-sm btn-info">Detalhes</a>

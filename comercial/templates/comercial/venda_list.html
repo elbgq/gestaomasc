@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load permissoes %}
 
 {% block title %}Lista de Vendas{% endblock %}
 
@@ -9,9 +10,9 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h1 class="h3">Vendas</h1>
 
-        <a href="{% url 'comercial:venda_create' %}" class="btn btn-primary">
+        {% pode "comercial:venda_create" as pode_venda_create %}{% if pode_venda_create %}<a href="{% url 'comercial:venda_create' %}" class="btn btn-primary">
             <i class="bi bi-plus-circle"></i> Nova Venda
-        </a>
+        </a>{% endif %}
     </div>
 
     <!-- Tabela -->
@@ -51,13 +52,13 @@
                                 <i class="bi bi-eye"></i> Detalhes
                             </a>
                             {% if venda.status == "rascunho" %}
-                                <a href="{% url 'comercial:venda_editar' venda.id %}" class="btn btn-sm btn-warning">
+                                {% pode "comercial:venda_editar" as pode_venda_editar %}{% if pode_venda_editar %}<a href="{% url 'comercial:venda_editar' venda.id %}" class="btn btn-sm btn-warning">
                                     <i class="bi bi-pencil-square"></i> Editar
-                                </a>
+                                </a>{% endif %}
 
-                                <a href="{% url 'comercial:venda_excluir' venda.id %}" class="btn btn-sm btn-danger">
+                                {% pode "comercial:venda_excluir" as pode_venda_excluir %}{% if pode_venda_excluir %}<a href="{% url 'comercial:venda_excluir' venda.id %}" class="btn btn-sm btn-danger">
                                     <i class="bi bi-trash"></i> Excluir
-                                </a>
+                                </a>{% endif %}
                             {% endif %}
                         </div>
                     </td>

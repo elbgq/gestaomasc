@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load permissoes %}
 
 {% block title %}Lista de Produtos{% endblock %}
 
@@ -10,13 +11,17 @@
         <h1 class="h3">Produtos</h1>
 
         <div class="d-flex gap-2">
-            <a href="{% url 'cadastros:importar_produtos' %}" class="btn btn-secondary">
+            {% pode "cadastros:importar_produtos" as pode_importar_produtos %}{% if pode_importar_produtos %}<a href="{% url 'cadastros:importar_produtos' %}" class="btn btn-secondary">
                 <i class="bi bi-upload"></i> Importar CSV
-            </a>
+            </a>{% endif %}
 
-            <a href="{% url 'cadastros:produto_create' %}" class="btn btn-primary">
+            {% pode "cadastros:revisao_precos" as pode_revisao_precos %}{% if pode_revisao_precos %}<a href="{% url 'cadastros:revisao_precos' %}" class="btn btn-outline-warning">
+                <i class="bi bi-tags"></i> Revisão de preços
+            </a>{% endif %}
+
+            {% pode "cadastros:produto_create" as pode_produto_create %}{% if pode_produto_create %}<a href="{% url 'cadastros:produto_create' %}" class="btn btn-primary">
                 <i class="bi bi-plus-circle"></i> Novo Produto
-            </a>
+            </a>{% endif %}
         </div>
     </div>
 
@@ -40,7 +45,7 @@
                     <td>{{ produto.codor }}</td>
                     <td>{{ produto.descricao }}</td>
                     <td>{{ produto.unidade }}</td>
-                    <td>R$ {{ produto.preco_venda }}</td>
+                    <td class="text-nowrap">R$ {{ produto.preco_venda }} {% include "cadastros/_selo_preco.html" with situacao=produto.situacao %}</td>
                     <td>{{ produto.marca }}</td>
 
                     <td class="text-center align-middle">
@@ -48,12 +53,12 @@
                             <a href="{% url 'cadastros:produto_detail' produto.id %}" class="btn btn-sm btn-info">
                                 Detalhes
                             </a>
-                            <a href="{% url 'cadastros:produto_update' produto.id %}" class="btn btn-sm btn-warning">
+                            {% pode "cadastros:produto_update" as pode_produto_update %}{% if pode_produto_update %}<a href="{% url 'cadastros:produto_update' produto.id %}" class="btn btn-sm btn-warning">
                                 Editar
-                            </a>
-                            <a href="{% url 'cadastros:produto_delete' produto.id %}" class="btn btn-sm btn-danger">
+                            </a>{% endif %}
+                            {% pode "cadastros:produto_delete" as pode_produto_delete %}{% if pode_produto_delete %}<a href="{% url 'cadastros:produto_delete' produto.id %}" class="btn btn-sm btn-danger">
                                 Excluir
-                            </a>
+                            </a>{% endif %}
                         </div>
                     </td>
                 </tr>

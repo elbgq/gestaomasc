@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load permissoes %}
 
 {% block title %}Lista de Contatos{% endblock %}
 
@@ -8,9 +9,9 @@
     <!-- Cabeçalho -->
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h1 class="h3">Contatos</h1>
-        <a href="{% url 'cadastros:contato_create' %}" class="btn btn-primary">
+        {% pode "cadastros:contato_create" as pode_contato_create %}{% if pode_contato_create %}<a href="{% url 'cadastros:contato_create' %}" class="btn btn-primary">
             <i class="bi bi-plus-circle"></i> Novo Contato
-        </a>
+        </a>{% endif %}
     </div>
 
     <!-- Formulário de busca -->
@@ -47,8 +48,8 @@
                     <td class="text-center align-middle">
                         <div class="d-flex justify-content-center gap-2">
                             <a href="{% url 'cadastros:contato_detail' c.pk %}" class="btn btn-sm btn-info">Detalhar</a>
-                            <a href="{% url 'cadastros:contato_update' c.pk %}" class="btn btn-sm btn-warning">Editar</a>
-                            <a href="{% url 'cadastros:contato_delete' c.pk %}" class="btn btn-sm btn-danger">Excluir</a>
+                            {% pode "cadastros:contato_update" as pode_contato_update %}{% if pode_contato_update %}<a href="{% url 'cadastros:contato_update' c.pk %}" class="btn btn-sm btn-warning">Editar</a>{% endif %}
+                            {% pode "cadastros:contato_delete" as pode_contato_delete %}{% if pode_contato_delete %}<a href="{% url 'cadastros:contato_delete' c.pk %}" class="btn btn-sm btn-danger">Excluir</a>{% endif %}
                         </div>
                     </td>
                 </tr>

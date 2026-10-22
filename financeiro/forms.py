@@ -12,6 +12,14 @@ class PagarVencimentoForm(forms.ModelForm):
             'data_vencimento': forms.DateInput(attrs={"class": "form-control datepicker"}),
         }
 
+class ReceberVencimentoForm(forms.ModelForm):
+    class Meta:
+        model = FinanceiroReceber
+        fields = ["data_vencimento"]
+        widgets = {
+            'data_vencimento': forms.DateInput(attrs={"class": "form-control datepicker"}),
+        }
+
 # Parelamento de ecompras
 class ParcelamentoCompraForm(forms.Form):
     parcelas = forms.IntegerField(min_value=1, initial=1)

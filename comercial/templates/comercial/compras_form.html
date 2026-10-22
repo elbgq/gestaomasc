@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load permissoes %}
 {% load static %}
 {% load widget_tweaks %}
 
@@ -31,9 +32,9 @@
         </button>
 
         {% if compra.id %}
-            <a href="{% url 'comercial:compras_confirmar' compra.id %}" class="btn btn-success">
+            {% pode "comercial:compras_confirmar" as pode_compras_confirmar %}{% if pode_compras_confirmar %}<a href="{% url 'comercial:compras_confirmar' compra.id %}" class="btn btn-success">
                 ✅ Encerrar Compra
-            </a>
+            </a>{% endif %}
         {% endif %}
 
     </div>

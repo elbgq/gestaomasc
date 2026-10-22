@@ -28,6 +28,10 @@
                     <span class="text-danger">R$ {{ saldo|floatformat:2 }}</span>
                 {% endif %}
             </h4>
+
+            <p class="mb-0 mt-2">
+                <strong>Saldo atual em caixa:</strong> R$ {{ saldo_atual|floatformat:2 }}
+            </p>
         </div>
     </div>
 

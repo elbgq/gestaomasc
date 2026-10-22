@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}Alterar Categoria{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">Alterar Categoria</h4>
+        </div>
+
+        <div class="card-body">
+            <p>
+                Troca só a categoria{% if titulo.status == "pago" %} deste título já quitado{% endif %}.
+                O caixa não muda; o DRE passa a mostrar o valor na nova categoria.
+                {% if titulo.origem == "LANCAMENTO" %}O lançamento de origem também é alterado.{% endif %}
+                A alteração fica registrada na observação do título.
+            </p>
+
+            <ul>
+                <li><strong>Descrição:</strong> {{ titulo.descricao }}</li>
+                <li><strong>Valor:</strong> R$ {{ titulo.valor|floatformat:2 }}</li>
+                <li><strong>Categoria atual:</strong> {{ titulo.categoria|default:"sem categoria" }}</li>
+            </ul>
+
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3" style="max-width: 420px">
+                    <label class="form-label">Nova categoria</label>
+                    <select name="categoria" class="form-select" required>
+                        <option value="">-- Selecione --</option>
+                        {% for c in categorias %}
+                        <option value="{{ c.id }}" {% if c.id == titulo.categoria_id %}selected{% endif %}>{{ c.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Salvar</button>
+                <a href="{% url 'financeiro:titulo_detalhe' titulo.tipo titulo.id %}" class="btn btn-secondary ms-2">Cancelar</a>
+            </form>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

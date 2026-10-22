@@ -16,6 +16,7 @@ from .views import (
     contato_create,
     contato_update,
     contato_delete,
+    contato_unificar,
 )
 
 
@@ -33,6 +34,9 @@ urlpatterns = [
     # Importar Produtos via CSV
     path('produtos/importar/', importar_produtos, name='importar_produtos'),
 
+    # Revisão de preços de venda (markup e preços manuais)
+    path("produtos/revisao-precos/", views.revisao_precos, name="revisao_precos"),
+
     # Serviços
     path("servicos/", views.servico_list, name="servico_list"),
     path("servicos/novo/", views.servico_create, name="servico_create"),
@@ -48,5 +52,6 @@ urlpatterns = [
     path("contatos/novo/", contato_create, name="contato_create"),
     path("contatos/<int:pk>/", contato_detail, name="contato_detail"),
     path("contatos/<int:pk>/editar/", contato_update, name="contato_update"),
-    path("contatos/<int:pk>/excluir/", contato_delete, name="contato_delete")
+    path("contatos/<int:pk>/excluir/", contato_delete, name="contato_delete"),
+    path("contatos/<int:pk>/unificar/", contato_unificar, name="contato_unificar"),
 ]

@@ -18,16 +18,13 @@
             <form method="post" class="mt-3">
                 {% csrf_token %}
 
-                <div class="mb-3">
-                    <label class="form-label">Data do pagamento</label>
-                    <input type="date" name="data_pagamento" class="form-control" required>
-                </div>
+                {% include "financeiro/_quitacao_campos.html" %}
 
                 <button class="btn btn-danger">
                     Confirmar Pagamento
                 </button>
 
-                <a href="{% url 'financeiro:pagar_list' %}" class="btn btn-secondary ms-2">
+                <a href="{% url 'financeiro:contas_pagar_lista' %}" class="btn btn-secondary ms-2">
                     Cancelar
                 </a>
             </form>

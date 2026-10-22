@@ -19,7 +19,7 @@
             <form method="post">
                 {% csrf_token %}
                 <button class="btn btn-danger">Excluir</button>
-                <a href="{% url 'financeiro:caixa_list' %}" class="btn btn-secondary ms-2">Cancelar</a>
+                <a href="{% url 'financeiro:caixa_movimento_detalhe' object.id %}" class="btn btn-secondary ms-2">Cancelar</a>
             </form>
         </div>
     </div>

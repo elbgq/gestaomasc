@@ -12,7 +12,7 @@ body.home-page {
     position: fixed;          /* ocupa a tela inteira */
     top: 0;
     left: 250px;              /* desloca por causa da sidebar */
-    width: calc(100vw - 200px);
+    right: 0;                 /* vai até a borda direita sem passar dela (respeita a barra de rolagem) */
     height: 80vh;
     display: flex;
     flex-direction: column;
@@ -22,6 +22,13 @@ body.home-page {
     padding: 10px;
     box-sizing: border-box;
     overflow: hidden;         /* garante sem scroll interno */
+}
+
+/* Título e texto quebram linha dentro da área visível */
+.home-fullscreen h4,
+.home-fullscreen p {
+    max-width: 100%;
+    overflow-wrap: break-word;
 }
 
 .home-fullscreen img {
@@ -34,7 +41,6 @@ body.home-page {
 @media (max-width: 768px) {
     .home-fullscreen {
         left: 0;
-        width: 100vw;
     }
 }
 
@@ -107,6 +113,40 @@ html, body {
     top: 15px;
     left: 15px;
     z-index: 1100;
+}
+
+/* Menu recolhido no computador: o conteúdo ocupa a largura toda */
+.erp-sidebar,
+.erp-content,
+.erp-footer,
+.home-fullscreen {
+    transition: transform .2s ease, margin-left .2s ease, left .2s ease;
+}
+
+@media (min-width: 769px) {
+    /* Botão fica no canto do menu, sem cobrir o nome MASC */
+    .erp-toggle {
+        top: 12px;
+        left: 12px;
+        padding: 2px 8px;
+    }
+
+    body.sidebar-recolhida .erp-sidebar {
+        transform: translateX(-100%);
+    }
+
+    body.sidebar-recolhida .erp-content {
+        margin-left: 0;
+        padding-left: 70px;   /* espaço para o botão do menu */
+    }
+
+    body.sidebar-recolhida .erp-footer {
+        margin-left: 0;
+    }
+
+    body.sidebar-recolhida .home-fullscreen {
+        left: 0;
+    }
 }
 
 /* =========================

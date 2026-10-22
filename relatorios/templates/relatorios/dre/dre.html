@@ -3,6 +3,8 @@
 
 <h2>Demonstração do Resultado do Exercício (DRE)</h2>
 
+{% include "relatorios/_erros_filtro.html" %}
+
 <form method="get" class="mb-4">
     <div class="row g-3">
         <div class="col-md-3">
@@ -28,13 +30,25 @@
     </tr>
     <tr><th class="ps-2">Receita de Produtos</th><td class="text-end">R$ {{ dre.receita_produtos|floatformat:2 }}</td></tr>
     <tr><th class="ps-2">Receita de Serviços</th><td class="text-end">R$ {{ dre.receita_servicos|floatformat:2 }}</td></tr>
+    {% if dre.receita_acrescimos %}
+    <tr><th class="ps-2">Acréscimos nas Vendas</th><td class="text-end">R$ {{ dre.receita_acrescimos|floatformat:2 }}</td></tr>
+    {% endif %}
+    {% if dre.receita_outras %}
+    <tr><th class="ps-2">Outras Receitas de Vendas e Serviços (lançamentos)</th><td class="text-end">R$ {{ dre.receita_outras|floatformat:2 }}</td></tr>
+    {% endif %}
     
     <!-- DEDUÇÕES -->
     <tr class="table-secondary"><th>Deduções da Receita Bruta</th><td></td></tr>
+    {% if dre.descontos_vendas %}
+    <tr><th class="ps-3">Descontos nas Vendas</th><td class="text-end">R$ {{ dre.descontos_vendas|floatformat:2 }}</td></tr>
+    {% endif %}
     <tr><th class="ps-3">ICMS</th><td class="text-end">R$ {{ dre.icms|floatformat:2 }}</td></tr>
     <tr><th class="ps-3">ISS</th><td class="text-end">R$ {{ dre.iss|floatformat:2 }}</td></tr>
     <tr><th class="ps-3">PIS</th><td class="text-end">R$ {{ dre.pis|floatformat:2 }}</td></tr>
     <tr><th class="ps-3">COFINS</th><td class="text-end">R$ {{ dre.cofins|floatformat:2 }}</td></tr>
+    {% if dre.pis_cofins_juntos %}
+    <tr><th class="ps-3">PIS/COFINS (lançados juntos)</th><td class="text-end">R$ {{ dre.pis_cofins_juntos|floatformat:2 }}</td></tr>
+    {% endif %}
 
     <tr class="table-secondary">
         <th>Total Deduções</th>
@@ -48,6 +62,9 @@
 
     <!-- CMV -->
     <tr><th>(-) CMV</th><td class="text-end">R$ {{ dre.cmv|floatformat:2 }}</td></tr>
+    {% if dre.custos_lancados %}
+    <tr><th>(-) Custos lançados (CMV/CSP)</th><td class="text-end">R$ {{ dre.custos_lancados|floatformat:2 }}</td></tr>
+    {% endif %}
 
     <tr class="table-secondary">
         <th>Lucro Bruto</th>
@@ -69,7 +86,11 @@
     </tr>
     <!-- OUTRAS RECEITAS E DESPESAS -->
     <tr><th>Outras Receitas</th><td class="text-end">R$ {{ dre.outras_receitas|floatformat:2 }}</td></tr>
+    {% if dre.juros_multas_recebidos %}<tr><th class="ps-3">Juros e multas recebidos</th><td class="text-end">R$ {{ dre.juros_multas_recebidos|floatformat:2 }}</td></tr>{% endif %}
+    {% if dre.descontos_obtidos %}<tr><th class="ps-3">Descontos obtidos</th><td class="text-end">R$ {{ dre.descontos_obtidos|floatformat:2 }}</td></tr>{% endif %}
     <tr><th>Outras Despesas</th><td class="text-end">R$ {{ dre.outras_despesas|floatformat:2 }}</td></tr>
+    {% if dre.juros_multas_pagos %}<tr><th class="ps-3">Juros e multas pagos</th><td class="text-end">R$ {{ dre.juros_multas_pagos|floatformat:2 }}</td></tr>{% endif %}
+    {% if dre.descontos_concedidos %}<tr><th class="ps-3">Descontos concedidos</th><td class="text-end">R$ {{ dre.descontos_concedidos|floatformat:2 }}</td></tr>{% endif %}
 
     <tr class="table-secondary">
         <th>Resultado Antes do IR/CSLL</th>
@@ -78,6 +99,9 @@
     <!-- IRPJ / CSLL -->
     <tr><th>(-) IRPJ</th><td class="text-end">R$ {{ dre.irpj|floatformat:2 }}</td></tr>
     <tr><th>(-) CSLL</th><td class="text-end">R$ {{ dre.csll|floatformat:2 }}</td></tr>
+    {% if dre.irpj_csll_juntos %}
+    <tr><th>(-) IRPJ/CSLL (lançados juntos)</th><td class="text-end">R$ {{ dre.irpj_csll_juntos|floatformat:2 }}</td></tr>
+    {% endif %}
 
     <tr class="table-secondary">
         <th>Total IR + CSLL</th>
@@ -91,6 +115,29 @@
     </tr>
 
 </table>
+
+<p class="text-muted small w-75 mx-auto">
+    Regime de competência: receitas e despesas entram pela data da venda ou do lançamento, não pela data do pagamento.
+</p>
+
+{% if dre.custos_lancados %}
+<div class="alert alert-info w-75 mx-auto">
+    <strong>Custos lançados:</strong> o CMV das vendas de produtos já é calculado pelo estoque.
+    Confira se os lançamentos nas categorias de custo (R$ {{ dre.custos_lancados|floatformat:2 }}) não repetem esse valor;
+    use essas categorias só para custos que o estoque não registra, como o custo dos serviços prestados.
+</div>
+{% endif %}
+
+{% if dre.fora_do_dre %}
+<div class="alert alert-warning w-75 mx-auto">
+    <strong>Valores fora do DRE:</strong> estas categorias não têm grupo do DRE. Defina o grupo em Categorias para que entrem no resultado.
+    <ul class="mb-0">
+        {% for nome, valor in dre.fora_do_dre %}
+        <li>{{ nome }}: R$ {{ valor|floatformat:2 }}</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
 {% endif %}
 
 {% endblock %}
