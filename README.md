@@ -237,7 +237,7 @@ Também está previsto o **split payment**: o imposto separado automaticamente n
 4. Cancelamento, carta de correção, DANFE, guarda e envio dos XMLs ao contador.
 5. DRE e financeiro usando os tributos calculados; preparação para split payment.
 6. Distribuição DF-e e manifestação na entrada de notas.
-
+ 
 #### 7.7 Pré-requisitos e cuidados
 
 - Fase 2 concluída (usuários, permissões, PostgreSQL e backup), porque notas fiscais não podem ser perdidas nem alteradas sem registro.

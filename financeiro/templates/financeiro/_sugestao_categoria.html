@@ -1,5 +1,8 @@
-{# Sugere a categoria do contato e pede confirmação se o usuário escolher outra.
-   Variáveis: campo_contato (id do select do contato), tipo ("D", "R" ou vazio) #}
+{% comment %}
+   Sugere a categoria do contato e pede confirmação se o usuário escolher outra.
+   Variáveis: campo_contato (id do select do contato), tipo ("D", "R" ou vazio)
+   (comentário de várias linhas precisa de {% comment %}; com {# #} ele aparecia na tela)
+{% endcomment %}
 <div id="aviso-categoria" class="form-text text-primary"></div>
 <script>
 document.addEventListener("DOMContentLoaded", function () {

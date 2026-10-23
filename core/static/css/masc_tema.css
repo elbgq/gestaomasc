@@ -1,0 +1,639 @@
+/* =========================================================
+   TEMA MASC - visual "híbrido sóbrio"
+   Neumorfismo suave nas superfícies (fundo, cartões, abas, campos)
+   e um toque de claymorfismo nos botões e etiquetas.
+   Carregado no base.html DEPOIS do Bootstrap e do masc_style.css:
+   para voltar ao visual antigo basta tirar a linha do base.html.
+========================================================= */
+
+/* =========================
+   PALETA
+========================= */
+:root {
+    /* Cores da marca (as mesmas de antes) */
+    --masc-verde: #2e7d32;
+    --masc-verde-escuro: #1b5e20;
+    --masc-menta: #a9ebbd;
+    --masc-preto: #2b2727;
+
+    /* Tons novos, escolhidos para combinar com o verde e o preto */
+    --masc-petroleo: #2f6f8f;        /* ações neutras (Detalhes, Editar) no lugar do azul do Bootstrap */
+    --masc-petroleo-escuro: #255a75;
+    --masc-turquesa: #2a8a86;        /* informação */
+    --masc-ambar: #f2b84b;           /* pendente / atenção */
+    --masc-vermelho: #c62828;        /* vencido / excluir */
+    --masc-vermelho-escuro: #a31f1f;
+    --masc-cinza: #66756b;           /* botões secundários */
+
+    /* Superfícies */
+    --masc-bg: #e6efe9;              /* fundo da tela (menta acinzentado) */
+    --masc-cartao: #fbfdfb;          /* cartões e tabelas */
+    --masc-cabecalho: #e3f1e7;       /* cabeçalho das tabelas */
+    --masc-linha: #e4ebe6;           /* divisórias */
+    --masc-borda-campo: #d3ded6;
+    --masc-luz: #ffffff;             /* luz do relevo */
+    --masc-sombra: #c6d3ca;          /* sombra do relevo */
+    --masc-texto: #1f2a22;
+    --masc-texto-suave: #56665b;
+
+    /* Relevos reutilizados */
+    --masc-relevo: 6px 6px 14px var(--masc-sombra), -6px -6px 14px var(--masc-luz);
+    --masc-relevo-leve: 3px 3px 8px var(--masc-sombra), -3px -3px 8px var(--masc-luz);
+    --masc-afundado: inset 2px 2px 4px rgba(27, 94, 32, .08);
+    --masc-botao: 0 4px 10px -4px rgba(27, 94, 32, .45), inset 0 1px 0 rgba(255, 255, 255, .3), inset 0 -2px 0 rgba(0, 0, 0, .12);
+    --masc-botao-hover: 0 6px 14px -5px rgba(27, 94, 32, .5), inset 0 1px 0 rgba(255, 255, 255, .3), inset 0 -2px 0 rgba(0, 0, 0, .12);
+    --masc-botao-pressionado: inset 0 2px 4px rgba(0, 0, 0, .2);
+
+    /* ---- Variáveis do Bootstrap 5.3 ---- */
+    --bs-body-bg: var(--masc-bg);
+    --bs-body-color: var(--masc-texto);
+    --bs-secondary-color: var(--masc-texto-suave);
+    --bs-border-color: var(--masc-borda-campo);
+    --bs-border-radius: .75rem;
+    --bs-border-radius-sm: .5rem;
+    --bs-border-radius-lg: 1rem;
+    --bs-link-color: var(--masc-petroleo);
+    --bs-link-color-rgb: 47, 111, 143;
+    --bs-link-hover-color: var(--masc-petroleo-escuro);
+    --bs-link-hover-color-rgb: 37, 90, 117;
+    --bs-focus-ring-color: rgba(46, 125, 50, .25);
+
+    --bs-primary: var(--masc-petroleo);     --bs-primary-rgb: 47, 111, 143;
+    --bs-success: var(--masc-verde);        --bs-success-rgb: 46, 125, 50;
+    --bs-danger: var(--masc-vermelho);      --bs-danger-rgb: 198, 40, 40;
+    --bs-warning: var(--masc-ambar);        --bs-warning-rgb: 242, 184, 75;
+    --bs-info: var(--masc-turquesa);        --bs-info-rgb: 42, 138, 134;
+    --bs-secondary: var(--masc-cinza);      --bs-secondary-rgb: 102, 117, 107;
+    --bs-dark: var(--masc-preto);           --bs-dark-rgb: 43, 39, 39;
+
+    /* Tons claros usados por alertas e textos de ênfase */
+    --bs-primary-text-emphasis: #1e4a60;  --bs-primary-bg-subtle: #e2edf3;  --bs-primary-border-subtle: #b9d2df;
+    --bs-success-text-emphasis: #14532d;  --bs-success-bg-subtle: #e3f1e7;  --bs-success-border-subtle: #bfdcc8;
+    --bs-danger-text-emphasis: #7f1d1d;   --bs-danger-bg-subtle: #fbe6e4;   --bs-danger-border-subtle: #f1bdb7;
+    --bs-warning-text-emphasis: #5c3d00;  --bs-warning-bg-subtle: #fdf1d9;  --bs-warning-border-subtle: #f4d797;
+    --bs-info-text-emphasis: #17504d;     --bs-info-bg-subtle: #ddf0ee;     --bs-info-border-subtle: #b2dbd7;
+    --bs-secondary-text-emphasis: #3a463e; --bs-secondary-bg-subtle: #eaefeb; --bs-secondary-border-subtle: #cfd9d2;
+    --bs-light-text-emphasis: #3a463e;    --bs-light-bg-subtle: #f6f9f7;    --bs-light-border-subtle: #dfe7e1;
+}
+
+/* O masc_style.css pinta o fundo com o menta forte; aqui vira o tom do tema */
+html, body {
+    background-color: var(--masc-bg);
+    color: var(--masc-texto);
+}
+
+/* =========================
+   MENU LATERAL
+========================= */
+.erp-sidebar {
+    background-color: var(--masc-preto);
+    box-shadow: 4px 0 18px rgba(0, 0, 0, .18);
+}
+
+.erp-sidebar .nav-link {
+    border-radius: .6rem;
+    padding: .45rem .75rem;
+    transition: background-color .15s ease, color .15s ease;
+}
+
+.erp-sidebar .nav-link:hover,
+.erp-sidebar .nav-link:focus-visible {
+    background-color: rgba(255, 255, 255, .07);
+}
+
+/* Item da tela aberta (marcado pelo script do base.html) */
+.erp-sidebar .nav-link.active {
+    background-color: var(--masc-verde);
+    font-weight: 600;
+    box-shadow: 0 6px 12px -6px rgba(0, 0, 0, .7), inset 0 1px 0 rgba(255, 255, 255, .25);
+}
+
+/* Grupo que contém a tela aberta */
+.erp-sidebar .nav-link.grupo-ativo {
+    color: var(--masc-menta) !important;
+}
+
+.erp-footer {
+    background-color: var(--masc-preto);
+}
+
+/* =========================
+   CARTÕES
+========================= */
+.card {
+    --bs-card-bg: var(--masc-cartao);
+    --bs-card-border-color: rgba(27, 94, 32, .10);
+    --bs-card-border-radius: 14px;
+    --bs-card-inner-border-radius: 13px;
+    --bs-card-cap-bg: transparent;
+    --bs-card-cap-padding-y: .8rem;
+    box-shadow: var(--masc-relevo);
+}
+
+/* O relevo do tema substitui as sombras do Bootstrap nos cartões */
+.card.shadow-sm,
+.card.shadow {
+    box-shadow: var(--masc-relevo) !important;
+}
+
+/* Cartão dentro de cartão: relevo menor para não pesar */
+.card .card {
+    box-shadow: var(--masc-relevo-leve) !important;
+}
+
+.card-header {
+    font-weight: 600;
+    border-bottom-color: var(--masc-linha);
+}
+
+/* As faixas coloridas dos cabeçalhos viram um tom claro da mesma cor,
+   mantendo o significado (verde = receitas, vermelho = despesas/exclusão...) */
+.card-header.bg-success { background-color: var(--bs-success-bg-subtle) !important; color: var(--bs-success-text-emphasis) !important; }
+.card-header.bg-danger  { background-color: var(--bs-danger-bg-subtle) !important;  color: var(--bs-danger-text-emphasis) !important; }
+.card-header.bg-primary { background-color: var(--bs-primary-bg-subtle) !important; color: var(--bs-primary-text-emphasis) !important; }
+.card-header.bg-warning { background-color: var(--bs-warning-bg-subtle) !important; color: var(--bs-warning-text-emphasis) !important; }
+.card-header.bg-info    { background-color: var(--bs-info-bg-subtle) !important;    color: var(--bs-info-text-emphasis) !important; }
+.card-header.bg-dark,
+.card-header.bg-secondary { background-color: var(--bs-secondary-bg-subtle) !important; color: var(--bs-secondary-text-emphasis) !important; }
+.card-header[class*="bg-"] .text-white,
+.card-header[class*="bg-"] h5,
+.card-header[class*="bg-"] h4 { color: inherit !important; }
+
+.card-footer {
+    background-color: transparent;
+    border-top-color: var(--masc-linha);
+}
+
+/* Bordas coloridas dos cartões ficam discretas */
+.card.border-success { border-color: var(--bs-success-border-subtle) !important; }
+.card.border-danger  { border-color: var(--bs-danger-border-subtle) !important; }
+.card.border-primary { border-color: var(--bs-primary-border-subtle) !important; }
+
+/* =========================
+   TABELAS
+========================= */
+.table {
+    --bs-table-bg: var(--masc-cartao);
+    --bs-table-color: var(--masc-texto);
+    --bs-table-border-color: var(--masc-linha);
+    --bs-table-striped-bg: #f3f8f4;
+    --bs-table-striped-color: var(--masc-texto);
+    --bs-table-hover-bg: #e9f3ec;
+    --bs-table-hover-color: var(--masc-texto);
+    --bs-table-active-bg: #e3efe6;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Cabeçalhos: o preto (table-dark) e o verde forte viram um verde claro com letra pequena */
+.table > thead.table-dark,
+.table > thead.table-success,
+.table > thead.table-primary,
+.table > thead.table-secondary,
+.table > thead.table-light,
+.table > thead > tr.table-dark,
+.table > thead > tr.table-success {
+    --bs-table-bg: var(--masc-cabecalho);
+    --bs-table-color: var(--masc-verde-escuro);
+    --bs-table-border-color: #d3e6d9;
+    --bs-table-striped-bg: var(--masc-cabecalho);
+    --bs-table-hover-bg: var(--masc-cabecalho);
+}
+
+.table > thead.table-danger {
+    --bs-table-bg: var(--bs-danger-bg-subtle);
+    --bs-table-color: var(--bs-danger-text-emphasis);
+    --bs-table-border-color: var(--bs-danger-border-subtle);
+}
+
+.table > thead th {
+    font-size: .76rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    vertical-align: middle;
+}
+
+/* Linhas coloridas no corpo (ex.: totais, alertas) usam os tons claros do tema */
+.table > tbody > tr.table-success,  .table > tfoot > tr.table-success  { --bs-table-bg: var(--bs-success-bg-subtle); --bs-table-color: var(--bs-success-text-emphasis); }
+.table > tbody > tr.table-danger,   .table > tfoot > tr.table-danger   { --bs-table-bg: var(--bs-danger-bg-subtle);  --bs-table-color: var(--bs-danger-text-emphasis); }
+.table > tbody > tr.table-warning,  .table > tfoot > tr.table-warning  { --bs-table-bg: var(--bs-warning-bg-subtle); --bs-table-color: var(--bs-warning-text-emphasis); }
+.table > tbody > tr.table-secondary,.table > tfoot > tr.table-secondary{ --bs-table-bg: var(--bs-secondary-bg-subtle); --bs-table-color: var(--bs-secondary-text-emphasis); }
+.table > tbody > tr.table-primary,  .table > tfoot > tr.table-primary  { --bs-table-bg: var(--bs-primary-bg-subtle); --bs-table-color: var(--bs-primary-text-emphasis); }
+.table > tbody > tr.table-light,    .table > tfoot > tr.table-light    { --bs-table-bg: var(--bs-light-bg-subtle); }
+
+/* Tabela solta na tela (fora de cartão) ganha o mesmo relevo do cartão */
+.table-responsive:not(.card .table-responsive) {
+    background-color: var(--masc-cartao);
+    border-radius: 14px;
+    box-shadow: var(--masc-relevo);
+    margin-bottom: 1rem;
+}
+
+.table-responsive > .table {
+    margin-bottom: 0;
+}
+
+.card > .table:last-child,
+.card-body.p-0 .table {
+    margin-bottom: 0;
+}
+
+/* Cantos arredondados quando a tabela é o conteúdo do cartão ou do bloco */
+.table-responsive:not(.card .table-responsive),
+.card > .table-responsive,
+.card-body.p-0 > .table-responsive {
+    overflow: hidden;
+    overflow-x: auto;
+}
+
+.table-responsive:not(.card .table-responsive) > .table > thead th:first-child { border-top-left-radius: 14px; }
+.table-responsive:not(.card .table-responsive) > .table > thead th:last-child  { border-top-right-radius: 14px; }
+
+/* =========================
+   BOTÕES
+========================= */
+.btn {
+    --bs-btn-border-radius: .65rem;
+    --bs-btn-font-weight: 500;
+    --bs-btn-box-shadow: var(--masc-botao);
+    box-shadow: var(--masc-botao);
+    transition: background-color .15s ease, box-shadow .15s ease, transform .1s ease;
+}
+
+.btn:hover {
+    box-shadow: var(--masc-botao-hover);
+}
+
+.btn:active,
+.btn.active {
+    box-shadow: var(--masc-botao-pressionado);
+    transform: translateY(1px);
+}
+
+.btn-sm { --bs-btn-border-radius: .55rem; }
+.btn-lg { --bs-btn-border-radius: .85rem; }
+
+/* Botões sem fundo (links, fechar, contorno no menu) não levam relevo */
+.btn-link,
+.btn-close,
+.erp-sidebar .btn,
+.btn:disabled,
+.btn.disabled {
+    box-shadow: none;
+}
+
+.btn-primary {
+    --bs-btn-bg: var(--masc-petroleo);           --bs-btn-border-color: var(--masc-petroleo);
+    --bs-btn-hover-bg: var(--masc-petroleo-escuro); --bs-btn-hover-border-color: var(--masc-petroleo-escuro);
+    --bs-btn-active-bg: #1f4d64;                 --bs-btn-active-border-color: #1f4d64;
+    --bs-btn-disabled-bg: var(--masc-petroleo);  --bs-btn-disabled-border-color: var(--masc-petroleo);
+    --bs-btn-focus-shadow-rgb: 47, 111, 143;
+}
+
+.btn-success {
+    --bs-btn-bg: var(--masc-verde);              --bs-btn-border-color: var(--masc-verde);
+    --bs-btn-hover-bg: var(--masc-verde-escuro); --bs-btn-hover-border-color: var(--masc-verde-escuro);
+    --bs-btn-active-bg: #164d1a;                 --bs-btn-active-border-color: #164d1a;
+    --bs-btn-disabled-bg: var(--masc-verde);     --bs-btn-disabled-border-color: var(--masc-verde);
+    --bs-btn-focus-shadow-rgb: 46, 125, 50;
+}
+
+.btn-danger {
+    --bs-btn-bg: var(--masc-vermelho);           --bs-btn-border-color: var(--masc-vermelho);
+    --bs-btn-hover-bg: var(--masc-vermelho-escuro); --bs-btn-hover-border-color: var(--masc-vermelho-escuro);
+    --bs-btn-active-bg: #8a1a1a;                 --bs-btn-active-border-color: #8a1a1a;
+    --bs-btn-disabled-bg: var(--masc-vermelho);  --bs-btn-disabled-border-color: var(--masc-vermelho);
+    --bs-btn-focus-shadow-rgb: 198, 40, 40;
+}
+
+.btn-warning {
+    --bs-btn-color: #3a2600;                     --bs-btn-bg: var(--masc-ambar);  --bs-btn-border-color: var(--masc-ambar);
+    --bs-btn-hover-color: #3a2600;               --bs-btn-hover-bg: #e5a733;      --bs-btn-hover-border-color: #e5a733;
+    --bs-btn-active-color: #3a2600;              --bs-btn-active-bg: #d69a29;     --bs-btn-active-border-color: #d69a29;
+    --bs-btn-disabled-color: #3a2600;            --bs-btn-disabled-bg: var(--masc-ambar); --bs-btn-disabled-border-color: var(--masc-ambar);
+    --bs-btn-focus-shadow-rgb: 242, 184, 75;
+}
+
+.btn-info {
+    --bs-btn-color: #fff;                        --bs-btn-bg: var(--masc-turquesa); --bs-btn-border-color: var(--masc-turquesa);
+    --bs-btn-hover-color: #fff;                  --bs-btn-hover-bg: #237571;        --bs-btn-hover-border-color: #237571;
+    --bs-btn-active-color: #fff;                 --bs-btn-active-bg: #1d625f;       --bs-btn-active-border-color: #1d625f;
+    --bs-btn-disabled-color: #fff;               --bs-btn-disabled-bg: var(--masc-turquesa); --bs-btn-disabled-border-color: var(--masc-turquesa);
+    --bs-btn-focus-shadow-rgb: 42, 138, 134;
+}
+
+/* Secundário (Voltar, Cancelar): claro, em relevo, para não competir com a ação principal */
+.btn-secondary {
+    --bs-btn-color: #2b3a30;                     --bs-btn-bg: #e8efea;   --bs-btn-border-color: #d6e0d9;
+    --bs-btn-hover-color: #1f2a22;               --bs-btn-hover-bg: #dde7e0; --bs-btn-hover-border-color: #ccd8cf;
+    --bs-btn-active-color: #1f2a22;              --bs-btn-active-bg: #d3dfd6; --bs-btn-active-border-color: #c4d1c8;
+    --bs-btn-disabled-color: #66756b;            --bs-btn-disabled-bg: #e8efea; --bs-btn-disabled-border-color: #d6e0d9;
+    --bs-btn-focus-shadow-rgb: 102, 117, 107;
+    box-shadow: 0 3px 8px -4px rgba(0, 0, 0, .3), inset 0 1px 0 #fff;
+}
+
+.btn-dark {
+    --bs-btn-bg: var(--masc-preto);  --bs-btn-border-color: var(--masc-preto);
+    --bs-btn-hover-bg: #1f1c1c;      --bs-btn-hover-border-color: #1f1c1c;
+}
+
+/* Botões de contorno: fundo do cartão, sombra mais leve */
+.btn[class*="btn-outline-"] {
+    background-color: var(--masc-cartao);
+    box-shadow: 0 2px 6px -3px rgba(0, 0, 0, .25);
+}
+.btn[class*="btn-outline-"]:hover { box-shadow: 0 4px 10px -5px rgba(0, 0, 0, .35); }
+
+.btn-outline-primary {
+    --bs-btn-color: var(--masc-petroleo);  --bs-btn-border-color: var(--masc-petroleo);
+    --bs-btn-hover-bg: var(--masc-petroleo); --bs-btn-hover-border-color: var(--masc-petroleo);
+    --bs-btn-active-bg: var(--masc-petroleo-escuro); --bs-btn-active-border-color: var(--masc-petroleo-escuro);
+}
+.btn-outline-success {
+    --bs-btn-color: var(--masc-verde);  --bs-btn-border-color: var(--masc-verde);
+    --bs-btn-hover-bg: var(--masc-verde); --bs-btn-hover-border-color: var(--masc-verde);
+    --bs-btn-active-bg: var(--masc-verde-escuro); --bs-btn-active-border-color: var(--masc-verde-escuro);
+}
+.btn-outline-danger {
+    --bs-btn-color: var(--masc-vermelho);  --bs-btn-border-color: var(--masc-vermelho);
+    --bs-btn-hover-bg: var(--masc-vermelho); --bs-btn-hover-border-color: var(--masc-vermelho);
+    --bs-btn-active-bg: var(--masc-vermelho-escuro); --bs-btn-active-border-color: var(--masc-vermelho-escuro);
+}
+.btn-outline-warning {
+    --bs-btn-color: #8a5a00;  --bs-btn-border-color: #e0a63a;
+    --bs-btn-hover-color: #3a2600; --bs-btn-hover-bg: var(--masc-ambar); --bs-btn-hover-border-color: var(--masc-ambar);
+    --bs-btn-active-color: #3a2600; --bs-btn-active-bg: #e5a733; --bs-btn-active-border-color: #e5a733;
+}
+.btn-outline-secondary {
+    --bs-btn-color: #44524a;  --bs-btn-border-color: #b9c7bd;
+    --bs-btn-hover-color: #1f2a22; --bs-btn-hover-bg: #e3ebe5; --bs-btn-hover-border-color: #a9b9ae;
+    --bs-btn-active-color: #1f2a22; --bs-btn-active-bg: #d6e1d9; --bs-btn-active-border-color: #a9b9ae;
+}
+.btn-outline-dark {
+    --bs-btn-color: var(--masc-preto);  --bs-btn-border-color: var(--masc-preto);
+    --bs-btn-hover-bg: var(--masc-preto); --bs-btn-hover-border-color: var(--masc-preto);
+}
+
+/* Botão "Sair" do menu continua no contorno claro de antes */
+.erp-sidebar .btn-outline-light {
+    background-color: transparent;
+    border-radius: .55rem;
+}
+
+/* Botão de mostrar/recolher o menu */
+.erp-toggle {
+    border-radius: .55rem;
+}
+
+/* Grupos de botões: o relevo vai no grupo, não em cada botão */
+.btn-group {
+    border-radius: .65rem;
+    box-shadow: var(--masc-botao);
+}
+.btn-group > .btn { box-shadow: none; }
+
+/* =========================
+   ETIQUETAS (badges)
+========================= */
+.badge {
+    --bs-badge-border-radius: 999px;
+    --bs-badge-padding-x: .7em;
+    --bs-badge-font-weight: 700;
+    box-shadow: 0 2px 4px -1px rgba(0, 0, 0, .25), inset 0 1px 0 rgba(255, 255, 255, .3);
+}
+
+/* Âmbar pede letra escura, mesmo quando o template não colocou text-dark */
+.badge.bg-warning { color: #3a2600 !important; }
+
+/* =========================
+   CAMPOS DE FORMULÁRIO
+========================= */
+.form-control,
+.form-select {
+    background-color: #fff;
+    border-color: var(--masc-borda-campo);
+    border-radius: .65rem;
+    box-shadow: var(--masc-afundado);
+    color: var(--masc-texto);
+}
+
+.form-control:focus,
+.form-select:focus,
+.form-check-input:focus {
+    border-color: #7fbf86;
+    box-shadow: var(--masc-afundado), 0 0 0 .2rem rgba(46, 125, 50, .2);
+}
+
+.form-control:disabled,
+.form-control[readonly],
+.form-select:disabled {
+    background-color: #eef3ef;
+}
+
+.form-control-sm,
+.form-select-sm {
+    border-radius: .5rem;
+}
+
+.form-label {
+    font-weight: 500;
+    color: #3a473e;
+}
+
+.form-check-input:checked {
+    background-color: var(--masc-verde);
+    border-color: var(--masc-verde);
+}
+
+.input-group > .input-group-text {
+    background-color: var(--masc-cabecalho);
+    border-color: var(--masc-borda-campo);
+    color: var(--masc-verde-escuro);
+}
+
+/* Select2 (tema bootstrap-5) com o mesmo formato dos outros campos */
+.select2-container--bootstrap-5 .select2-selection {
+    border-color: var(--masc-borda-campo);
+    border-radius: .65rem;
+    box-shadow: var(--masc-afundado);
+}
+
+.select2-container--bootstrap-5.select2-container--focus .select2-selection,
+.select2-container--bootstrap-5.select2-container--open .select2-selection {
+    border-color: #7fbf86;
+    box-shadow: var(--masc-afundado), 0 0 0 .2rem rgba(46, 125, 50, .2);
+}
+
+.select2-container--bootstrap-5 .select2-dropdown {
+    border-color: var(--masc-borda-campo);
+    border-radius: .65rem;
+    box-shadow: 0 10px 24px -10px rgba(27, 94, 32, .35);
+    overflow: hidden;
+}
+
+.select2-container--bootstrap-5 .select2-dropdown .select2-results__options .select2-results__option.select2-results__option--highlighted {
+    background-color: var(--masc-cabecalho);
+    color: var(--masc-verde-escuro);
+}
+
+.select2-container--bootstrap-5 .select2-dropdown .select2-results__options .select2-results__option.select2-results__option--selected,
+.select2-container--bootstrap-5 .select2-dropdown .select2-results__options .select2-results__option[aria-selected=true]:not(.select2-results__option--highlighted) {
+    background-color: var(--masc-verde);
+    color: #fff;
+}
+
+/* Calendário (Flatpickr) */
+.flatpickr-calendar {
+    border-radius: 12px;
+    box-shadow: 0 12px 28px -10px rgba(27, 94, 32, .4);
+}
+
+.flatpickr-day.selected,
+.flatpickr-day.selected:hover,
+.flatpickr-day.startRange,
+.flatpickr-day.endRange {
+    background: var(--masc-verde);
+    border-color: var(--masc-verde);
+}
+
+.flatpickr-day.today {
+    border-color: var(--masc-verde);
+}
+
+/* =========================
+   ABAS
+   Ficam como um "interruptor": trilho afundado e aba ativa em relevo
+========================= */
+.nav-tabs {
+    --bs-nav-tabs-border-width: 0;
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 4px;
+    border-radius: 14px;
+    background-color: #dbe6de;
+    box-shadow: inset 2px 2px 4px #c3d0c7, inset -2px -2px 4px #f4f9f5;
+}
+
+.nav-tabs .nav-link {
+    border: 0;
+    border-radius: 10px;
+    margin-bottom: 0;
+}
+
+.nav-tabs .nav-link:not(.active) {
+    opacity: .8;
+}
+
+.nav-tabs .nav-link:hover {
+    background-color: rgba(255, 255, 255, .5);
+    opacity: 1;
+}
+
+.nav-tabs .nav-link.active,
+.nav-tabs .nav-item.show .nav-link {
+    background-color: var(--masc-cartao);
+    box-shadow: 0 3px 8px -3px rgba(27, 94, 32, .35);
+}
+
+/* =========================
+   AVISOS (alerts)
+========================= */
+.alert {
+    --bs-alert-border-radius: 12px;
+    box-shadow: 0 4px 12px -8px rgba(27, 94, 32, .4);
+}
+
+/* =========================
+   PAGINAÇÃO
+========================= */
+.pagination {
+    --bs-pagination-color: var(--masc-verde-escuro);
+    --bs-pagination-bg: var(--masc-cartao);
+    --bs-pagination-border-color: var(--masc-borda-campo);
+    --bs-pagination-hover-color: var(--masc-verde-escuro);
+    --bs-pagination-hover-bg: var(--masc-cabecalho);
+    --bs-pagination-hover-border-color: var(--masc-borda-campo);
+    --bs-pagination-focus-box-shadow: 0 0 0 .2rem rgba(46, 125, 50, .2);
+    --bs-pagination-active-bg: var(--masc-verde);
+    --bs-pagination-active-border-color: var(--masc-verde);
+    --bs-pagination-disabled-color: var(--masc-texto-suave);
+    --bs-pagination-disabled-bg: #eef3ef;
+    --bs-pagination-disabled-border-color: var(--masc-borda-campo);
+    --bs-pagination-border-radius: .65rem;
+    gap: 6px;
+}
+
+.pagination .page-link {
+    border-radius: .65rem !important;
+    box-shadow: var(--masc-relevo-leve);
+}
+
+/* =========================
+   JANELAS (modal) E LISTAS
+========================= */
+.modal {
+    --bs-modal-border-radius: 18px;
+    --bs-modal-inner-border-radius: 17px;
+    --bs-modal-bg: var(--masc-cartao);
+    --bs-modal-border-color: rgba(27, 94, 32, .10);
+    --bs-modal-header-border-color: var(--masc-linha);
+    --bs-modal-footer-border-color: var(--masc-linha);
+}
+
+.modal-content {
+    box-shadow: 0 24px 48px -16px rgba(20, 40, 25, .45);
+}
+
+.list-group {
+    --bs-list-group-bg: var(--masc-cartao);
+    --bs-list-group-border-color: var(--masc-linha);
+    --bs-list-group-border-radius: 12px;
+    --bs-list-group-active-bg: var(--masc-verde);
+    --bs-list-group-active-border-color: var(--masc-verde);
+}
+
+hr {
+    border-color: var(--masc-linha);
+    opacity: 1;
+}
+
+/* =========================
+   TELA DE ENTRADA (login)
+========================= */
+body:not(:has(.erp-sidebar)) .erp-content form {
+    background-color: var(--masc-cartao);
+    border-radius: 16px;
+    padding: 1.5rem;
+    box-shadow: var(--masc-relevo);
+}
+
+body:not(:has(.erp-sidebar)) .erp-content form input:not([type=hidden]) {
+    display: block;
+    width: 100%;
+    padding: .45rem .75rem;
+    border: 1px solid var(--masc-borda-campo);
+    border-radius: .65rem;
+    box-shadow: var(--masc-afundado);
+}
+
+body:not(:has(.erp-sidebar)) .erp-content form input:not([type=hidden]):focus {
+    outline: none;
+    border-color: #7fbf86;
+    box-shadow: var(--masc-afundado), 0 0 0 .2rem rgba(46, 125, 50, .2);
+}
+
+/* =========================
+   IMPRESSÃO: sem sombras nem fundo
+========================= */
+@media print {
+    html, body { background: #fff !important; }
+    .card, .btn, .badge, .alert, .table-responsive, .nav-tabs, .form-control, .form-select {
+        box-shadow: none !important;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .btn, .erp-sidebar .nav-link { transition: none; }
+    .btn:active, .btn.active { transform: none; }
+}

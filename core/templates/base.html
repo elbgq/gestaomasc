@@ -25,6 +25,9 @@
     <!-- CSS principal do sistema -->
     <link rel="stylesheet" href="{% static 'css/masc_style.css' %}?v=20261021">
 
+    <!-- Tema visual (cores, relevos e sombras). Para voltar ao visual antigo, basta tirar esta linha -->
+    <link rel="stylesheet" href="{% static 'css/masc_tema.css' %}?v=20261022">
+
     <!-- Icones do bootstrap -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
 
@@ -67,6 +70,27 @@
         const toggleBtn = document.getElementById("sidebarToggle");
         const sidebar = document.getElementById("sidebar");
         if (!toggleBtn || !sidebar) return;
+
+        // Destaca no menu a tela aberta e deixa o grupo dela expandido.
+        // Vale o link de endereço mais longo que combina com o atual (ex.: /financeiro/receber/12/ marca "Contas a Receber")
+        const atual = window.location.pathname;
+        let melhor = null;
+        sidebar.querySelectorAll(".collapse a.nav-link[href]").forEach(function (link) {
+            const caminho = new URL(link.href, window.location.origin).pathname;
+            if (caminho !== "/" && atual.startsWith(caminho) && (!melhor || caminho.length > melhor.caminho.length)) {
+                melhor = { link: link, caminho: caminho };
+            }
+        });
+        if (melhor) {
+            melhor.link.classList.add("active");
+            melhor.link.setAttribute("aria-current", "page");
+            const grupo = melhor.link.closest(".collapse");
+            if (grupo) {
+                grupo.classList.add("show");
+                const titulo = sidebar.querySelector('[href="#' + grupo.id + '"]');
+                if (titulo) titulo.classList.add("grupo-ativo");
+            }
+        }
 
         toggleBtn.addEventListener("click", function () {
             // Celular: o menu abre por cima do conteúdo

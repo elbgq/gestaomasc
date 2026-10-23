@@ -10,6 +10,22 @@ Depois de copiar os arquivos, rode `python manage.py migrate` (há uma migraçã
 
 ---
 
+## Novo visual "híbrido sóbrio" (22/10/2026)
+
+Sem migração. Visual escolhido entre as três propostas (opção C): neumorfismo suave nas superfícies (fundo, cartões, abas, campos) e um toque de claymorfismo nos botões e etiquetas, mantendo o verde e o preto. Tudo fica num arquivo CSS novo carregado depois do Bootstrap; **para voltar ao visual antigo basta apagar a linha do `masc_tema.css` no `base.html`**. Depois de copiar, recarregue o navegador com Ctrl+F5.
+
+Cores: fundo `#e6efe9` (menta acinzentado) no lugar do `#a9ebbd`; cartões `#fbfdfb`; verde `#2e7d32`/`#1b5e20` e menu `#2b2727` como antes. Tons novos: azul-petróleo `#2f6f8f` (botões primários, como Detalhes e Nova Venda, no lugar do azul do Bootstrap), turquesa `#2a8a86` (info), âmbar `#f2b84b` (pendente/atenção), vermelho `#c62828` (vencido/excluir).
+
+| O que mudou | Onde |
+|---|---|
+| Tema completo por variáveis do Bootstrap 5.3: cartões em relevo, cabeçalhos de cartão em tom claro da mesma cor (verde = receitas, vermelho = despesas), cabeçalho de tabela verde claro em letra pequena (inclui os `table-dark`), botões com relevo, etiquetas em pílula, campos afundados, abas em formato de interruptor, paginação, janelas, Select2 e calendário | `core/static/css/masc_tema.css` (novo) |
+| Liga o tema; o menu destaca em verde a tela aberta e deixa o grupo dela aberto | `core/templates/base.html` |
+| **Texto de comentário aparecia na tela** abaixo do campo Categoria (Contas a Receber/Pagar, Lançamentos): comentário de várias linhas com `{# #}`, que o Django só aceita em uma linha. Trocado por `{% comment %}` | `financeiro/templates/financeiro/_sugestao_categoria.html` |
+
+Os 143 testes continuam passando. Telas conferidas com a base real: Contas a Receber, Contas a Pagar, Lançamentos, Vendas, Nova Venda, Novo Título a Receber, Produtos, Contatos, Caixa, DRE, início e login.
+
+---
+
 ## Preço de venda automático (21/10/2026)
 
 Rode `python manage.py migrate` (migração nova `cadastros/migrations/0007_preco_automatico.py`). Ela marca como **manual** todo produto que já tem preço (nada muda de um dia para o outro) e dá a permissão nova "Pode revisar preços de venda e alterar o markup" aos grupos Administrador e Gerente.

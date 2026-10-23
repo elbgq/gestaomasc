@@ -30,8 +30,18 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 # DEBUG
 DEBUG = os.getenv("DEBUG", "False") == "True"
 
-# ALLOWED_HOSTS
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "").split(",")
+# Ajustes para conexao do Ngrok, para permitir que o Django aceite requisições de subdomínios do ngrok.
+ALLOWED_HOSTS = [
+      "eloibgq.pythonanywhere.com",
+]
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://eloibgq.pythonanywhere.com",
+]
+
+# Faz o Django reconhecer que a requisição original veio em HTTPS
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+# ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "").split(",")
 
 # CNPJ da empresa (só números). Na importação de NF-e, recusa notas destinadas a outro CNPJ.
 EMPRESA_CNPJ = "".join(c for c in os.getenv("EMPRESA_CNPJ", "") if c.isdigit())
