@@ -221,3 +221,19 @@ class CadastroDeUsuariosDelegadoTest(TestCase):
         self.assertIn("is_superuser", form.base_fields)
         self.assertIn("user_permissions", form.base_fields)
         self.assertIn("Administrador", form.base_fields["groups"].queryset.values_list("name", flat=True))
+
+    def test_funcao_aparece_na_lista_e_no_cadastro(self):
+        self.client.force_login(self.admin)
+        html = self.client.get(reverse("admin:auth_user_changelist")).content.decode()
+        self.assertIn("Função", html)
+        self.assertIn("Vendedor", html)
+        self.assertIn("Superusuário", html)
+        html = self.client.get(reverse("admin:auth_user_change", args=[self.vendedor.pk])).content.decode()
+        self.assertIn("Função", html)
+        self.assertEqual(self.client.get(reverse("admin:auth_user_add")).status_code, 200)
+
+    def test_gerente_tambem_ve_a_funcao(self):
+        self.client.force_login(self.gerente)
+        html = self.client.get(reverse("admin:auth_user_change", args=[self.vendedor.pk])).content.decode()
+        self.assertIn("Função", html)
+        self.assertNotIn('name="is_superuser"', html)

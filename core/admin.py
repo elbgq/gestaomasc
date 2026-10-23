@@ -13,23 +13,35 @@ GRUPOS_RESERVADOS = ("Administrador",)
 #   - não vê, não altera e não troca a senha de superusuários nem de membros desses grupos.
 class UsuarioAdmin(UserAdmin):
     CAMPOS_RESTRITOS = ("is_superuser", "user_permissions")
+    list_display = ("username", "first_name", "last_name", "email", "funcao", "is_active", "is_staff")
+    readonly_fields = ("funcao",)
+
+    # Função do usuário = nome dos grupos dele (ex.: "Gerente, Financeiro")
+    @admin.display(description="Função")
+    def funcao(self, obj):
+        grupos = ", ".join(g.name for g in obj.groups.all())
+        if obj.is_superuser:
+            return f"Superusuário ({grupos})" if grupos else "Superusuário"
+        return grupos or "Sem função"
 
     def _restrito(self, request):
         return not request.user.is_superuser
 
     def get_queryset(self, request):
-        qs = super().get_queryset(request)
+        qs = super().get_queryset(request).prefetch_related("groups")
         if self._restrito(request):
             qs = qs.filter(is_superuser=False).exclude(groups__name__in=GRUPOS_RESERVADOS)
         return qs
 
     def get_fieldsets(self, request, obj=None):
         fieldsets = super().get_fieldsets(request, obj)
-        if not self._restrito(request):
-            return fieldsets
+        restrito = self._restrito(request)
         resultado = []
-        for nome, opcoes in fieldsets:
-            campos = [c for c in opcoes.get("fields", ()) if c not in self.CAMPOS_RESTRITOS]
+        for i, (nome, opcoes) in enumerate(fieldsets):
+            campos = [c for c in opcoes.get("fields", ()) if not (restrito and c in self.CAMPOS_RESTRITOS)]
+            # Mostra a função logo abaixo do nome de usuário (só ao editar; no cadastro novo ainda não há grupos)
+            if obj is not None and i == 0:
+                campos.append("funcao")
             resultado.append((nome, {**opcoes, "fields": campos}))
         return resultado
 

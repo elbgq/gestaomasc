@@ -33,7 +33,7 @@ DEBUG = os.getenv("DEBUG", "False") == "True"
 
 # Ajustes para conexao do Ngrok, para permitir que o Django aceite requisições de subdomínios do ngrok.
 ALLOWED_HOSTS = [
-      "eloibgq.pythonanywhere.com",
+      "eloibgq.pythonanywhere.com", "localhost", "127.0.0.1"
 ]
 
 CSRF_TRUSTED_ORIGINS = [

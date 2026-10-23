@@ -10,6 +10,18 @@ Depois de copiar os arquivos, rode `python manage.py migrate` (há uma migraçã
 
 ---
 
+## Função do usuário no admin (23/10/2026)
+
+Sem migração. A função é o nome dos grupos do usuário; para mudar a função, troque os grupos em "Permissões".
+
+| O que mudou | Onde |
+|---|---|
+| Lista de usuários do admin ganhou a coluna "Função" (ex.: "Gerente, Financeiro"; "Sem função" quando não há grupo; "Superusuário" para superusuários) | `core/admin.py` (`UsuarioAdmin.funcao`, `list_display`) |
+| A função aparece no cadastro do usuário, logo abaixo do nome de usuário (só ao editar) | `core/admin.py` (`get_fieldsets`, `readonly_fields`) |
+| 2 testes novos | `core/tests.py` (`CadastroDeUsuariosDelegadoTest`) |
+
+---
+
 ## Novo visual "híbrido sóbrio" (22/10/2026)
 
 Sem migração. Visual escolhido entre as três propostas (opção C): neumorfismo suave nas superfícies (fundo, cartões, abas, campos) e um toque de claymorfismo nos botões e etiquetas, mantendo o verde e o preto. Tudo fica num arquivo CSS novo carregado depois do Bootstrap; **para voltar ao visual antigo basta apagar a linha do `masc_tema.css` no `base.html`**. Depois de copiar, recarregue o navegador com Ctrl+F5.
