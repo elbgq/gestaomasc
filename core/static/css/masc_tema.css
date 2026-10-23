@@ -637,3 +637,5 @@ body:not(:has(.erp-sidebar)) .erp-content form input:not([type=hidden]):focus {
     .btn, .erp-sidebar .nav-link { transition: none; }
     .btn:active, .btn.active { transform: none; }
 }
+
+html { font-size: 13px; }  /* o padrão do navegador é 16px */
