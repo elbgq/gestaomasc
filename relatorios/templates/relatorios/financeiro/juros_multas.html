@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2 class="mb-1">Juros, Multas e Descontos</h2>
+<p class="text-muted mb-4">De onde vêm as linhas de juros, multas e descontos do DRE. Quitações entram pela data da quitação; lançamentos à mão, pela data do lançamento.</p>
+
+{% include "relatorios/_erros_filtro.html" %}
+
+<form method="get" class="mb-4">
+    <div class="row g-3">
+        <div class="col-md-3">
+            {{ form.data_inicio.label_tag }}
+            {{ form.data_inicio }}
+        </div>
+        <div class="col-md-3">
+            {{ form.data_fim.label_tag }}
+            {{ form.data_fim }}
+        </div>
+        <div class="col-md-3">
+            {{ form.tipo.label_tag }}
+            {{ form.tipo }}
+        </div>
+        <div class="col-md-3 d-flex align-items-end gap-2">
+            <button class="btn btn-primary">Gerar</button>
+            {% if dados %}<a href="?{{ query_csv }}" class="btn btn-outline-secondary">Exportar CSV</a>{% endif %}
+        </div>
+    </div>
+</form>
+
+{% if dados %}
+
+{% if not tipo or tipo == "pagar" %}
+<!-- Mesmas cores de Contas a Pagar: o usuário reconhece o passivo -->
+<div class="card border-danger mt-4">
+    <div class="card-header bg-danger text-white">
+        <strong>Contas pagas</strong>
+        <span class="small ms-2">Juros e multas pagos e descontos obtidos (DRE: Despesas Financeiras e Receitas Financeiras)</span>
+    </div>
+    <div class="card-body p-0">
+        {% include "relatorios/financeiro/_juros_tabela.html" with bloco=dados.pagar contato_label="Fornecedor" cor="danger" %}
+    </div>
+</div>
+{% endif %}
+
+{% if not tipo or tipo == "receber" %}
+<h4 class="mt-4">Contas recebidas</h4>
+<p class="small text-muted">Juros e multas recebidos e descontos concedidos (DRE: Receitas Financeiras e Despesas Financeiras).</p>
+{% include "relatorios/financeiro/_juros_tabela.html" with bloco=dados.receber contato_label="Cliente" %}
+{% endif %}
+
+{% if not tipo or tipo == "lancados" %}
+<h4 class="mt-4">Lançados à mão</h4>
+<p class="small text-muted">Lançamentos e contas manuais em categorias de Receitas ou Despesas Financeiras.</p>
+{% if dados.lancados.linhas %}
+<div class="table-responsive">
+    <table class="table table-bordered table-striped table-sm align-middle">
+        <thead class="table-light">
+            <tr>
+                <th>Data</th>
+                <th>Origem</th>
+                <th>Contato</th>
+                <th>Descrição</th>
+                <th>Categoria</th>
+                <th class="text-end">Receita</th>
+                <th class="text-end">Despesa</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for l in dados.lancados.linhas %}
+            <tr>
+                <td>{{ l.data|date:"d/m/Y" }}</td>
+                <td>{{ l.origem }}</td>
+                <td>{{ l.contato|default:"" }}</td>
+                <td>
+                    {% if l.titulo %}<a href="{% url 'financeiro:titulo_detalhe' l.titulo.tipo l.titulo.id %}">{{ l.descricao }}</a>{% else %}{{ l.descricao }}{% endif %}
+                </td>
+                <td>{{ l.categoria.nome }}</td>
+                <td class="text-end">{% if l.categoria.grupo_dre == "RECEITAS_FINANCEIRAS" %}R$ {{ l.valor|floatformat:2 }}{% endif %}</td>
+                <td class="text-end">{% if l.categoria.grupo_dre == "DESPESAS_FINANCEIRAS" %}R$ {{ l.valor|floatformat:2 }}{% endif %}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot class="table-light">
+            <tr>
+                <th colspan="5">Total</th>
+                <th class="text-end">R$ {{ dados.lancados.totais.receitas|floatformat:2 }}</th>
+                <th class="text-end">R$ {{ dados.lancados.totais.despesas|floatformat:2 }}</th>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+{% else %}
+<p class="text-muted">Nenhum lançamento no período.</p>
+{% endif %}
+{% endif %}
+
+{% endif %}
+
+{% endblock %}

@@ -19,12 +19,17 @@
 
         {% if titulo.esta_pago %}
             <p><strong>Data de Quitação:</strong> {{ titulo.data_pagamento|date:"d/m/Y" }}</p>
-            {% if titulo.valor_juros or titulo.valor_multa or titulo.valor_desconto %}
-                <p><strong>Juros:</strong> R$ {{ titulo.valor_juros|floatformat:2 }}
-                   · <strong>Multa:</strong> R$ {{ titulo.valor_multa|floatformat:2 }}
-                   · <strong>Desconto:</strong> R$ {{ titulo.valor_desconto|floatformat:2 }}</p>
-                <p><strong>Total {% if titulo.tipo == "R" %}recebido{% else %}pago{% endif %}:</strong> R$ {{ titulo.total_quitado|floatformat:2 }}</p>
-            {% endif %}
+            <!-- Quitação: sempre visível, mesmo sem encargos, para deixar claro o que saiu ou entrou no caixa -->
+            <table class="table table-sm table-bordered w-auto mb-3">
+                <thead class="table-light"><tr><th colspan="2">Quitação</th></tr></thead>
+                <tbody>
+                    <tr><td>Valor do título quitado</td><td class="text-end">R$ {{ titulo.valor_pago|floatformat:2 }}</td></tr>
+                    <tr><td>(+) Juros</td><td class="text-end">R$ {{ titulo.valor_juros|floatformat:2 }}</td></tr>
+                    <tr><td>(+) Multa</td><td class="text-end">R$ {{ titulo.valor_multa|floatformat:2 }}</td></tr>
+                    <tr><td>(−) Desconto {% if titulo.tipo == "R" %}concedido{% else %}obtido{% endif %}</td><td class="text-end">R$ {{ titulo.valor_desconto|floatformat:2 }}</td></tr>
+                    <tr class="fw-bold"><td>Total {% if titulo.tipo == "R" %}recebido{% else %}pago{% endif %}</td><td class="text-end">R$ {{ titulo.total_quitado|floatformat:2 }}</td></tr>
+                </tbody>
+            </table>
             {% if titulo.caixa_movimento %}
                 <p><strong>Movimento no caixa:</strong>
                     <a href="{% url 'financeiro:caixa_movimento_detalhe' titulo.caixa_movimento.id %}">#{{ titulo.caixa_movimento.id }}</a>

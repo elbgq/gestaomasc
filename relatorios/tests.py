@@ -2,6 +2,7 @@ from datetime import date, datetime, time
 from decimal import Decimal
 
 from django.test import TestCase
+from django.urls import reverse
 from django.utils import timezone
 
 from cadastros.models import Contato, Servico
@@ -28,6 +29,8 @@ class DRETests(TestCase):
         FinanceiroLancamento.objects.create(data=self.hoje, categoria=categoria, descricao="Aluguel", valor=Decimal("50.00"))
         dre = dre_por_periodo(self.hoje, self.hoje)
         self.assertEqual(dre["outras_receitas"], Decimal("50.00"))
+        self.assertEqual(dre["receitas_financeiras"], Decimal("0"))  # aluguel não é receita financeira
+        self.assertEqual(dre["resultado_antes_ir"], Decimal("50.00"))
 
     def test_venda_em_rascunho_nao_entra_no_dre(self):
         self.venda(status="rascunho")
@@ -65,7 +68,7 @@ class DRETests(TestCase):
 
         dre = dre_por_periodo(self.hoje, self.hoje)
         self.assertEqual(dre["despesas_adm"], Decimal("25.00"))
-        self.assertEqual(dre["outras_receitas"], Decimal("10.00"))
+        self.assertEqual(dre["receitas_financeiras"], Decimal("10.00"))
         self.assertEqual(dre_por_periodo(mes_passado, mes_passado)["despesas_adm"], Decimal("40.00"))
 
     def test_receita_bruta_de_lancamento_e_impostos_juntos(self):
@@ -108,8 +111,8 @@ class DRETests(TestCase):
         self.titulo(FinanceiroReceber, vendas, self.hoje, origem="VENDA", status="pago", data_pagamento=self.hoje,
                     valor_pago=Decimal("40.00"), valor_juros=Decimal("2.00"), valor_desconto=Decimal("1.50"))
         dre = dre_por_periodo(self.hoje, self.hoje)
-        self.assertEqual(dre["outras_despesas"], Decimal("5.50"))  # 3 + 1 pagos + 1,50 concedido
-        self.assertEqual(dre["outras_receitas"], Decimal("2.50"))  # 2 recebidos + 0,50 obtido
+        self.assertEqual(dre["despesas_financeiras"], Decimal("5.50"))  # 3 + 1 pagos + 1,50 concedido
+        self.assertEqual(dre["receitas_financeiras"], Decimal("2.50"))  # 2 recebidos + 0,50 obtido
 
     def test_relatorio_vendas_inclui_ultimo_dia_e_filtra_numero(self):
         venda = self.venda()
@@ -266,3 +269,76 @@ class MovimentacaoEstoqueTests(TestCase):
                                {"data_inicio": self.hoje.isoformat(), "data_fim": self.hoje.isoformat()})
         self.assertContains(resp, "Resumo por Produto")
         self.assertContains(resp, self.venda.numero_formatado)
+
+
+class JurosMultasRelatorioTests(TestCase):
+    # Relatório de origem das linhas de juros, multas e descontos do DRE
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+        from financeiro.models import FinanceiroPagar, FinanceiroReceber
+        self.client.force_login(get_user_model().objects.create_superuser("teste", password="teste"))
+        self.hoje = timezone.localdate()
+        self.fornecedor = Contato.objects.create(nome="Fornecedor X", tipo="FORNECEDOR")
+        self.cliente = Contato.objects.create(nome="Cliente Y", tipo="CLIENTE")
+        despesa = FinanceiroCategoria.objects.create(nome="Compras", tipo="D")
+        receita = FinanceiroCategoria.objects.create(nome="Vendas", tipo="R")
+        comum = dict(data_lancamento=self.hoje, data_vencimento=self.hoje, status="pago", data_pagamento=self.hoje)
+        self.pago = FinanceiroPagar.objects.create(
+            contato=self.fornecedor, descricao="Boleto atrasado", valor=Decimal("100.00"), valor_pago=Decimal("100.00"),
+            categoria=despesa, origem="COMPRA", valor_juros=Decimal("3.00"), valor_multa=Decimal("2.00"),
+            valor_desconto=Decimal("0.50"), **comum)
+        # Quitação sem encargos não aparece
+        FinanceiroPagar.objects.create(contato=self.fornecedor, descricao="Em dia", valor=Decimal("50.00"),
+                                       valor_pago=Decimal("50.00"), categoria=despesa, origem="MANUAL", **comum)
+        self.recebido = FinanceiroReceber.objects.create(
+            cliente=self.cliente, descricao="Parcela cliente", valor=Decimal("80.00"), valor_pago=Decimal("80.00"),
+            categoria=receita, origem="VENDA", valor_juros=Decimal("1.60"), valor_desconto=Decimal("4.00"), **comum)
+        juros = FinanceiroCategoria.objects.create(nome="Juros Recebidos", tipo="R", grupo_dre="RECEITAS_FINANCEIRAS")
+        FinanceiroLancamento.objects.create(data=self.hoje, categoria=juros, descricao="Juros da aplicação",
+                                            valor=Decimal("7.00"))
+
+    def test_totais_batem_com_as_linhas_do_dre(self):
+        from relatorios.services.juros_service import juros_multas_descontos
+        dados = juros_multas_descontos(self.hoje, self.hoje)
+        dre = dre_por_periodo(self.hoje, self.hoje)
+        self.assertEqual(len(dados["pagar"]["linhas"]), 1)
+        self.assertEqual(dados["pagar"]["totais"]["juros_multa"], dre["juros_multas_pagos"])
+        self.assertEqual(dados["pagar"]["totais"]["desconto"], dre["descontos_obtidos"])
+        self.assertEqual(dados["receber"]["totais"]["juros_multa"], dre["juros_multas_recebidos"])
+        self.assertEqual(dados["receber"]["totais"]["desconto"], dre["descontos_concedidos"])
+        self.assertEqual(dados["lancados"]["totais"]["receitas"], dre["receitas_financeiras_lancadas"])
+        self.assertEqual(dre["receitas_financeiras"], Decimal("9.10"))  # 1,60 + 0,50 + 7,00
+
+    def test_estorno_tira_o_titulo_do_relatorio(self):
+        from financeiro.models import Caixa
+        from financeiro.services import estornar_quitacao
+        from relatorios.services.juros_service import juros_multas_descontos
+        Caixa.objects.create(nome="Caixa Principal", saldo_inicial=Decimal("200.00"))
+        estornar_quitacao(self.pago)
+        self.assertEqual(juros_multas_descontos(self.hoje, self.hoje)["pagar"]["linhas"], [])
+
+    def test_tela_lista_os_titulos_com_links(self):
+        url = reverse("relatorios:juros_multas")
+        resp = self.client.get(url, {"data_inicio": self.hoje, "data_fim": self.hoje})
+        self.assertContains(resp, "Boleto atrasado")
+        self.assertContains(resp, "Parcela cliente")
+        self.assertContains(resp, "Juros da aplicação")
+        self.assertNotContains(resp, "Em dia")
+        self.assertContains(resp, reverse("financeiro:titulo_detalhe", args=["D", self.pago.id]))
+
+        so_recebidas = self.client.get(url, {"data_inicio": self.hoje, "data_fim": self.hoje, "tipo": "receber"})
+        self.assertNotContains(so_recebidas, "Boleto atrasado")
+        self.assertContains(so_recebidas, "Parcela cliente")
+
+    def test_exporta_csv(self):
+        resp = self.client.get(reverse("relatorios:juros_multas"),
+                               {"data_inicio": self.hoje, "data_fim": self.hoje, "formato": "csv"})
+        self.assertEqual(resp["Content-Type"], "text/csv; charset=utf-8")
+        texto = resp.content.decode("utf-8-sig")
+        self.assertIn("Boleto atrasado", texto)
+        self.assertIn("3,00;2,00;0,50;104,50", texto)
+
+    def test_dre_linka_para_o_relatorio(self):
+        resp = self.client.get(reverse("relatorios:dre"), {"data_inicio": self.hoje, "data_fim": self.hoje})
+        self.assertContains(resp, reverse("relatorios:juros_multas") + "?data_inicio=")
+        self.assertContains(resp, "tipo=pagar")

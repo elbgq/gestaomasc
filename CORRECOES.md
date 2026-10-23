@@ -10,6 +10,33 @@ Depois de copiar os arquivos, rode `python manage.py migrate` (há uma migraçã
 
 ---
 
+## DRE: Receitas e Despesas Financeiras (23/10/2026)
+
+Não há migração.
+
+| O que mudou | Onde |
+|---|---|
+| No DRE, "Outras Receitas" e "Outras Despesas" viram **Receitas Financeiras** e **(-) Despesas Financeiras**, com as linhas de juros, multas, descontos e lançamentos financeiros dentro de cada uma. Receitas patrimoniais (ex.: aluguel recebido) não são financeiras e aparecem à parte, em "Outras Receitas (patrimoniais)", só quando houver valor. O resultado antes do IR/CSLL não muda | `relatorios/services/dre_service.py`, `relatorios/templates/relatorios/dre/dre.html` |
+| Relatório Juros, Multas e Descontos: textos dos blocos citam os novos nomes; "Contas pagas" com as cores de Contas a Pagar | `relatorios/templates/relatorios/financeiro/juros_multas.html`, `_juros_tabela.html` |
+| Testes ajustados aos novos nomes | `relatorios/tests.py` |
+
+---
+
+## Juros, multas e descontos: relatório de origem (23/10/2026)
+
+Opção A da proposta "Juros, multas e descontos no Financeiro". Não há migração.
+
+| O que mudou | Onde |
+|---|---|
+| Relatório novo **Relatórios → Juros, Multas e Descontos**: por período (data da quitação), lista cada conta paga e recebida com juros, multa ou desconto (contato, título, origem, vencimento, dias de atraso, valor, juros, multa, desconto, total e movimento de caixa), com totais por coluna. Um terceiro bloco lista lançamentos e contas manuais em categorias de Receitas ou Despesas Financeiras (ex.: "Juros Recebidos"). Filtro "Mostrar" por bloco e botão "Exportar CSV" (abre no Excel) | `relatorios/services/juros_service.py`, `relatorios/views/juros.py`, `relatorios/forms.py` (`FiltroJurosForm`), `relatorios/urls.py`, `relatorios/templates/relatorios/financeiro/juros_multas.html`, `_juros_tabela.html` |
+| Permissão: mesma do DRE ("Pode ver DRE e relatório de CMV"); link no menu Relatórios | `core/permissoes.py`, `core/templates/partials/sidebar.html` |
+| DRE: as linhas de juros, multas e descontos viram links para o relatório no mesmo período. Outras Receitas e Outras Despesas ganham as linhas "Receitas patrimoniais", "Receitas financeiras lançadas" e "Despesas financeiras lançadas", que antes só apareciam somadas no total | `relatorios/services/dre_service.py`, `relatorios/views/dre.py`, `relatorios/templates/relatorios/dre/dre.html` |
+| Detalhes do título: título quitado mostra sempre o quadro "Quitação" (valor quitado, juros, multa, desconto e total pago ou recebido), mesmo com zero | `financeiro/templates/financeiro/titulo_detalhe.html` |
+| Parcelas da compra (Contas a Pagar): colunas "Juros/Multa", "Desconto" e "Total Pago", com link para o título | `financeiro/templates/financeiro/conta_detalhe.html`, `financeiro/models.py` (`juros_e_multa`) |
+| 7 testes novos (os totais do relatório batem com as linhas do DRE) | `relatorios/tests.py` (`JurosMultasRelatorioTests`), `financeiro/tests.py` |
+
+---
+
 ## Função do usuário no admin (23/10/2026)
 
 Sem migração. A função é o nome dos grupos do usuário; para mudar a função, troque os grupos em "Permissões".

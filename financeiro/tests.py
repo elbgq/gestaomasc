@@ -335,6 +335,25 @@ class QuitacaoAcrescimosTests(TestCase):
             self.assertContains(self.client.get(url), 'name="valor_juros"')
 
 
+    def test_detalhe_mostra_a_quitacao_mesmo_sem_encargos(self):
+        titulo = self.titulo_pagar()
+        self.quitar("D", titulo)
+        resp = self.client.get(reverse("financeiro:titulo_detalhe", args=["D", titulo.id]))
+        self.assertContains(resp, "Quitação")
+        self.assertContains(resp, "(+) Juros")
+        self.assertContains(resp, "Total pago")
+
+    def test_parcelas_da_compra_mostram_juros_e_total_pago(self):
+        titulo = self.titulo_pagar()
+        titulo.origem = "COMPRA"
+        titulo.save()
+        self.quitar("D", titulo, valor_juros="1.25", valor_multa="0.75")
+        html = self.client.get(reverse("financeiro:conta_detalhe", args=[titulo.id])).content.decode()
+        self.assertIn("Juros/Multa", html)
+        self.assertIn("R$ 2,00", html)   # juros + multa
+        self.assertIn("R$ 32,00", html)  # total pago
+
+
 class CategoriaSugeridaTests(TestCase):
     setUp = FluxoFinanceiroTests.setUp
     setUp_base = TituloTests.setUp

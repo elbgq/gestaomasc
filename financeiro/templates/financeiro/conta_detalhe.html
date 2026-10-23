@@ -27,6 +27,9 @@
             <th>Nº</th>
             <th>Valor</th>
             <th>Vencimento</th>
+            <th>Juros/Multa</th>
+            <th>Desconto</th>
+            <th>Total Pago</th>
             <th>Status</th>
             <th>Ação</th>
         </tr>
@@ -37,6 +40,13 @@
             <td>{{ forloop.counter }}</td>
             <td>R$ {{ p.valor|floatformat:2 }}</td>
             <td>{{ p.data_vencimento|date:"d/m/Y" }}</td>
+            {% if p.esta_pago %}
+            <td>R$ {{ p.juros_e_multa|floatformat:2 }}</td>
+            <td>R$ {{ p.valor_desconto|floatformat:2 }}</td>
+            <td><a href="{% url 'financeiro:titulo_detalhe' 'D' p.id %}">R$ {{ p.total_quitado|floatformat:2 }}</a></td>
+            {% else %}
+            <td></td><td></td><td></td>
+            {% endif %}
             <td>
                 {% if p.esta_pago %}
                     <span class="text-success">Pago em {{ p.data_pagamento|date:"d/m/Y" }}</span>

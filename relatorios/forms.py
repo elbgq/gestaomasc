@@ -132,3 +132,21 @@ class FiltroMovimentacaoEstoqueForm(PeriodoMixin, forms.Form):
         required=False,
         widget=forms.Select(attrs={"class": "form-select"}),
     )
+
+# Formulario para filtrar o relatório de juros, multas e descontos
+class FiltroJurosForm(PeriodoMixin, forms.Form):
+    data_inicio = forms.DateField(
+        label="Data inicial",
+        widget=forms.DateInput(attrs={"type": "date", "class": "form-control"}),
+    )
+    data_fim = forms.DateField(
+        label="Data final",
+        widget=forms.DateInput(attrs={"type": "date", "class": "form-control"}),
+    )
+    tipo = forms.ChoiceField(
+        label="Mostrar",
+        choices=[("", "Tudo"), ("pagar", "Contas pagas"), ("receber", "Contas recebidas"),
+                 ("lancados", "Lançados à mão")],
+        required=False,
+        widget=forms.Select(attrs={"class": "form-select"}),
+    )

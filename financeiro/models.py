@@ -148,6 +148,9 @@ class FinanceiroReceber(models.Model):
     def total_quitado(self):
         return (self.valor_pago or 0) + self.valor_juros + self.valor_multa - self.valor_desconto
 
+    def juros_e_multa(self):
+        return self.valor_juros + self.valor_multa
+
     def esta_pago(self):
         return self.valor_pago and self.valor_pago >= self.valor
     
@@ -209,6 +212,9 @@ class FinanceiroPagar(models.Model):
 
     def total_quitado(self):
         return (self.valor_pago or 0) + self.valor_juros + self.valor_multa - self.valor_desconto
+
+    def juros_e_multa(self):
+        return self.valor_juros + self.valor_multa
 
     def esta_pago(self):
         if self.valor_pago is None:

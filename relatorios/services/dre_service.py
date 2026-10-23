@@ -97,8 +97,9 @@ def dre_por_periodo(data_inicio, data_fim):
     despesas_vendas = g("DESPESA_VENDAS")
     despesas_adm = g("DESPESA_ADM")
     despesas_gerais = g("DESPESA_GERAIS")
-    outras_receitas = g("RECEITA_PATRIMONIAL", "RECEITAS_FINANCEIRAS")
-    outras_despesas = g("DESPESAS_FINANCEIRAS")
+    receitas_patrimoniais = g("RECEITA_PATRIMONIAL")
+    receitas_financeiras_lancadas = g("RECEITAS_FINANCEIRAS")
+    despesas_financeiras_lancadas = g("DESPESAS_FINANCEIRAS")
 
     # Juros, multa e desconto das quitações, pela data da quitação (é quando ocorrem):
     # pagos e descontos concedidos são despesa financeira; recebidos e descontos obtidos, receita financeira
@@ -107,8 +108,10 @@ def dre_por_periodo(data_inicio, data_fim):
     juros_multas_recebidos = acrescimos["receber_juros"] + acrescimos["receber_multa"]
     descontos_obtidos = acrescimos["pagar_desconto"]
     descontos_concedidos = acrescimos["receber_desconto"]
-    outras_receitas += juros_multas_recebidos + descontos_obtidos
-    outras_despesas += juros_multas_pagos + descontos_concedidos
+    receitas_financeiras = receitas_financeiras_lancadas + juros_multas_recebidos + descontos_obtidos
+    despesas_financeiras = despesas_financeiras_lancadas + juros_multas_pagos + descontos_concedidos
+    # Receitas patrimoniais (ex.: aluguel recebido) não são financeiras: ficam em Outras Receitas
+    outras_receitas = receitas_patrimoniais
 
     # ============================
     # DEDUÇÕES DA RECEITA BRUTA
@@ -144,7 +147,7 @@ def dre_por_periodo(data_inicio, data_fim):
     # ============================
     # RESULTADO ANTES DO IR
     # ============================
-    resultado_antes_ir = resultado_operacional + outras_receitas - outras_despesas
+    resultado_antes_ir = resultado_operacional + receitas_financeiras - despesas_financeiras + outras_receitas
 
     # ============================
     # IR/CSLL (se houver)
@@ -184,8 +187,12 @@ def dre_por_periodo(data_inicio, data_fim):
         "despesas_operacionais": despesas_operacionais,
         
         "resultado_operacional": resultado_operacional,
+        "receitas_financeiras": receitas_financeiras,
+        "despesas_financeiras": despesas_financeiras,
         "outras_receitas": outras_receitas,
-        "outras_despesas": outras_despesas,
+        "receitas_patrimoniais": receitas_patrimoniais,
+        "receitas_financeiras_lancadas": receitas_financeiras_lancadas,
+        "despesas_financeiras_lancadas": despesas_financeiras_lancadas,
         "juros_multas_pagos": juros_multas_pagos,
         "juros_multas_recebidos": juros_multas_recebidos,
         "descontos_obtidos": descontos_obtidos,

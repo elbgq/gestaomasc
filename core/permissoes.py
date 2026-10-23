@@ -132,6 +132,7 @@ PERMISSOES = {
     "relatorios:movimentacoes_estoque": "relatorios.ver_comercial",
     "relatorios:cmv_relatorio": "relatorios.ver_gerencial",
     "relatorios:dre": "relatorios.ver_gerencial",
+    "relatorios:juros_multas": "relatorios.ver_gerencial",
 }
 
 
