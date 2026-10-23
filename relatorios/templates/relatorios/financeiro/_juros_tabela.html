@@ -1,9 +1,9 @@
 {% if bloco.linhas %}
 <div class="table-responsive">
-    <table class="table table-bordered table-striped table-sm align-middle{% if cor %} mb-0{% endif %}">
-        <thead class="table-{{ cor|default:'light' }}">
+    <table class="table table-bordered table-striped table-sm align-middle mb-0">
+        <thead class="table-{{ cor }}">
             <tr>
-                <th>Quitação</th>
+                <th>Data</th>
                 <th>{{ contato_label }}</th>
                 <th>Título</th>
                 <th>Origem</th>
@@ -20,24 +20,28 @@
         <tbody>
             {% for l in bloco.linhas %}
             <tr>
-                <td>{{ l.titulo.data_pagamento|date:"d/m/Y" }}</td>
+                <td>{{ l.data|date:"d/m/Y" }}</td>
                 <td>{{ l.contato|default:"" }}</td>
-                <td><a href="{% url 'financeiro:titulo_detalhe' l.titulo.tipo l.titulo.id %}">{{ l.titulo.descricao }}</a></td>
-                <td>{{ l.titulo.get_origem_display }}</td>
-                <td>{{ l.titulo.data_vencimento|date:"d/m/Y" }}</td>
-                <td class="text-end">{{ l.atraso }}</td>
-                <td class="text-end">R$ {{ l.valor|floatformat:2 }}</td>
+                <td>
+                    {% if l.titulo %}<a href="{% url 'financeiro:titulo_detalhe' l.titulo.tipo l.titulo.id %}">{{ l.descricao }}</a>{% else %}{{ l.descricao }}{% endif %}
+                    {% if l.lancado %}<div class="small text-muted">{{ l.categoria.nome }}</div>{% endif %}
+                </td>
+                <td>{{ l.origem }}</td>
+                <td>{{ l.vencimento|date:"d/m/Y"|default:"" }}</td>
+                <td class="text-end">{% if not l.lancado %}{{ l.atraso }}{% endif %}</td>
+                <td class="text-end">{% if not l.lancado %}R$ {{ l.valor|floatformat:2 }}{% endif %}</td>
                 <td class="text-end">R$ {{ l.juros|floatformat:2 }}</td>
                 <td class="text-end">R$ {{ l.multa|floatformat:2 }}</td>
                 <td class="text-end">R$ {{ l.desconto|floatformat:2 }}</td>
                 <td class="text-end">R$ {{ l.total|floatformat:2 }}</td>
-                <td>{% if l.titulo.caixa_movimento %}<a href="{% url 'financeiro:caixa_movimento_detalhe' l.titulo.caixa_movimento.id %}">#{{ l.titulo.caixa_movimento.id }}</a>{% endif %}</td>
+                <td>{% if l.caixa_movimento %}<a href="{% url 'financeiro:caixa_movimento_detalhe' l.caixa_movimento.id %}">#{{ l.caixa_movimento.id }}</a>{% endif %}</td>
             </tr>
             {% endfor %}
         </tbody>
-        <tfoot class="table-light">
-            <tr{% if cor %} class="table-{{ cor }}"{% endif %}>
-                <th colspan="6">Total</th>
+        <tfoot>
+            {% if bloco.tem_lancados %}
+            <tr class="table-{{ cor }}">
+                <th colspan="6">Subtotal das quitações</th>
                 <th class="text-end">R$ {{ bloco.totais.valor|floatformat:2 }}</th>
                 <th class="text-end">R$ {{ bloco.totais.juros|floatformat:2 }}</th>
                 <th class="text-end">R$ {{ bloco.totais.multa|floatformat:2 }}</th>
@@ -45,9 +49,28 @@
                 <th class="text-end">R$ {{ bloco.totais.total|floatformat:2 }}</th>
                 <th></th>
             </tr>
+            <tr class="table-{{ cor }}">
+                <th colspan="6">Subtotal dos lançamentos (Lançamento e Manual)</th>
+                <th></th>
+                <th class="text-end">R$ {{ bloco.totais_lancados.juros|floatformat:2 }}</th>
+                <th class="text-end">R$ {{ bloco.totais_lancados.multa|floatformat:2 }}</th>
+                <th class="text-end">R$ {{ bloco.totais_lancados.desconto|floatformat:2 }}</th>
+                <th class="text-end">R$ {{ bloco.totais_lancados.total|floatformat:2 }}</th>
+                <th></th>
+            </tr>
+            {% endif %}
+            <tr class="table-{{ cor }}">
+                <th colspan="6">Total</th>
+                <th class="text-end">R$ {{ bloco.totais_geral.valor|floatformat:2 }}</th>
+                <th class="text-end">R$ {{ bloco.totais_geral.juros|floatformat:2 }}</th>
+                <th class="text-end">R$ {{ bloco.totais_geral.multa|floatformat:2 }}</th>
+                <th class="text-end">R$ {{ bloco.totais_geral.desconto|floatformat:2 }}</th>
+                <th class="text-end">R$ {{ bloco.totais_geral.total|floatformat:2 }}</th>
+                <th></th>
+            </tr>
         </tfoot>
     </table>
 </div>
 {% else %}
-<p class="text-muted{% if cor %} p-3 mb-0{% endif %}">Nenhuma quitação com juros, multa ou desconto no período.</p>
+<p class="text-muted p-3 mb-0">Nada no período.</p>
 {% endif %}

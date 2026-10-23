@@ -145,8 +145,7 @@ class FiltroJurosForm(PeriodoMixin, forms.Form):
     )
     tipo = forms.ChoiceField(
         label="Mostrar",
-        choices=[("", "Tudo"), ("pagar", "Contas pagas"), ("receber", "Contas recebidas"),
-                 ("lancados", "Lançados à mão")],
+        choices=[("", "Tudo"), ("pagar", "Contas pagas"), ("receber", "Contas recebidas")],
         required=False,
         widget=forms.Select(attrs={"class": "form-select"}),
     )

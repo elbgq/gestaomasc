@@ -86,11 +86,11 @@
     </tr>
     <!-- RESULTADO FINANCEIRO -->
     <tr><th>Receitas Financeiras</th><td class="text-end">R$ {{ dre.receitas_financeiras|floatformat:2 }}</td></tr>
-    {% if dre.receitas_financeiras_lancadas %}<tr><th class="ps-3"><a href="{% url 'relatorios:juros_multas' %}?{{ periodo }}&tipo=lancados">Receitas financeiras lançadas</a></th><td class="text-end">R$ {{ dre.receitas_financeiras_lancadas|floatformat:2 }}</td></tr>{% endif %}
+    {% if dre.receitas_financeiras_lancadas %}<tr><th class="ps-3"><a href="{% url 'relatorios:juros_multas' %}?{{ periodo }}&tipo=receber">Receitas financeiras lançadas</a></th><td class="text-end">R$ {{ dre.receitas_financeiras_lancadas|floatformat:2 }}</td></tr>{% endif %}
     {% if dre.juros_multas_recebidos %}<tr><th class="ps-3"><a href="{% url 'relatorios:juros_multas' %}?{{ periodo }}&tipo=receber">Juros e multas recebidos</a></th><td class="text-end">R$ {{ dre.juros_multas_recebidos|floatformat:2 }}</td></tr>{% endif %}
     {% if dre.descontos_obtidos %}<tr><th class="ps-3"><a href="{% url 'relatorios:juros_multas' %}?{{ periodo }}&tipo=pagar">Descontos obtidos</a></th><td class="text-end">R$ {{ dre.descontos_obtidos|floatformat:2 }}</td></tr>{% endif %}
     <tr><th>(-) Despesas Financeiras</th><td class="text-end">R$ {{ dre.despesas_financeiras|floatformat:2 }}</td></tr>
-    {% if dre.despesas_financeiras_lancadas %}<tr><th class="ps-3"><a href="{% url 'relatorios:juros_multas' %}?{{ periodo }}&tipo=lancados">Despesas financeiras lançadas</a></th><td class="text-end">R$ {{ dre.despesas_financeiras_lancadas|floatformat:2 }}</td></tr>{% endif %}
+    {% if dre.despesas_financeiras_lancadas %}<tr><th class="ps-3"><a href="{% url 'relatorios:juros_multas' %}?{{ periodo }}&tipo=pagar">Despesas financeiras lançadas</a></th><td class="text-end">R$ {{ dre.despesas_financeiras_lancadas|floatformat:2 }}</td></tr>{% endif %}
     {% if dre.juros_multas_pagos %}<tr><th class="ps-3"><a href="{% url 'relatorios:juros_multas' %}?{{ periodo }}&tipo=pagar">Juros e multas pagos</a></th><td class="text-end">R$ {{ dre.juros_multas_pagos|floatformat:2 }}</td></tr>{% endif %}
     {% if dre.descontos_concedidos %}<tr><th class="ps-3"><a href="{% url 'relatorios:juros_multas' %}?{{ periodo }}&tipo=receber">Descontos concedidos</a></th><td class="text-end">R$ {{ dre.descontos_concedidos|floatformat:2 }}</td></tr>{% endif %}
     {% if dre.outras_receitas %}<tr><th>Outras Receitas (patrimoniais)</th><td class="text-end">R$ {{ dre.outras_receitas|floatformat:2 }}</td></tr>{% endif %}

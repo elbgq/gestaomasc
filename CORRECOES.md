@@ -10,6 +10,20 @@ Depois de copiar os arquivos, rode `python manage.py migrate` (há uma migraçã
 
 ---
 
+## Juros, Multas e Descontos: lançamentos nas tabelas e cores (23/10/2026)
+
+Não há migração.
+
+| O que mudou | Onde |
+|---|---|
+| "Contas recebidas" com cartão verde, no mesmo padrão de "Contas pagas" (vermelho) | `relatorios/templates/relatorios/financeiro/juros_multas.html`, `_juros_tabela.html` |
+| Lançamentos e contas manuais em categorias de Despesas Financeiras entram em "Contas pagas", e os de Receitas Financeiras em "Contas recebidas", com Origem "Lançamento" ou "Manual" e a categoria abaixo da descrição. O valor vai na coluna Multa quando a categoria fala em multa; senão, em Juros. O bloco separado "Lançados à mão" saiu | `relatorios/services/juros_service.py`, templates acima, `relatorios/forms.py`, `relatorios/views/juros.py` (CSV) |
+| Rodapé de cada tabela: subtotal das quitações (bate com Juros e multas / Descontos do DRE), subtotal dos lançamentos (bate com Despesas ou Receitas financeiras lançadas) e total | `_juros_tabela.html` |
+| Links do DRE para as linhas lançadas abrem a tabela certa | `relatorios/templates/relatorios/dre/dre.html` |
+| 1 teste novo e testes ajustados | `relatorios/tests.py` |
+
+---
+
 ## DRE: Receitas e Despesas Financeiras (23/10/2026)
 
 Não há migração.

@@ -306,7 +306,8 @@ class JurosMultasRelatorioTests(TestCase):
         self.assertEqual(dados["pagar"]["totais"]["desconto"], dre["descontos_obtidos"])
         self.assertEqual(dados["receber"]["totais"]["juros_multa"], dre["juros_multas_recebidos"])
         self.assertEqual(dados["receber"]["totais"]["desconto"], dre["descontos_concedidos"])
-        self.assertEqual(dados["lancados"]["totais"]["receitas"], dre["receitas_financeiras_lancadas"])
+        self.assertEqual(dados["receber"]["totais_lancados"]["total"], dre["receitas_financeiras_lancadas"])
+        self.assertEqual(dados["pagar"]["totais_lancados"]["total"], dre["despesas_financeiras_lancadas"])
         self.assertEqual(dre["receitas_financeiras"], Decimal("9.10"))  # 1,60 + 0,50 + 7,00
 
     def test_estorno_tira_o_titulo_do_relatorio(self):
@@ -329,6 +330,8 @@ class JurosMultasRelatorioTests(TestCase):
         so_recebidas = self.client.get(url, {"data_inicio": self.hoje, "data_fim": self.hoje, "tipo": "receber"})
         self.assertNotContains(so_recebidas, "Boleto atrasado")
         self.assertContains(so_recebidas, "Parcela cliente")
+        self.assertContains(so_recebidas, "Juros da aplicação")  # lançamento entra na tabela de recebidas
+        self.assertContains(so_recebidas, "Lançamento")
 
     def test_exporta_csv(self):
         resp = self.client.get(reverse("relatorios:juros_multas"),
@@ -342,3 +345,16 @@ class JurosMultasRelatorioTests(TestCase):
         resp = self.client.get(reverse("relatorios:dre"), {"data_inicio": self.hoje, "data_fim": self.hoje})
         self.assertContains(resp, reverse("relatorios:juros_multas") + "?data_inicio=")
         self.assertContains(resp, "tipo=pagar")
+
+    def test_conta_manual_de_multa_vai_na_coluna_multa_das_contas_pagas(self):
+        from financeiro.models import FinanceiroPagar
+        from relatorios.services.juros_service import juros_multas_descontos
+        multas = FinanceiroCategoria.objects.create(nome="Multas Pagas", tipo="D", grupo_dre="DESPESAS_FINANCEIRAS")
+        FinanceiroPagar.objects.create(contato=self.fornecedor, descricao="Multa de trânsito", valor=Decimal("130.00"),
+                                       categoria=multas, origem="MANUAL", data_lancamento=self.hoje,
+                                       data_vencimento=self.hoje)
+        pagar = juros_multas_descontos(self.hoje, self.hoje)["pagar"]
+        linha = pagar["linhas"][-1]
+        self.assertEqual((linha["origem"], linha["multa"], linha["juros"]), ("Manual", Decimal("130.00"), Decimal("0.00")))
+        self.assertEqual(pagar["totais_lancados"]["total"], dre_por_periodo(self.hoje, self.hoje)["despesas_financeiras_lancadas"])
+        self.assertEqual(pagar["totais_geral"]["multa"], Decimal("132.00"))

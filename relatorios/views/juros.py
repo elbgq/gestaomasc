@@ -35,21 +35,20 @@ def exportar_csv(dados, tipo, inicio, fim):
     resposta["Content-Disposition"] = f'attachment; filename="juros_multas_{inicio:%Y%m%d}_{fim:%Y%m%d}.csv"'
     resposta.write("﻿")
     escrita = csv.writer(resposta, delimiter=";")
-    escrita.writerow(["Bloco", "Data", "Contato", "Descrição", "Origem/Categoria", "Vencimento", "Dias de atraso",
+    escrita.writerow(["Bloco", "Data", "Contato", "Título", "Origem", "Categoria", "Vencimento", "Dias de atraso",
                       "Valor do título", "Juros", "Multa", "Desconto", "Total"])
 
     for chave, nome in (("pagar", "Conta paga"), ("receber", "Conta recebida")):
         if tipo and tipo != chave:
             continue
         for l in dados[chave]["linhas"]:
-            t = l["titulo"]
-            escrita.writerow([nome, f"{t.data_pagamento:%d/%m/%Y}", l["contato"] or "", t.descricao,
-                              t.get_origem_display(), f"{t.data_vencimento:%d/%m/%Y}", l["atraso"],
-                              _br(l["valor"]), _br(l["juros"]), _br(l["multa"]), _br(l["desconto"]), _br(l["total"])])
-
-    if not tipo or tipo == "lancados":
-        for l in dados["lancados"]["linhas"]:
-            escrita.writerow([f"{l['origem']} ({l['categoria'].get_grupo_dre_display()})", f"{l['data']:%d/%m/%Y}",
-                              l["contato"] or "", l["descricao"], l["categoria"].nome, "", "",
-                              "", "", "", "", _br(l["valor"])])
+            lancado = l["lancado"]
+            escrita.writerow([
+                nome, f"{l['data']:%d/%m/%Y}", l["contato"] or "", l["descricao"], l["origem"],
+                l["categoria"].nome if lancado else "",
+                f"{l['vencimento']:%d/%m/%Y}" if l["vencimento"] else "",
+                "" if lancado else l["atraso"],
+                "" if lancado else _br(l["valor"]),
+                _br(l["juros"]), _br(l["multa"]), _br(l["desconto"]), _br(l["total"]),
+            ])
     return resposta
