@@ -13,6 +13,7 @@
     {% pode "cadastros:produto_list" as ver_produtos %}
     {% pode "cadastros:revisao_precos" as ver_revisao_precos %}
     {% pode "cadastros:servico_list" as ver_servicos %}
+    {% pode "cadastros:reajuste_servicos" as ver_reajuste_servicos %}
     {% pode "comercial:venda_list" as ver_vendas %}
     {% pode "comercial:compra_list" as ver_compras %}
     {% pode "comercial:estoque_list" as ver_estoque %}
@@ -40,6 +41,7 @@
                     {% if ver_produtos %}<li><a class="nav-link text-white" href="{% url 'cadastros:produto_list' %}">Produtos</a></li>{% endif %}
                     {% if ver_revisao_precos %}<li><a class="nav-link text-white" href="{% url 'cadastros:revisao_precos' %}">Revisão de preços</a></li>{% endif %}
                     {% if ver_servicos %}<li><a class="nav-link text-white" href="{% url 'cadastros:servico_list' %}">Serviços</a></li>{% endif %}
+                    {% if ver_reajuste_servicos %}<li><a class="nav-link text-white" href="{% url 'cadastros:reajuste_servicos' %}">Reajuste de serviços</a></li>{% endif %}
                 </ul>
             </div>
         </li>

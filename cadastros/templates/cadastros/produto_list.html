@@ -31,6 +31,7 @@
             <thead class="table-dark">
                 <tr>
                     <th>Codor</th>
+                    <th>EAN</th>
                     <th>Descrição</th>
                     <th>Unidade</th>
                     <th>Preço Venda</th>
@@ -43,6 +44,7 @@
                 {% for produto in page_obj %}
                 <tr>
                     <td>{{ produto.codor }}</td>
+                    <td class="text-nowrap">{% if produto.ean %}{{ produto.ean }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
                     <td>{{ produto.descricao }}</td>
                     <td>{{ produto.unidade }}</td>
                     <td class="text-nowrap">R$ {{ produto.preco_venda }} {% include "cadastros/_selo_preco.html" with situacao=produto.situacao %}</td>
@@ -65,7 +67,7 @@
             
                 {% empty %}
                 <tr>
-                    <td colspan="6" class="text-center text-muted">Nenhum produto encontrado.</td>
+                    <td colspan="7" class="text-center text-muted">Nenhum produto encontrado.</td>
                 </tr>
                 {% endfor %}
             </tbody>

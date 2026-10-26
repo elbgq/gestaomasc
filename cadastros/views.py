@@ -3,14 +3,16 @@ from django.views.generic import ListView, DetailView
 from django.shortcuts import render, get_object_or_404, redirect
 from django.core.paginator import Paginator
 from django.http import JsonResponse
-from .models import Produto, Servico, Contato, ConfiguracaoPreco
-from .forms import ProdutoForm, ServicoForm, ContatoForm, ContatoUnificarForm, ConfiguracaoPrecoForm
+from .models import Produto, Servico, Contato, ConfiguracaoPreco, CategoriaServico
+from .forms import ProdutoForm, ServicoForm, ContatoForm, ContatoUnificarForm, ConfiguracaoPrecoForm, ClienteRapidoForm
 from .services import unificar_contatos, vinculos_do_contato
 from .precos import atualizar_preco_venda, recalcular_precos_automaticos, produtos_sinalizados
+from .tabela_servicos import ler_tabela_pdf, montar_previa, aplicar_previa, TabelaInvalida
 from comercial.models import CompraItem
 
 # Adicional imports para importação via CSV
 import csv
+from datetime import date
 from decimal import Decimal
 from django.contrib import messages
 from django.core.files.storage import FileSystemStorage
@@ -47,6 +49,15 @@ class ProdutoDetailView(DetailView):
         context["custo_medio"] = produto.custo_medio
         context["preco_sugerido"] = produto.preco_sugerido(config)
         context["situacao_preco"] = produto.situacao_preco(config)
+
+        # Códigos de barras das notas dos fornecedores que o leitor da venda também aceita
+        # (só os da unidade; o da caixa não vale como uma unidade)
+        context["eans_fornecedor"] = (
+            produto.codigos_fornecedor
+            .exclude(ean="").filter(fator_conversao=1)
+            .exclude(ean=produto.ean)
+            .select_related("fornecedor")
+        )
 
         # Histórico de compras do produto
         context["historico_compras"] = (
@@ -196,17 +207,22 @@ def produto_delete(request, pk):
 
 def servico_list(request):
     q = request.GET.get("q", "")
-    qs = Servico.objects.all()
+    categoria = request.GET.get("categoria", "")
+    qs = Servico.objects.select_related("categoria")
     if q:
         qs = qs.filter(descricao__icontains=q)
+    if categoria:
+        qs = qs.filter(categoria_id=categoria)
     paginator = Paginator(qs.order_by("codsv"), 20)
     page = request.GET.get("page")
-    ctx = {"page_obj": paginator.get_page(page), "q": q}
+    ctx = {"page_obj": paginator.get_page(page), "q": q, "categoria": categoria,
+           "categorias": CategoriaServico.objects.all()}
     return render(request, "cadastros/servico_list.html", ctx)
 
 def servico_detail(request, pk):
-    obj = get_object_or_404(Servico, pk=pk)
-    return render(request, "cadastros/servico_detail.html", {"obj": obj})
+    obj = get_object_or_404(Servico.objects.select_related("categoria"), pk=pk)
+    reajustes = obj.reajustes.select_related("usuario")[:10]
+    return render(request, "cadastros/servico_detail.html", {"obj": obj, "reajustes": reajustes})
 
 def servico_create(request):
     if request.method == "POST":
@@ -244,6 +260,82 @@ def servico_delete(request, pk):
     return render(request, "cadastros/confirm_delete.html", {"obj": obj})
 
 
+#=====================
+# Reajuste anual dos serviços pela tabela de preços médios (PDF)
+
+# A tabela lida fica na sessão entre a prévia e a aplicação
+def _guardar_tabela(request, linhas, ano):
+    request.session["tabela_servicos"] = {
+        "ano": ano,
+        "linhas": [{**l, "minimo": str(l["minimo"]), "maximo": str(l["maximo"]), "medio": str(l["medio"])}
+                   for l in linhas],
+    }
+
+
+def _tabela_guardada(request):
+    dados = request.session.get("tabela_servicos")
+    if not dados:
+        return None, None
+    linhas = [{**l, "minimo": Decimal(l["minimo"]), "maximo": Decimal(l["maximo"]), "medio": Decimal(l["medio"])}
+              for l in dados["linhas"]]
+    return linhas, dados["ano"]
+
+
+def reajuste_servicos(request):
+    if request.method == "POST" and request.POST.get("acao") == "ler":
+        arquivo = request.FILES.get("tabela")
+        if not arquivo or not arquivo.name.lower().endswith(".pdf"):
+            messages.error(request, "Envie a tabela de preços em PDF.")
+            return redirect("cadastros:reajuste_servicos")
+        try:
+            linhas, ano_pdf = ler_tabela_pdf(arquivo)
+        except TabelaInvalida as e:
+            messages.error(request, str(e))
+            return redirect("cadastros:reajuste_servicos")
+        ano = request.POST.get("ano") or ano_pdf or date.today().year
+        _guardar_tabela(request, linhas, int(ano))
+        return redirect(f"{request.path}?previa=1")
+
+    if request.method == "POST" and request.POST.get("acao") == "aplicar":
+        linhas, ano = _tabela_guardada(request)
+        if linhas is None:
+            messages.error(request, "A prévia expirou. Envie a tabela de novo.")
+            return redirect("cadastros:reajuste_servicos")
+        escolhas = {}
+        for indice in request.POST.getlist("aplicar"):
+            i = int(indice)
+            destino = request.POST.get(f"destino_{i}")
+            if destino:
+                escolhas[i] = {"destino": destino, "usar_descricao": bool(request.POST.get(f"descricao_{i}"))}
+        if not escolhas:
+            messages.warning(request, "Marque ao menos uma linha.")
+            return redirect(f"{request.path}?previa=1")
+        resumo = aplicar_previa(linhas, escolhas, ano, request.user)
+        del request.session["tabela_servicos"]
+        msg = f"Tabela {ano} aplicada: {resumo['reajustados']} serviço(s) com preço reajustado"
+        if resumo["atualizados"]:
+            msg += f", {resumo['atualizados']} com categoria/faixa atualizada"
+        if resumo["criados"]:
+            msg += f", {len(resumo['criados'])} criado(s) ({', '.join(resumo['criados'])})"
+        if resumo["categorias"]:
+            msg += f", {resumo['categorias']} categoria(s) nova(s)"
+        messages.success(request, msg + ".")
+        return redirect("cadastros:servico_list")
+
+    linhas, ano = _tabela_guardada(request) if request.GET.get("previa") else (None, None)
+    if linhas is None:
+        return render(request, "cadastros/reajuste_servicos.html", {"ano_atual": date.today().year})
+
+    previa, sem_tabela = montar_previa(linhas)
+    contagem = {}
+    for item in previa:
+        contagem[item["situacao"]] = contagem.get(item["situacao"], 0) + 1
+    return render(request, "cadastros/reajuste_servicos.html", {
+        "previa": previa, "sem_tabela": sem_tabela, "ano": ano, "contagem": contagem,
+        "avisos": sum(1 for item in previa if item["aviso"]),
+    })
+
+
 #==========================
 # Contatos CRUD Views
 #==========================
@@ -277,6 +369,24 @@ def contato_create(request):
         "form": form,
         "titulo": "Novo Contato"
     })
+
+# Cadastro rápido de cliente pela tela de venda: grava e devolve o cliente para o campo
+def contato_create_ajax(request):
+    if request.method != "POST":
+        return JsonResponse({"erro": "Método inválido"}, status=405)
+
+    form = ClienteRapidoForm(request.POST)
+    if not form.is_valid():
+        resposta = {"erros": {campo: [str(m) for m in msgs] for campo, msgs in form.errors.items()}}
+        # CPF/CNPJ já cadastrado como cliente: a tela oferece usar o cadastro que existe
+        existente = getattr(form, "existente", None)
+        if existente and existente.tipo == "CLIENTE":
+            resposta["existente"] = {"id": existente.pk, "nome": existente.nome}
+        return JsonResponse(resposta, status=400)
+
+    cliente = form.save()
+    return JsonResponse({"id": cliente.pk, "nome": cliente.nome})
+
 
 def contato_update(request, pk):
     obj = get_object_or_404(Contato, pk=pk)

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Produto, Servico, Contato, ConfiguracaoPreco
+from .models import Produto, Servico, Contato, ConfiguracaoPreco, CategoriaServico, ReajusteServico
 
 @admin.register(Produto)
 class ProdutoAdmin(admin.ModelAdmin):
@@ -11,8 +11,8 @@ class ProdutoAdmin(admin.ModelAdmin):
 
 @admin.register(Servico)
 class ServicoAdmin(admin.ModelAdmin):
-    list_display = ('codsv', 'descricao', 'unidade', 'preco_servico')
-    list_filter = ('unidade',)
+    list_display = ('codsv', 'descricao', 'categoria', 'unidade', 'preco_servico', 'ano_tabela')
+    list_filter = ('categoria', 'unidade')
     search_fields = ('descricao',)
     ordering = ('descricao',)
 
@@ -28,3 +28,16 @@ class ContatoAdmin(admin.ModelAdmin):
 @admin.register(ConfiguracaoPreco)
 class ConfiguracaoPrecoAdmin(admin.ModelAdmin):
     list_display = ("markup", "tolerancia")
+
+
+@admin.register(CategoriaServico)
+class CategoriaServicoAdmin(admin.ModelAdmin):
+    list_display = ("nome", "ordem")
+    ordering = ("ordem", "nome")
+
+
+@admin.register(ReajusteServico)
+class ReajusteServicoAdmin(admin.ModelAdmin):
+    list_display = ("data", "servico", "ano_tabela", "preco_anterior", "preco_novo", "usuario")
+    list_filter = ("ano_tabela",)
+    search_fields = ("servico__descricao", "servico__codsv")

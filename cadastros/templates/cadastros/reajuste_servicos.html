@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block title %}Reajuste de Serviços{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1 class="h3">Reajuste de serviços pela tabela{% if ano %} {{ ano }}{% endif %}</h1>
+        <a href="{% url 'cadastros:servico_list' %}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Serviços
+        </a>
+    </div>
+
+    {% if not previa %}
+    <!-- Envio da tabela -->
+    <div class="card shadow-sm p-3 mb-4">
+        <form method="post" enctype="multipart/form-data" class="row g-3 align-items-end">
+            {% csrf_token %}
+            <input type="hidden" name="acao" value="ler">
+            <div class="col-md-6">
+                <label for="id_tabela" class="form-label">Tabela de preços médios (PDF)</label>
+                <input type="file" name="tabela" id="id_tabela" accept=".pdf" class="form-control" required>
+            </div>
+            <div class="col-md-2">
+                <label for="id_ano" class="form-label">Ano da tabela</label>
+                <input type="number" name="ano" id="id_ano" class="form-control" placeholder="{{ ano_atual }}">
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary">Ler tabela</button>
+            </div>
+            <div class="col-12 form-text">
+                Nada é gravado agora: a próxima tela mostra cada serviço da tabela ao lado do cadastro, com o preço
+                novo, e você escolhe o que aplicar. O ano, se ficar em branco, é lido do PDF.
+            </div>
+        </form>
+    </div>
+
+    {% else %}
+    <!-- Resumo -->
+    <div class="mb-3">
+        <span class="badge bg-warning text-dark">{{ contagem.alterar|default:0 }} com preço novo</span>
+        <span class="badge bg-info text-dark">{{ contagem.dados|default:0 }} só categoria/faixa</span>
+        <span class="badge bg-primary">{{ contagem.vincular|default:0 }} para vincular</span>
+        <span class="badge bg-success">{{ contagem.novo|default:0 }} novo(s)</span>
+        <span class="badge bg-secondary">{{ contagem.igual|default:0 }} sem mudança</span>
+        {% if avisos %}<span class="badge bg-danger">{{ avisos }} com erro na tabela</span>{% endif %}
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="acao" value="aplicar">
+
+        <div class="table-responsive">
+            <table class="table table-sm table-hover align-middle">
+                <thead class="table-dark">
+                    <tr>
+                        <th><input type="checkbox" id="marcar-todos" class="form-check-input" title="Marcar todos" checked></th>
+                        <th>Serviço na tabela</th>
+                        <th>Serviço no ERP</th>
+                        <th class="text-end">Preço atual</th>
+                        <th class="text-end">Mínimo</th>
+                        <th class="text-end">Máximo</th>
+                        <th class="text-end">Preço novo</th>
+                        <th class="text-end">Variação</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in previa %}
+                    {% ifchanged item.linha.categoria %}
+                    <tr class="table-secondary"><td colspan="8"><strong>{{ item.linha.categoria|default:"Sem categoria" }}</strong></td></tr>
+                    {% endifchanged %}
+                    <tr>
+                        <td><input type="checkbox" name="aplicar" value="{{ item.indice }}" class="form-check-input marcar" {% if item.marcado %}checked{% endif %}></td>
+                        <td>
+                            {{ item.linha.descricao }}
+                            {% if item.aviso %}<div class="small text-danger">{{ item.aviso }}</div>{% endif %}
+                        </td>
+                        <td>
+                            {% if item.servico %}
+                                <input type="hidden" name="destino_{{ item.indice }}" value="{{ item.servico.pk }}">
+                                <strong>{{ item.servico.codsv }}</strong>
+                                {% if item.situacao == "igual" %}<span class="badge bg-secondary">sem mudança</span>
+                                {% elif item.situacao == "dados" %}<span class="badge bg-info text-dark">categoria/faixa</span>{% endif %}
+                            {% else %}
+                                <select name="destino_{{ item.indice }}" class="form-select form-select-sm">
+                                    {% for s in item.sugestoes %}
+                                    <option value="{{ s.pk }}">Vincular a {{ s.codsv }} – {{ s.descricao }}</option>
+                                    {% endfor %}
+                                    <option value="novo">Criar serviço novo (próximo código SV)</option>
+                                </select>
+                                {% if item.sugestoes %}
+                                <div class="form-check small mt-1">
+                                    <input type="checkbox" name="descricao_{{ item.indice }}" value="1" class="form-check-input" id="desc_{{ item.indice }}" checked>
+                                    <label for="desc_{{ item.indice }}" class="form-check-label">Usar a descrição da tabela</label>
+                                </div>
+                                {% endif %}
+                            {% endif %}
+                        </td>
+                        <td class="text-end">{% if item.servico %}R$ {{ item.servico.preco_servico|floatformat:2 }}{% else %}—{% endif %}</td>
+                        <td class="text-end">R$ {{ item.linha.minimo|floatformat:2 }}</td>
+                        <td class="text-end">R$ {{ item.linha.maximo|floatformat:2 }}</td>
+                        <td class="text-end"><strong>R$ {{ item.preco|floatformat:2 }}</strong></td>
+                        <td class="text-end {% if item.variacao > 40 or item.variacao < 0 %}text-danger fw-bold{% endif %}">
+                            {% if item.variacao is not None %}{{ item.variacao|floatformat:1 }}%{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if sem_tabela %}
+        <div class="alert alert-secondary">
+            <strong>Serviços do ERP que não estão na tabela</strong> (nada muda neles):
+            {% for s in sem_tabela %}{{ s.codsv }} – {{ s.descricao }}{% if not forloop.last %}; {% endif %}{% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="d-flex gap-2 mb-4">
+            <button type="submit" class="btn btn-success">
+                <i class="bi bi-check-circle"></i> Aplicar as linhas marcadas
+            </button>
+            <a href="{% url 'cadastros:reajuste_servicos' %}" class="btn btn-outline-secondary">Enviar outra tabela</a>
+        </div>
+        <div class="form-text mb-4">
+            Cada linha marcada recebe o preço novo, a faixa mínimo–máximo e a categoria da tabela. Variação em vermelho:
+            acima de 40% ou queda de preço. Vendas já feitas não mudam.
+        </div>
+    </form>
+    {% endif %}
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ block.super }}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const todos = document.getElementById("marcar-todos");
+    if (!todos) return;
+    todos.addEventListener("change", function () {
+        document.querySelectorAll(".marcar").forEach(c => c.checked = todos.checked);
+    });
+});
+</script>
+{% endblock scripts %}

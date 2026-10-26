@@ -39,7 +39,7 @@ class ConfiguracaoPrecoForm(forms.ModelForm):
 class ServicoForm(MoedaMaskMixin, forms.ModelForm):
     class Meta:
         model = Servico
-        fields = ["codsv", "descricao", "unidade", "preco_servico"]
+        fields = ["codsv", "descricao", "unidade", "categoria", "preco_servico", "preco_minimo", "preco_maximo"]
 
 class ContatoForm(forms.ModelForm):
     class Meta:
@@ -50,6 +50,27 @@ class ContatoForm(forms.ModelForm):
     def clean_documento(self):
         documento = (self.cleaned_data.get("documento") or "").strip()
         return formatar_documento(documento) or None
+
+
+# Cadastro rápido de cliente, aberto na tela de venda (o tipo é sempre Cliente)
+class ClienteRapidoForm(ContatoForm):
+    class Meta(ContatoForm.Meta):
+        fields = ["nome", "documento", "telefone", "email"]
+
+    def clean(self):
+        dados = super().clean()
+        documento = dados.get("documento")
+        if documento:
+            self.existente = Contato.objects.filter(documento=documento).first()
+            if self.existente:
+                raise forms.ValidationError(
+                    f'Já existe o contato "{self.existente.nome}" com este CPF/CNPJ.'
+                )
+        return dados
+
+    def save(self, commit=True):
+        self.instance.tipo = "CLIENTE"
+        return super().save(commit)
 
 
 # Escolha do contato que fica, ao unificar um contato duplicado

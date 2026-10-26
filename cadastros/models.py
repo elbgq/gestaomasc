@@ -1,5 +1,6 @@
 from decimal import Decimal, ROUND_HALF_UP
 
+from django.conf import settings
 from django.db import models
 from django.core.validators import RegexValidator, MinLengthValidator, EmailValidator, MinValueValidator
 
@@ -111,21 +112,64 @@ class ConfiguracaoPreco(models.Model):
         return config
 
 
+# Grupos da tabela de preços de serviços (Iluminação, Ponto de utilização, Quadros...)
+class CategoriaServico(models.Model):
+    nome = models.CharField('Categoria', max_length=100, unique=True)
+    ordem = models.PositiveIntegerField('Ordem', default=0)
+
+    class Meta:
+        verbose_name = 'Categoria de serviço'
+        verbose_name_plural = 'Categorias de serviço'
+        ordering = ['ordem', 'nome']
+
+    def __str__(self):
+        return self.nome
+
+
 class Servico(models.Model):
     codsv = models.CharField('CodSv', max_length=10, blank=True, null=True)
     descricao = models.CharField('Descrição do Serviço', max_length=255)
     unidade = models.CharField('Unidade', max_length=3, choices=UNIDADES_CHOICES)
     preco_servico = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    categoria = models.ForeignKey(CategoriaServico, verbose_name='Categoria', on_delete=models.PROTECT,
+                                  null=True, blank=True, related_name='servicos')
+    # Dados da tabela de preços médios (reajuste anual); a descrição da tabela é o vínculo,
+    # já que a tabela não tem código
+    descricao_tabela = models.CharField('Descrição na tabela', max_length=255, blank=True, default='')
+    preco_minimo = models.DecimalField('Preço mínimo', max_digits=10, decimal_places=2, null=True, blank=True)
+    preco_maximo = models.DecimalField('Preço máximo', max_digits=10, decimal_places=2, null=True, blank=True)
+    ano_tabela = models.PositiveSmallIntegerField('Ano da tabela', null=True, blank=True)
+    data_reajuste = models.DateField('Último reajuste', null=True, blank=True)
 
     class Meta:
         verbose_name = 'Serviço'
         verbose_name_plural = 'Serviços'
         ordering = ['codsv']
         unique_together = [('codsv', 'descricao')]
+        permissions = [("reajustar_servicos", "Pode reajustar preços de serviços pela tabela")]
 
     def __str__(self):
         return self.descricao
- 
+
+
+# Histórico dos reajustes de preço feitos pela tabela
+class ReajusteServico(models.Model):
+    servico = models.ForeignKey(Servico, on_delete=models.CASCADE, related_name='reajustes')
+    data = models.DateTimeField('Data', auto_now_add=True)
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    ano_tabela = models.PositiveSmallIntegerField('Ano da tabela', null=True, blank=True)
+    preco_anterior = models.DecimalField('Preço anterior', max_digits=10, decimal_places=2, null=True, blank=True)
+    preco_novo = models.DecimalField('Preço novo', max_digits=10, decimal_places=2)
+    observacao = models.CharField('Observação', max_length=255, blank=True, default='')
+
+    class Meta:
+        verbose_name = 'Reajuste de serviço'
+        verbose_name_plural = 'Reajustes de serviço'
+        ordering = ['-data']
+
+    def __str__(self):
+        return f"{self.servico} {self.preco_anterior} -> {self.preco_novo}"
+
 
 # CPF/CNPJ com a pontuação de costume (00.000.000/0000-00 ou 000.000.000-00);
 # outro tamanho fica como veio

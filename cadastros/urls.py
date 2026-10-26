@@ -14,6 +14,7 @@ from .views import (
     contato_list,
     contato_detail,
     contato_create,
+    contato_create_ajax,
     contato_update,
     contato_delete,
     contato_unificar,
@@ -44,12 +45,16 @@ urlpatterns = [
     path("servicos/<int:pk>/editar/", views.servico_update, name="servico_update"),
     path("servicos/<int:pk>/excluir/", views.servico_delete, name="servico_delete"),
     
+    # Reajuste anual pela tabela de preços médios (PDF)
+    path("servicos/reajuste/", views.reajuste_servicos, name="reajuste_servicos"),
+
     # Importar Serviços via CSV
     path('servicos/importar/', importar_servicos, name='importar_servicos'),
     
     # Contatos
     path("contatos/", contato_list, name="contato_list"),
     path("contatos/novo/", contato_create, name="contato_create"),
+    path("contatos/novo/ajax/", contato_create_ajax, name="contato_create_ajax"),
     path("contatos/<int:pk>/", contato_detail, name="contato_detail"),
     path("contatos/<int:pk>/editar/", contato_update, name="contato_update"),
     path("contatos/<int:pk>/excluir/", contato_delete, name="contato_delete"),

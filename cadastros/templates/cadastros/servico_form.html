@@ -32,8 +32,23 @@
                 </div>
 
                 <div class="col-md-4">
+                    <label for="id_categoria" class="form-label">Categoria</label>
+                    {{ form.categoria|add_class:"form-select" }}
+                </div>
+
+                <div class="col-md-4">
                     <label for="id_preco_servico" class="form-label">Preço</label>
                     {{ form.preco_servico|add_class:"form-control" }}
+                </div>
+
+                <div class="col-md-4">
+                    <label for="id_preco_minimo" class="form-label">Preço mínimo (tabela)</label>
+                    {{ form.preco_minimo|add_class:"form-control" }}
+                </div>
+
+                <div class="col-md-4">
+                    <label for="id_preco_maximo" class="form-label">Preço máximo (tabela)</label>
+                    {{ form.preco_maximo|add_class:"form-control" }}
                 </div>
 
             </div>

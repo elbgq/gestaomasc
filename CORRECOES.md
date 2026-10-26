@@ -10,6 +10,60 @@ Depois de copiar os arquivos, rode `python manage.py migrate` (há uma migraçã
 
 ---
 
+## Serviços: reajuste anual pela tabela de preços médios em PDF e categorias (26/10/2026)
+
+Há uma migração nova (`cadastros/migrations/0008_categoria_tabela_servicos.py`) e uma biblioteca nova para ler o PDF. Depois de copiar os arquivos, rode:
+
+```bash
+pip install -r requirements.txt
+python manage.py migrate
+```
+
+Depois abra **Cadastros > Reajuste de serviços**, envie a tabela em PDF, confira a prévia e clique em **Aplicar as linhas marcadas**. Com a tabela 2026 (testado numa cópia do banco): 85 serviços reajustados, 1 só com categoria/faixa (SV078, preço igual), 8 categorias criadas, nenhum serviço faltando.
+
+| O que mudou | Onde |
+|---|---|
+| Cadastro **Categoria de serviço** e campo **Categoria** no serviço. As categorias vêm dos grupos da tabela (Iluminação, Ponto de utilização, Quadros...) e são criadas na primeira aplicação | `cadastros/models.py` (`CategoriaServico`, `Servico.categoria`), `cadastros/admin.py` |
+| Serviço guarda **preço mínimo e máximo** da tabela, **ano da tabela**, **data do último reajuste** e a **descrição como está na tabela** (é o vínculo, já que a tabela não tem código) | `cadastros/models.py` (`Servico`) |
+| **Histórico de reajustes** (preço anterior, novo, data, usuário, observação), mostrado no detalhe do serviço | `cadastros/models.py` (`ReajusteServico`), `servico_detail.html` |
+| Tela **Reajuste de serviços**: envia o PDF, mostra cada linha da tabela ao lado do serviço do ERP com preço atual, faixa, preço novo e variação (vermelho acima de 40% ou queda), por categoria. Cada linha tem caixinha; só as marcadas são gravadas. Linha que não casa exato oferece "Vincular a SVxxx" (nome parecido) ou "Criar serviço novo" com o próximo código SV. Serviços do ERP que não estão na tabela aparecem listados no fim | `cadastros/views.py` (`reajuste_servicos`), `cadastros/templates/cadastros/reajuste_servicos.html`, `cadastros/urls.py` |
+| Regra da leitura e do casamento: compara a descrição sem acentos, maiúsculas e espaços; preço = médio publicado. Se a tabela tiver erro (mínimo maior que o máximo, ou médio fora da faixa), usa (mínimo + máximo) / 2 e mostra o aviso na linha. Na tabela 2026: SV053 Disjuntor trifásico fica R$ 125,00 (a tabela diz R$ 115,00, abaixo do mínimo R$ 120,00); SV034 Interfone 2 chamadas fica R$ 195,00 | `cadastros/tabela_servicos.py` |
+| SV038 recebe a descrição completa da tabela ("... WIFI (sem ponto elétrico )") ao aplicar, com a opção "Usar a descrição da tabela" marcada | tela de reajuste |
+| Comando `python manage.py importar_tabela_servicos tabela.pdf [--aplicar]` com a mesma regra (sem `--aplicar` só mostra) | `cadastros/management/commands/importar_tabela_servicos.py` |
+| Lista de serviços: coluna e filtro **Categoria**, botão **Reajuste pela tabela (PDF)**. Formulário do serviço: categoria, mínimo e máximo | `servico_list.html`, `servico_form.html`, `cadastros/forms.py` |
+| Permissão nova **Pode reajustar preços de serviços pela tabela**, dada aos grupos Administrador e Gerente pela migração; link no menu Cadastros | `cadastros/models.py`, `core/permissoes.py`, `core/templates/partials/sidebar.html` |
+| Biblioteca `pypdf` (lê o PDF, sem programas externos) | `requirements.txt` |
+| 6 testes novos | `cadastros/tests.py` |
+
+---
+
+## Produtos: código de barras na lista e no detalhe (26/10/2026)
+
+Não há migração.
+
+| O que mudou | Onde |
+|---|---|
+| Lista de produtos ganhou a coluna **EAN** (traço quando o produto não tem) | `cadastros/templates/cadastros/produto_list.html` |
+| Detalhe do produto mostra o **Código de barras (EAN)**, ou o aviso "Sem código de barras". Abaixo aparecem os códigos das notas dos fornecedores que o leitor da venda também aceita (só os da unidade, não os da caixa) | `cadastros/templates/cadastros/produto_detail.html`, `cadastros/views.py` (`ProdutoDetailView`) |
+| 2 testes novos | `cadastros/tests.py` |
+
+---
+
+## Venda: cadastro rápido de cliente e leitor de código de barras (24/10/2026)
+
+Não há migração. O grupo Vendedor já tinha a permissão de cadastrar contatos, então ele usa as duas novidades sem ajuste.
+
+| O que mudou | Onde |
+|---|---|
+| Botão **➕ Novo** ao lado do campo Cliente abre uma janela com nome, CPF/CNPJ, telefone e e-mail. O cliente é gravado sem sair da tela (tipo Cliente, documento com pontuação) e já fica selecionado; os itens digitados não se perdem. CPF/CNPJ já cadastrado não duplica: se for de um cliente, a janela oferece "Usar o cliente ..." | `comercial/templates/comercial/venda_form.html`, `cadastros/forms.py` (`ClienteRapidoForm`), `cadastros/views.py` (`contato_create_ajax`), `cadastros/urls.py` |
+| Campo **📷 Código de barras** acima dos itens, com o cursor nele ao abrir a venda. O leitor USB digita o código e tecla Enter; o produto entra na primeira linha vazia (ou numa linha nova) com quantidade 1, preço e aviso de estoque. Ler de novo o mesmo produto soma 1 na quantidade. Código desconhecido, repetido em dois produtos ou produto sem estoque mostra aviso em vermelho com um bipe | `venda_form.html`, `comercial/views/views_vendas.py` (`api_produto_codigo`), `comercial/urls.py` |
+| Busca do código: EAN do produto; depois o EAN da nota do fornecedor (só o da unidade, não o da caixa); por último o código interno (CodOrigem) | `comercial/views/views_vendas.py` (`produtos_por_codigo`) |
+| Enter dentro de um campo da venda não salva mais a venda (o leitor termina cada leitura com Enter). Para salvar, use o botão | `venda_form.html` |
+| Rotas novas no mapa de permissões | `core/permissoes.py` |
+| 12 testes novos | `cadastros/tests.py`, `comercial/tests.py`, `core/tests.py` |
+
+---
+
 ## Juros, Multas e Descontos: lançamentos nas tabelas e cores (23/10/2026)
 
 Não há migração.

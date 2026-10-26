@@ -38,10 +38,12 @@ PERMISSOES = {
     "cadastros:servico_update": "cadastros.change_servico",
     "cadastros:servico_delete": "cadastros.delete_servico",
     "cadastros:importar_servicos": "cadastros.importar_csv",
+    "cadastros:reajuste_servicos": "cadastros.reajustar_servicos",
 
     "cadastros:contato_list": "cadastros.view_contato",
     "cadastros:contato_detail": "cadastros.view_contato",
     "cadastros:contato_create": "cadastros.add_contato",
+    "cadastros:contato_create_ajax": "cadastros.add_contato",  # cliente rápido na venda
     "cadastros:contato_update": "cadastros.change_contato",
     "cadastros:contato_delete": "cadastros.delete_contato",
     "cadastros:contato_unificar": "cadastros.unificar_contato",
@@ -79,6 +81,7 @@ PERMISSOES = {
     "comercial:venda_excluir": "comercial.delete_venda",
     "comercial:venda_recibo": "comercial.emitir_recibo",
     "comercial:api_preco": ("comercial.add_venda", "comercial.change_venda"),
+    "comercial:api_produto_codigo": ("comercial.add_venda", "comercial.change_venda"),
 
     # ---------------- Financeiro ----------------
     "financeiro:categoria_list": "financeiro.view_financeirocategoria",

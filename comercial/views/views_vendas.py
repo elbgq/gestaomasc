@@ -536,6 +536,45 @@ def api_preco(request, tipo, pk):
     return JsonResponse({"preco": 0, "estoque": None})
 
 
+# Produtos com o código lido: EAN do produto, EAN da nota do fornecedor
+# (só o da unidade, não o da caixa) e, por último, o código interno
+def produtos_por_codigo(codigo):
+    buscas = [
+        Produto.objects.filter(ean=codigo),
+        Produto.objects.filter(codigos_fornecedor__ean=codigo, codigos_fornecedor__fator_conversao=1),
+        Produto.objects.filter(codor__iexact=codigo),
+    ]
+    for busca in buscas:
+        encontrados = list(busca.distinct()[:3])
+        if encontrados:
+            return encontrados
+    return []
+
+
+# Leitor de código de barras da tela de venda: devolve o produto para a linha de itens
+def api_produto_codigo(request):
+    codigo = (request.GET.get("codigo") or "").strip()
+    if not codigo:
+        return JsonResponse({"erro": "Informe o código."}, status=400)
+
+    encontrados = produtos_por_codigo(codigo)
+    if not encontrados:
+        return JsonResponse({"erro": f"Código {codigo} não encontrado no cadastro de produtos."}, status=404)
+    if len(encontrados) > 1:
+        nomes = ", ".join(str(p) for p in encontrados)
+        return JsonResponse({"erro": f"O código {codigo} está em mais de um produto ({nomes}). Escolha na lista."}, status=409)
+
+    produto = encontrados[0]
+    estoque = Estoque.objects.filter(produto=produto).values_list("quantidade", flat=True).first() or 0
+    return JsonResponse({
+        "id": produto.id,
+        "descricao": str(produto),
+        "preco": float(produto.preco_venda),
+        "estoque": float(estoque),
+        "abaixo_custo": produto.situacao_preco() == "abaixo_custo",
+    })
+
+
 #==========================
 # DASHBOARD
 #==========================

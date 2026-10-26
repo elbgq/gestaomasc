@@ -20,10 +20,47 @@
                 <dt class="col-sm-3">Unidade</dt>
                 <dd class="col-sm-9">{{ obj.unidade }}</dd>
 
+                <dt class="col-sm-3">Categoria</dt>
+                <dd class="col-sm-9">{{ obj.categoria|default:"—" }}</dd>
+
                 <dt class="col-sm-3">Preço</dt>
                 <dd class="col-sm-9">R$ {{ obj.preco_servico }}</dd>
 
+                {% if obj.preco_minimo is not None %}
+                <dt class="col-sm-3">Faixa da tabela{% if obj.ano_tabela %} {{ obj.ano_tabela }}{% endif %}</dt>
+                <dd class="col-sm-9">R$ {{ obj.preco_minimo }} a R$ {{ obj.preco_maximo }}</dd>
+                {% endif %}
+
+                {% if obj.descricao_tabela and obj.descricao_tabela != obj.descricao %}
+                <dt class="col-sm-3">Descrição na tabela</dt>
+                <dd class="col-sm-9">{{ obj.descricao_tabela }}</dd>
+                {% endif %}
+
+                {% if obj.data_reajuste %}
+                <dt class="col-sm-3">Último reajuste</dt>
+                <dd class="col-sm-9">{{ obj.data_reajuste|date:"d/m/Y" }}</dd>
+                {% endif %}
+
             </dl>
+
+            {% if reajustes %}
+            <h6 class="mt-3">Histórico de reajustes</h6>
+            <table class="table table-sm">
+                <thead><tr><th>Data</th><th>Tabela</th><th class="text-end">Antes</th><th class="text-end">Depois</th><th>Usuário</th><th>Observação</th></tr></thead>
+                <tbody>
+                {% for r in reajustes %}
+                <tr>
+                    <td>{{ r.data|date:"d/m/Y H:i" }}</td>
+                    <td>{{ r.ano_tabela|default:"" }}</td>
+                    <td class="text-end">{% if r.preco_anterior is not None %}R$ {{ r.preco_anterior }}{% else %}—{% endif %}</td>
+                    <td class="text-end">R$ {{ r.preco_novo }}</td>
+                    <td>{{ r.usuario|default:"" }}</td>
+                    <td class="small">{{ r.observacao }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
         </div>
         <div class="card-footer d-flex justify-content-between">
             <a href="{% url 'cadastros:servico_list' %}" class="btn btn-secondary">
@@ -40,4 +77,4 @@
         </div>
     </div>
 </div>
-{% endblock %}
+{% endblock %}

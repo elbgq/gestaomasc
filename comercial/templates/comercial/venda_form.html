@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 {% load widget_tweaks %}
+{% load permissoes %}
 
 {% block content %}
 <h2>{% if venda.pk %}Editar Venda{% else %}Nova Venda{% endif %}</h2>
@@ -18,6 +19,17 @@
     {% include "comercial/_form_campos_base.html" with form=form excluir="numero,total,cmv,data_finalizacao,status" %}
 
     <hr> 
+
+    <!-- LEITOR DE CÓDIGO DE BARRAS: o leitor digita o código e tecla Enter; o produto entra nos itens -->
+    <div class="card p-3 shadow-sm mb-3">
+        <label for="leitor-codigo" class="form-label fw-semibold mb-1">📷 Código de barras</label>
+        <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-upc-scan"></i></span>
+            <input type="text" id="leitor-codigo" class="form-control" autocomplete="off" autofocus
+                   placeholder="Passe o leitor no produto ou digite o código e tecle Enter">
+        </div>
+        <div id="leitor-retorno" class="form-text">Ler de novo o mesmo produto soma 1 na quantidade.</div>
+    </div>
 
     <!-- ITENS DA VENDA -->
     {% include "comercial/_form_itens_venda.html" with formset=itens_formset produtos=produtos servicos=servicos %}
@@ -55,6 +67,48 @@
     {% endif %}
  
 </form>
+
+{% pode "cadastros:contato_create_ajax" as pode_cliente_rapido %}
+{% if pode_cliente_rapido %}
+<!-- CADASTRO RÁPIDO DE CLIENTE (fora do formulário da venda: um form não pode ficar dentro de outro) -->
+<div class="modal fade" id="modalNovoCliente" tabindex="-1" aria-labelledby="modalNovoClienteTitulo" aria-hidden="true">
+    <div class="modal-dialog">
+        <form class="modal-content" id="form-novo-cliente" method="post" novalidate
+              action="{% url 'cadastros:contato_create_ajax' %}">
+            {% csrf_token %}
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalNovoClienteTitulo">Novo cliente</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger d-none" id="novo-cliente-erro"></div>
+                <div class="mb-3">
+                    <label for="novo-cliente-nome" class="form-label">Nome *</label>
+                    <input type="text" name="nome" id="novo-cliente-nome" class="form-control" maxlength="255" required>
+                </div>
+                <div class="mb-3">
+                    <label for="novo-cliente-documento" class="form-label">CPF/CNPJ</label>
+                    <input type="text" name="documento" id="novo-cliente-documento" class="form-control" maxlength="30">
+                </div>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="novo-cliente-telefone" class="form-label">Telefone</label>
+                        <input type="text" name="telefone" id="novo-cliente-telefone" class="form-control" maxlength="30">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="novo-cliente-email" class="form-label">E-mail</label>
+                        <input type="email" name="email" id="novo-cliente-email" class="form-control">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-dark" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-primary">💾 Salvar cliente</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
 
 {% if formset.non_form_errors %}
 <div class="alert alert-danger">
@@ -303,6 +357,22 @@ document.addEventListener("DOMContentLoaded", function () {
         return (produto?.value || servico?.value) && parseFloat(qtd?.value) > 0;
     }
 
+    // Acrescenta uma linha de item e devolve a linha criada
+    function adicionarLinha() {
+        const formIndex = parseInt(totalForms.value);
+
+        let template = document.getElementById("empty-form-template").innerHTML;
+        template = template.replace(/__prefix__/g, formIndex);
+
+        tableBody.insertAdjacentHTML("beforeend", template);
+        totalForms.value = formIndex + 1;
+
+        const row = tableBody.querySelector(".item-row:last-child");
+        prepararLinha(row);
+        calcularTotalVenda();
+        return row;
+    }
+
     if (addBtn && tableBody && totalForms) {
         addBtn.addEventListener("click", function () {
             // Só abre uma nova linha depois que a anterior estiver preenchida
@@ -312,17 +382,215 @@ document.addEventListener("DOMContentLoaded", function () {
                 return;
             }
             if (avisoItem) avisoItem.classList.add("d-none");
+            adicionarLinha();
+        });
+    }
 
-            const formIndex = parseInt(totalForms.value);
+    /* ============================================================
+       7. LEITOR DE CÓDIGO DE BARRAS
+       O leitor USB funciona como teclado: digita o código e tecla Enter.
+    ============================================================ */
 
-            let template = document.getElementById("empty-form-template").innerHTML;
-            template = template.replace(/__prefix__/g, formIndex);
+    const leitor = document.getElementById("leitor-codigo");
+    const leitorRetorno = document.getElementById("leitor-retorno");
 
-            tableBody.insertAdjacentHTML("beforeend", template);
-            totalForms.value = formIndex + 1;
+    function avisarLeitor(texto, tipo) {
+        leitorRetorno.textContent = texto;
+        leitorRetorno.className = "form-text fw-semibold " +
+            ({ erro: "text-danger", alerta: "text-warning-emphasis" }[tipo] || "text-success");
+    }
 
-            prepararLinha(tableBody.querySelector(".item-row:last-child"));
-            calcularTotalVenda();
+    // Som curto de erro, para quem está olhando o produto e não a tela
+    function bipeErro() {
+        try {
+            const som = new (window.AudioContext || window.webkitAudioContext)();
+            const nota = som.createOscillator();
+            nota.frequency.value = 220;
+            nota.connect(som.destination);
+            nota.onended = () => som.close();
+            nota.start();
+            nota.stop(som.currentTime + 0.25);
+        } catch (e) {}
+    }
+
+    function erroLeitor(texto) {
+        avisarLeitor(texto, "erro");
+        bipeErro();
+    }
+
+    function linhasAtivas() {
+        return [...tableBody.querySelectorAll(".item-row")].filter(row => {
+            const remover = row.querySelector("input[name$='-DELETE']");
+            return !(remover && remover.checked);
+        });
+    }
+
+    function linhaVazia(row) {
+        return !row.querySelector(".item-produto")?.value && !row.querySelector(".item-servico")?.value;
+    }
+
+    function definirQuantidade(row, valor) {
+        const qtd = row.querySelector(".item-quantidade");
+        qtd.value = valor;
+        qtd.dispatchEvent(new Event("input"));
+    }
+
+    async function lerCodigo(codigo) {
+        let resposta, dados;
+        try {
+            resposta = await fetch("{% url 'comercial:api_produto_codigo' %}?codigo=" + encodeURIComponent(codigo));
+            dados = await resposta.json();
+        } catch (e) {
+            erroLeitor("Não foi possível consultar o código " + codigo + ".");
+            return;
+        }
+        if (!resposta.ok) {
+            erroLeitor(dados.erro || "Código " + codigo + " não encontrado.");
+            return;
+        }
+
+        // Produto que já está na venda: soma 1 na quantidade
+        let row = linhasAtivas().find(r => r.querySelector(".item-produto")?.value === String(dados.id));
+        let quantidade;
+
+        if (row) {
+            quantidade = (parseFloat(row.querySelector(".item-quantidade").value) || 0) + 1;
+            definirQuantidade(row, quantidade);
+        } else {
+            if (dados.estoque <= 0) {
+                erroLeitor(dados.descricao + " está sem estoque.");
+                return;
+            }
+            row = linhasAtivas().find(linhaVazia) || adicionarLinha();
+            const produto = row.querySelector(".item-produto");
+            if (!produto.querySelector(`option[value="${dados.id}"]`)) {
+                erroLeitor(dados.descricao + " não está disponível para venda.");
+                return;
+            }
+            // O "change" busca o preço, mostra o estoque e bloqueia o serviço da linha
+            if ($) {
+                $(produto).val(String(dados.id)).trigger("change");
+            } else {
+                produto.value = dados.id;
+                produto.dispatchEvent(new Event("change"));
+            }
+            quantidade = 1;
+            definirQuantidade(row, quantidade);
+        }
+
+        if (quantidade > dados.estoque) {
+            avisarLeitor(`${dados.descricao}: quantidade ${quantidade} passa do estoque disponível (${dados.estoque}).`, "alerta");
+        } else {
+            avisarLeitor(`✔ ${dados.descricao} · quantidade ${quantidade}`);
+        }
+    }
+
+    if (leitor && tableBody && totalForms) {
+        // Uma leitura por vez, na ordem em que chegaram (leituras rápidas seguidas somam certo)
+        let fila = Promise.resolve();
+
+        leitor.addEventListener("keydown", function (e) {
+            if (e.key !== "Enter") return;
+            e.preventDefault();
+            const codigo = leitor.value.trim();
+            leitor.value = "";
+            if (codigo) fila = fila.then(() => lerCodigo(codigo)).catch(() => {});
+        });
+
+        // Enter num campo não envia a venda: se o leitor for usado com o cursor em outro campo,
+        // a leitura não salva a venda pela metade
+        const formVenda = leitor.closest("form");
+        if (formVenda) {
+            formVenda.addEventListener("keydown", function (e) {
+                if (e.key === "Enter" && e.target.tagName === "INPUT") e.preventDefault();
+            });
+        }
+    }
+
+    /* ============================================================
+       8. NOVO CLIENTE SEM SAIR DA VENDA
+    ============================================================ */
+
+    const modalCliente = document.getElementById("modalNovoCliente");
+    const campoCliente = document.getElementById("id_cliente");
+
+    if (modalCliente && campoCliente && window.bootstrap) {
+        // Botão "Novo" colado ao campo Cliente
+        const grupo = document.createElement("div");
+        grupo.className = "input-group";
+        campoCliente.parentNode.insertBefore(grupo, campoCliente);
+        grupo.appendChild(campoCliente);
+        grupo.insertAdjacentHTML("beforeend",
+            '<button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" ' +
+            'data-bs-target="#modalNovoCliente" title="Cadastrar novo cliente">➕ Novo</button>');
+
+        const formCliente = document.getElementById("form-novo-cliente");
+        const erroCliente = document.getElementById("novo-cliente-erro");
+        const rotulos = { nome: "Nome", documento: "CPF/CNPJ", telefone: "Telefone", email: "E-mail" };
+
+        function selecionarCliente(id, nome) {
+            if (!campoCliente.querySelector(`option[value="${id}"]`)) {
+                campoCliente.add(new Option(nome, id));
+            }
+            campoCliente.value = String(id);
+            campoCliente.dispatchEvent(new Event("change"));
+            bootstrap.Modal.getOrCreateInstance(modalCliente).hide();
+        }
+
+        function mostrarErroCliente(mensagens, existente) {
+            erroCliente.replaceChildren();
+            mensagens.forEach(m => {
+                const linha = document.createElement("div");
+                linha.textContent = m;
+                erroCliente.appendChild(linha);
+            });
+            // CPF/CNPJ de um cliente já cadastrado: oferece usar esse cadastro
+            if (existente) {
+                const usar = document.createElement("button");
+                usar.type = "button";
+                usar.className = "btn btn-sm btn-outline-dark mt-2";
+                usar.textContent = "Usar o cliente " + existente.nome;
+                usar.addEventListener("click", () => selecionarCliente(existente.id, existente.nome));
+                erroCliente.appendChild(usar);
+            }
+            erroCliente.classList.remove("d-none");
+        }
+
+        modalCliente.addEventListener("shown.bs.modal", () => formCliente.elements.nome.focus());
+        modalCliente.addEventListener("hidden.bs.modal", () => {
+            formCliente.reset();
+            erroCliente.classList.add("d-none");
+            if (leitor) leitor.focus();
+        });
+
+        formCliente.addEventListener("submit", async function (e) {
+            e.preventDefault();
+            if (!formCliente.elements.nome.value.trim()) {
+                mostrarErroCliente(["Informe o nome do cliente."]);
+                return;
+            }
+            const botao = formCliente.querySelector("[type=submit]");
+            botao.disabled = true;
+            try {
+                const resposta = await fetch(formCliente.action, { method: "POST", body: new FormData(formCliente) });
+                const dados = await resposta.json().catch(() => ({}));
+                if (resposta.ok) {
+                    selecionarCliente(dados.id, dados.nome);
+                    return;
+                }
+                const mensagens = Object.entries(dados.erros || {}).flatMap(([campo, lista]) =>
+                    lista.map(m => rotulos[campo] ? `${rotulos[campo]}: ${m}` : m));
+                if (!mensagens.length) {
+                    mensagens.push(resposta.status === 403
+                        ? "Você não tem permissão para cadastrar clientes."
+                        : "Não foi possível salvar o cliente.");
+                }
+                mostrarErroCliente(mensagens, dados.existente);
+            } catch (erro) {
+                mostrarErroCliente(["Não foi possível salvar o cliente. Verifique a conexão."]);
+            } finally {
+                botao.disabled = false;
+            }
         });
     }
 

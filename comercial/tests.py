@@ -648,3 +648,49 @@ class CorrigirCMVTests(BaseComercialTest):
         self.assertEqual(cmv.total_cmv, Decimal("8.00"))
         venda.refresh_from_db()
         self.assertEqual(venda.cmv, Decimal("8.00"))
+
+
+class LeitorCodigoBarrasTests(BaseComercialTest):
+    # Leitor de código de barras da tela de venda
+    def ler(self, codigo):
+        return self.client.get(reverse("comercial:api_produto_codigo"), {"codigo": codigo})
+
+    def test_encontra_pelo_ean(self):
+        self.produto.ean = "7891234567895"
+        self.produto.save()
+        self.dar_entrada(3)
+        self.produto.refresh_from_db()
+        dados = self.ler(" 7891234567895 ").json()
+        self.assertEqual(dados["id"], self.produto.id)
+        self.assertEqual(dados["preco"], float(self.produto.preco_venda))
+        self.assertEqual(dados["estoque"], 3)
+
+    def test_encontra_pelo_ean_da_nota_do_fornecedor(self):
+        from comercial.models import ProdutoFornecedor
+        ProdutoFornecedor.objects.create(fornecedor=self.fornecedor, codigo_fornecedor="A1",
+                                         ean="7890000000017", produto=self.produto)
+        self.assertEqual(self.ler("7890000000017").json()["id"], self.produto.id)
+
+    def test_ean_da_caixa_nao_vale_como_unidade(self):
+        from comercial.models import ProdutoFornecedor
+        ProdutoFornecedor.objects.create(fornecedor=self.fornecedor, codigo_fornecedor="CX",
+                                         ean="7890000000024", produto=self.produto, fator_conversao=12)
+        self.assertEqual(self.ler("7890000000024").status_code, 404)
+
+    def test_sem_ean_usa_o_codigo_interno(self):
+        self.assertEqual(self.ler("p1").json()["id"], self.produto.id)
+
+    def test_codigo_desconhecido(self):
+        resposta = self.ler("999")
+        self.assertEqual(resposta.status_code, 404)
+        self.assertIn("999", resposta.json()["erro"])
+
+    def test_codigo_em_dois_produtos(self):
+        Produto.objects.create(codor="P1", descricao="Outro com o mesmo código", unidade="UN")
+        self.assertEqual(self.ler("P1").status_code, 409)
+
+    def test_tela_de_venda_tem_leitor_e_cliente_rapido(self):
+        html = self.client.get(reverse("comercial:venda_create")).content.decode()
+        self.assertIn('id="leitor-codigo"', html)
+        self.assertIn('id="modalNovoCliente"', html)
+        self.assertIn(reverse("comercial:api_produto_codigo"), html)

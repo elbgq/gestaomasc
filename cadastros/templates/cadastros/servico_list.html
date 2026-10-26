@@ -10,6 +10,7 @@
         {% pode "cadastros:servico_create" as pode_servico_create %}{% if pode_servico_create %}<a href="{% url 'cadastros:servico_create' %}" class="btn btn-primary">
             <i class="bi bi-plus-circle"></i> Novo Serviço
         </a>{% endif %}
+        {% pode "cadastros:reajuste_servicos" as pode_reajuste %}{% if pode_reajuste %}<a href="{% url 'cadastros:reajuste_servicos' %}" class="btn btn-outline-primary">Reajuste pela tabela (PDF)</a>{% endif %}
         {% pode "cadastros:importar_servicos" as pode_importar_servicos %}{% if pode_importar_servicos %}<a href="{% url 'cadastros:importar_servicos' %}" class="btn btn-secondary">Importar Serviços (CSV)</a>{% endif %}
     </div>
 
@@ -17,6 +18,14 @@
     <form method="get" class="row g-2 mb-3">
         <div class="col-auto">
             <input type="text" name="q" value="{{ q }}" class="form-control" placeholder="Buscar por descrição">
+        </div>
+        <div class="col-auto">
+            <select name="categoria" class="form-select">
+                <option value="">Todas as categorias</option>
+                {% for c in categorias %}
+                <option value="{{ c.pk }}" {% if categoria == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.nome }}</option>
+                {% endfor %}
+            </select>
         </div>
         <div class="col-auto">
             <button type="submit" class="btn btn-outline-secondary">Buscar</button>
@@ -30,6 +39,7 @@
                 <tr>
                     <th>CodSv</th>
                     <th>Descrição</th>
+                    <th>Categoria</th>
                     <th>Unidade</th>
                     <th>Preço</th>
                 <th class="text-center">Ações</th>
@@ -40,6 +50,7 @@
                 <tr>
                     <td>{{ s.codsv }}</td>
                     <td>{{ s.descricao }}</td>
+                    <td>{{ s.categoria|default:"—" }}</td>
                     <td>{{ s.unidade }}</td>
                     <td>R$ {{ s.preco_servico }}</td>
                    
@@ -53,7 +64,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="4" class="text-center text-muted">Nenhum serviço encontrado.</td>
+                    <td colspan="6" class="text-center text-muted">Nenhum serviço encontrado.</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -65,7 +76,7 @@
         <ul class="pagination justify-content-center">
             {% if page_obj.has_previous %}
             <li class="page-item">
-                <a class="page-link" href="?page={{ page_obj.previous_page_number }}&q={{ q }}">Anterior</a>
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}&q={{ q }}&categoria={{ categoria }}">Anterior</a>
             </li>
             {% endif %}
 
@@ -75,7 +86,7 @@
 
             {% if page_obj.has_next %}
             <li class="page-item">
-                <a class="page-link" href="?page={{ page_obj.next_page_number }}&q={{ q }}">Próxima</a>
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}&q={{ q }}&categoria={{ categoria }}">Próxima</a>
             </li>
             {% endif %}
         </ul>
