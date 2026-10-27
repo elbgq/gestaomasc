@@ -90,10 +90,10 @@ class VendaItemForm(MoedaMaskMixin, forms.ModelForm):
         fields = ["produto", "servico", "quantidade", "preco_unitario", "desconto"]
         widgets = {
             "produto": forms.Select(attrs={
-                "class": "form-select item-produto select2-produto"
+                "class": "form-select item-produto"
             }),
             "servico": forms.Select(attrs={
-                "class": "form-select item-servico select2-servico"
+                "class": "form-select item-servico"
             }),
             # Sem "min" no navegador: a linha vazia (quantidade 0) é ignorada no servidor
             "quantidade": forms.NumberInput(attrs={

@@ -82,6 +82,7 @@ PERMISSOES = {
     "comercial:venda_recibo": "comercial.emitir_recibo",
     "comercial:api_preco": ("comercial.add_venda", "comercial.change_venda"),
     "comercial:api_produto_codigo": ("comercial.add_venda", "comercial.change_venda"),
+    "comercial:api_itens_venda": ("comercial.add_venda", "comercial.change_venda"),
 
     # ---------------- Financeiro ----------------
     "financeiro:categoria_list": "financeiro.view_financeirocategoria",

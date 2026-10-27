@@ -694,3 +694,44 @@ class LeitorCodigoBarrasTests(BaseComercialTest):
         self.assertIn('id="leitor-codigo"', html)
         self.assertIn('id="modalNovoCliente"', html)
         self.assertIn(reverse("comercial:api_produto_codigo"), html)
+
+
+class EscolherItemVendaTests(BaseComercialTest):
+    # Modal "Escolher item" da tela de venda
+    def listar(self):
+        return self.client.get(reverse("comercial:api_itens_venda")).json()
+
+    def test_so_lista_produtos_com_estoque(self):
+        self.dar_entrada(4)
+        Produto.objects.create(codor="P2", descricao="Sem estoque", unidade="UN")
+        zerado = Produto.objects.create(codor="P3", descricao="Estoque zerado", unidade="UN")
+        Estoque.objects.create(produto=zerado, quantidade=0)
+        produtos = self.listar()["produtos"]
+        self.assertEqual([p["id"] for p in produtos], [self.produto.id])
+        self.assertEqual(produtos[0]["estoque"], 4)
+        self.assertEqual(produtos[0]["codigo"], "P1")
+
+    def test_lista_servicos_com_categoria(self):
+        from cadastros.models import CategoriaServico, Servico
+        iluminacao = CategoriaServico.objects.create(nome="Iluminação", ordem=1)
+        CategoriaServico.objects.create(nome="Vazia", ordem=2)
+        Servico.objects.create(codsv="SV001", descricao="Instalar luminária", unidade="UN",
+                               preco_servico=Decimal("80.00"), categoria=iluminacao)
+        Servico.objects.create(codsv="SV002", descricao="Visita técnica", unidade="UN")
+        dados = self.listar()
+        self.assertEqual([c["nome"] for c in dados["categorias"]], ["Iluminação"])
+        self.assertEqual([(s["codigo"], s["categoria"], s["preco"]) for s in dados["servicos"]],
+                         [("SV001", iluminacao.id, 80.0), ("SV002", None, 0.0)])
+
+    def test_tela_de_venda_tem_coluna_item_e_modal(self):
+        html = self.client.get(reverse("comercial:venda_create")).content.decode()
+        self.assertIn('id="modalEscolherItem"', html)
+        self.assertIn(reverse("comercial:api_itens_venda"), html)
+        self.assertIn('class="btn btn-outline-secondary w-100 text-start item-escolher"', html)
+        self.assertNotIn("select2-produto", html)
+
+    def test_editar_venda_mostra_o_item_gravado(self):
+        self.dar_entrada(5)
+        venda = self.criar_venda(quantidade=2)
+        html = self.client.get(reverse("comercial:venda_editar", args=[venda.id])).content.decode()
+        self.assertIn(f'<option value="{self.produto.id}" selected>P1 - Produto 1</option>', html)

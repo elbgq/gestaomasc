@@ -10,6 +10,20 @@ Depois de copiar os arquivos, rode `python manage.py migrate` (há uma migraçã
 
 ---
 
+## Venda: modal "Escolher item" com coluna Item única (26/10/2026)
+
+Não há migração. Basta copiar os arquivos e recarregar a tela de venda.
+
+| O que mudou | Onde |
+|---|---|
+| As colunas **Produto** e **Serviço** viraram uma coluna só, **Item**, com 45% da largura. Ela mostra o item escolhido com o selo Produto ou Serviço. Os campos produto/serviço continuam no formulário, escondidos, então a gravação e as validações não mudaram | `comercial/templates/comercial/_form_itens_venda.html`, `comercial/forms.py` (sem as classes do Select2) |
+| Clicar no item da linha, em **➕ Adicionar Item** ou teclar **F2** abre o modal **Escolher item**: abas Produtos e Serviços, busca sem acento por nome, código, marca ou código de barras, ↑ ↓ e Enter para escolher. Produtos mostram código, marca, unidade, estoque, preço e quanto já está na venda; **só aparecem produtos com estoque disponível** (mesma regra do formulário). Serviços têm botões de filtro pelas categorias da tabela de preços | `comercial/templates/comercial/venda_form.html` (seções 4 e 9 do script) |
+| Escolher um produto que já está em outra linha soma 1 na quantidade, como o leitor de código de barras. A linha nova só é criada quando um item é escolhido (não sobra linha vazia). Quantidade começa em 1 e o preço vem do cadastro, como antes | `venda_form.html` |
+| API da lista do modal (carregada a cada abertura, com o estoque do momento), liberada para quem pode criar ou editar venda | `comercial/views/views_vendas.py` (`api_itens_venda`), `comercial/urls.py`, `core/permissoes.py` |
+| Testes: só produtos com estoque, serviços com categoria, tela com o modal, edição mostrando o item gravado, vendedor acessa a API | `comercial/tests.py` (`EscolherItemVendaTests`), `core/tests.py` |
+
+---
+
 ## Serviços: reajuste anual pela tabela de preços médios em PDF e categorias (26/10/2026)
 
 Há uma migração nova (`cadastros/migrations/0008_categoria_tabela_servicos.py`) e uma biblioteca nova para ler o PDF. Depois de copiar os arquivos, rode:

@@ -4,7 +4,7 @@ from django.urls import path
 from .views.views_vendas import (  
     venda_create, venda_editar, venda_detalhe,
     venda_parcelamento,  venda_list, venda_excluir,
-    venda_recibo, dashboard_comercial, api_preco, api_produto_codigo
+    venda_recibo, dashboard_comercial, api_preco, api_produto_codigo, api_itens_venda
 )
 from .views.views_estoque import (
     EstoqueListView, MovimentacaoEstoqueListView, estoque_relatorio,
@@ -61,6 +61,8 @@ urlpatterns = [
     path("api/preco/<str:tipo>/<int:pk>/", api_preco, name="api_preco"),
     # Leitor de código de barras da venda (EAN ou código interno)
     path("api/produto-por-codigo/", api_produto_codigo, name="api_produto_codigo"),
+    # Lista do modal "Escolher item" da venda
+    path("api/itens-venda/", api_itens_venda, name="api_itens_venda"),
 
     # CMV
     path("cmv/", cmv_lista, name="cmv_lista"),

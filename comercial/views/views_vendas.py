@@ -21,7 +21,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from comercial.models import (
     MovimentacaoEstoque, Estoque, Venda, CMVItem
 )
-from cadastros.models import Produto, Servico
+from cadastros.models import Produto, Servico, CategoriaServico
 from comercial.forms import FiltroDashboardForm
 # Integração das vendas com o financeiro
 from financeiro.models import (
@@ -573,6 +573,41 @@ def api_produto_codigo(request):
         "estoque": float(estoque),
         "abaixo_custo": produto.situacao_preco() == "abaixo_custo",
     })
+
+
+# Lista do modal "Escolher item" da tela de venda: produtos com estoque disponível
+# (a mesma regra do VendaItemForm) e todos os serviços com a categoria
+def api_itens_venda(request):
+    produtos = {}
+    for p in (Produto.objects.filter(estoque__quantidade__gt=0)
+              .values("id", "codor", "descricao", "marca", "ean", "unidade", "preco_venda", "estoque__quantidade")
+              .order_by("descricao")):
+        if p["id"] in produtos:
+            continue
+        produtos[p["id"]] = {
+            "id": p["id"],
+            "codigo": p["codor"] or "",
+            "descricao": p["descricao"],
+            "marca": p["marca"] or "",
+            "ean": p["ean"] or "",
+            "unidade": p["unidade"] or "",
+            "preco": float(p["preco_venda"] or 0),
+            "estoque": float(p["estoque__quantidade"]),
+        }
+
+    servicos = [{
+        "id": s.id,
+        "codigo": s.codsv or "",
+        "descricao": s.descricao,
+        "unidade": s.unidade or "",
+        "preco": float(s.preco_servico or 0),
+        "categoria": s.categoria_id,
+    } for s in Servico.objects.order_by("codsv", "descricao")]
+
+    categorias = [{"id": c.id, "nome": c.nome}
+                  for c in CategoriaServico.objects.filter(servicos__isnull=False).distinct()]
+
+    return JsonResponse({"produtos": list(produtos.values()), "servicos": servicos, "categorias": categorias})
 
 
 #==========================

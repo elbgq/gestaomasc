@@ -91,6 +91,7 @@ class AcessoPorPerfilTest(TestCase):
         self.assertEqual(self.client.get(reverse("cadastros:contato_list")).status_code, 200)
         # Na venda: cadastro rápido de cliente e leitor de código de barras
         self.assertEqual(self.client.get(reverse("comercial:api_produto_codigo"), {"codigo": "x"}).status_code, 404)
+        self.assertEqual(self.client.get(reverse("comercial:api_itens_venda")).status_code, 200)
         resposta = self.client.post(reverse("cadastros:contato_create_ajax"), {"nome": "Cliente novo"})
         self.assertEqual(resposta.status_code, 200)
         self.assertIn('id="modalNovoCliente"', self.client.get(reverse("comercial:venda_create")).content.decode())

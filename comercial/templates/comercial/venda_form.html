@@ -306,32 +306,42 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     /* ============================================================
-       4. SELECT2 (SE EXISTIR)
+       4. ITEM ESCOLHIDO NA LINHA
+       Produto e serviço ficam em selects escondidos; o botão da linha mostra
+       o item escolhido e abre o modal "Escolher item" (seção 9).
     ============================================================ */
 
-    function aplicarSelect2(row) {
-        if (!temSelect2) return;
+    function mostrarEscolhido(row) {
+        const produto = row.querySelector(".item-produto");
+        const servico = row.querySelector(".item-servico");
+        const rotulo = row.querySelector(".item-escolhido");
+        if (!rotulo) return;
 
-        $(row).find('.select2-produto').select2({
-            theme: 'bootstrap-5',
-            width: '100%',
-            placeholder: "Buscar produto...",
-            allowClear: true
-        });
-
-        $(row).find('.select2-servico').select2({
-            theme: 'bootstrap-5',
-            width: '100%',
-            placeholder: "Buscar serviço...",
-            allowClear: true
-        });
+        const campo = produto?.value ? produto : (servico?.value ? servico : null);
+        rotulo.replaceChildren();
+        if (!campo) {
+            rotulo.className = "item-escolhido text-muted";
+            rotulo.textContent = "🔎 Escolher produto ou serviço...";
+            return;
+        }
+        const selo = document.createElement("span");
+        selo.className = "badge me-2 " + (campo === produto ? "text-bg-primary" : "text-bg-info");
+        selo.textContent = campo === produto ? "Produto" : "Serviço";
+        rotulo.className = "item-escolhido";
+        rotulo.append(selo, campo.options[campo.selectedIndex]?.text || "");
     }
 
     function prepararLinha(row) {
-        aplicarSelect2(row);
         adicionarListeners(row);
         configurarPrecoEEstoque(row);
         bloquearProdutoOuServico(row);
+        const produto = row.querySelector(".item-produto");
+        const servico = row.querySelector(".item-servico");
+        if (produto) aoMudar(produto, () => mostrarEscolhido(row));
+        if (servico) aoMudar(servico, () => mostrarEscolhido(row));
+        mostrarEscolhido(row);
+        const botao = row.querySelector(".item-escolher");
+        if (botao) botao.addEventListener("click", () => abrirEscolha(row));
         calcularTotalItem(row);
     }
 
@@ -348,14 +358,6 @@ document.addEventListener("DOMContentLoaded", function () {
     const addBtn = document.getElementById("add-item-btn-venda");
     const tableBody = document.getElementById("formset-body-venda");
     const totalForms = document.querySelector("#id_itens-TOTAL_FORMS");
-    const avisoItem = document.getElementById("aviso-item-venda");
-
-    function linhaPreenchida(row) {
-        const produto = row.querySelector(".item-produto");
-        const servico = row.querySelector(".item-servico");
-        const qtd = row.querySelector(".item-quantidade");
-        return (produto?.value || servico?.value) && parseFloat(qtd?.value) > 0;
-    }
 
     // Acrescenta uma linha de item e devolve a linha criada
     function adicionarLinha() {
@@ -374,16 +376,8 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     if (addBtn && tableBody && totalForms) {
-        addBtn.addEventListener("click", function () {
-            // Só abre uma nova linha depois que a anterior estiver preenchida
-            const ultima = tableBody.querySelector(".item-row:last-child");
-            if (ultima && !linhaPreenchida(ultima)) {
-                if (avisoItem) avisoItem.classList.remove("d-none");
-                return;
-            }
-            if (avisoItem) avisoItem.classList.add("d-none");
-            adicionarLinha();
-        });
+        // Abre a lista; a linha nova só é criada quando um item for escolhido
+        addBtn.addEventListener("click", () => abrirEscolha(null));
     }
 
     /* ============================================================
@@ -593,6 +587,250 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
     }
+
+
+    /* ============================================================
+       9. MODAL "ESCOLHER ITEM"
+       Lista larga com busca: produtos com estoque disponível e serviços
+       filtrados por categoria. A lista é recarregada a cada abertura
+       para o estoque estar sempre atualizado.
+    ============================================================ */
+
+    const modalItem = document.getElementById("modalEscolherItem");
+    let linhaAlvo = null;      // linha que vai receber o item (null = primeira vazia ou nova)
+    let abaItem = "produto";
+    let categoriaItem = "";    // "" = todas, "sem" = sem categoria
+    let dadosItens = { produtos: [], servicos: [], categorias: [] };
+    let itensVisiveis = [];
+    let destaque = 0;
+    let mudarAba = () => {};   // definida abaixo, quando o modal existe
+
+    function abrirEscolha(row) {
+        linhaAlvo = row;
+        if (!modalItem || !window.bootstrap) return;
+        // Linha que já tem serviço abre direto na aba de serviços
+        const servico = row?.querySelector(".item-servico");
+        mudarAba(servico && servico.value ? "servico" : "produto");
+        bootstrap.Modal.getOrCreateInstance(modalItem).show();
+    }
+
+    if (modalItem && window.bootstrap) {
+        const busca = document.getElementById("busca-item");
+        const lista = document.getElementById("lista-escolher-item");
+        const tabela = document.getElementById("tabela-escolher-item");
+        const cabecalho = document.getElementById("cabecalho-escolher-item");
+        const carregando = document.getElementById("itens-carregando");
+        const vazio = document.getElementById("itens-vazio");
+        const filtroCategorias = document.getElementById("filtro-categorias");
+        const moeda = v => "R$ " + Number(v).toFixed(2).replace(".", ",");
+        const numero = v => Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 3 });
+        // Busca sem acento e sem maiúsculas: "eletrica" acha "Elétrica"
+        const normalizar = t => (t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+        // Quantidade de cada produto que já está na venda
+        function qtdNaVenda(id) {
+            return linhasAtivas()
+                .filter(r => r.querySelector(".item-produto")?.value === String(id))
+                .reduce((soma, r) => soma + (parseFloat(r.querySelector(".item-quantidade").value) || 0), 0);
+        }
+
+        function celula(tr, texto, classe) {
+            const td = document.createElement("td");
+            if (classe) td.className = classe;
+            td.textContent = texto;
+            tr.appendChild(td);
+            return td;
+        }
+
+        function montarCabecalho() {
+            const colunas = abaItem === "produto"
+                ? [["Código", ""], ["Descrição", ""], ["Marca", ""], ["Un", ""], ["Estoque", "text-end"], ["Preço", "text-end"]]
+                : [["Código", ""], ["Descrição", ""], ["Categoria", ""], ["Un", ""], ["Preço", "text-end"]];
+            cabecalho.replaceChildren(...colunas.map(([t, c]) => {
+                const th = document.createElement("th");
+                th.textContent = t;
+                if (c) th.className = c;
+                return th;
+            }));
+        }
+
+        function montarCategorias() {
+            filtroCategorias.classList.toggle("d-none", abaItem !== "servico");
+            const opcoes = [["", "Todas"], ...dadosItens.categorias.map(c => [String(c.id), c.nome])];
+            if (dadosItens.servicos.some(s => !s.categoria)) opcoes.push(["sem", "Sem categoria"]);
+            filtroCategorias.replaceChildren(...opcoes.map(([valor, nome]) => {
+                const b = document.createElement("button");
+                b.type = "button";
+                b.className = "btn btn-sm " + (valor === categoriaItem ? "btn-primary" : "btn-outline-primary");
+                b.textContent = nome;
+                b.addEventListener("click", () => {
+                    categoriaItem = valor;
+                    montarCategorias();
+                    filtrar();
+                    busca.focus();
+                });
+                return b;
+            }));
+        }
+
+        function filtrar() {
+            const termos = normalizar(busca.value).split(/\s+/).filter(Boolean);
+            const nomesCategoria = Object.fromEntries(dadosItens.categorias.map(c => [c.id, c.nome]));
+            const fonte = abaItem === "produto" ? dadosItens.produtos : dadosItens.servicos;
+
+            itensVisiveis = fonte.filter(item => {
+                if (abaItem === "servico") {
+                    if (categoriaItem === "sem" && item.categoria) return false;
+                    if (categoriaItem && categoriaItem !== "sem" && String(item.categoria) !== categoriaItem) return false;
+                }
+                const texto = normalizar([item.codigo, item.descricao, item.marca, item.ean,
+                                          nomesCategoria[item.categoria]].join(" "));
+                return termos.every(t => texto.includes(t));
+            });
+
+            lista.replaceChildren();
+            itensVisiveis.forEach((item, i) => {
+                const tr = document.createElement("tr");
+                tr.style.cursor = "pointer";
+                tr.dataset.indice = i;
+                celula(tr, item.codigo, "text-nowrap");
+                const desc = celula(tr, item.descricao, "fw-semibold");
+                if (abaItem === "produto") {
+                    const naVenda = qtdNaVenda(item.id);
+                    if (naVenda) {
+                        const selo = document.createElement("span");
+                        selo.className = "badge text-bg-warning ms-2";
+                        selo.textContent = "na venda: " + numero(naVenda);
+                        desc.appendChild(selo);
+                    }
+                    celula(tr, item.marca);
+                    celula(tr, item.unidade);
+                    celula(tr, numero(item.estoque), "text-end");
+                } else {
+                    celula(tr, nomesCategoria[item.categoria] || "—");
+                    celula(tr, item.unidade);
+                }
+                celula(tr, moeda(item.preco), "text-end text-nowrap");
+                tr.addEventListener("click", () => escolher(item));
+                tr.addEventListener("mousemove", () => marcar(i, false));
+                lista.appendChild(tr);
+            });
+
+            tabela.classList.toggle("d-none", !itensVisiveis.length);
+            vazio.classList.toggle("d-none", !!itensVisiveis.length);
+            marcar(0, false);
+        }
+
+        function marcar(i, rolar = true) {
+            const linhas = lista.querySelectorAll("tr");
+            if (!linhas.length) return;
+            destaque = Math.max(0, Math.min(i, linhas.length - 1));
+            linhas.forEach((tr, k) => tr.classList.toggle("table-active", k === destaque));
+            if (rolar) linhas[destaque].scrollIntoView({ block: "nearest" });
+        }
+
+        mudarAba = function (aba) {
+            abaItem = aba;
+            modalItem.querySelectorAll("[data-aba]").forEach(b => b.classList.toggle("active", b.dataset.aba === aba));
+            montarCabecalho();
+            montarCategorias();
+            filtrar();
+        };
+
+        modalItem.querySelectorAll("[data-aba]").forEach(b => b.addEventListener("click", () => {
+            mudarAba(b.dataset.aba);
+            busca.focus();
+        }));
+
+        busca.addEventListener("input", filtrar);
+        busca.addEventListener("keydown", function (e) {
+            if (e.key === "ArrowDown") { e.preventDefault(); marcar(destaque + 1); }
+            else if (e.key === "ArrowUp") { e.preventDefault(); marcar(destaque - 1); }
+            else if (e.key === "Enter") {
+                e.preventDefault();
+                if (itensVisiveis[destaque]) escolher(itensVisiveis[destaque]);
+            }
+        });
+
+        modalItem.addEventListener("show.bs.modal", async function () {
+            busca.value = "";
+            carregando.classList.remove("d-none");
+            tabela.classList.add("d-none");
+            vazio.classList.add("d-none");
+            try {
+                const resposta = await fetch(modalItem.dataset.url);
+                if (!resposta.ok) throw new Error(resposta.status);
+                dadosItens = await resposta.json();
+            } catch (e) {
+                carregando.textContent = "Não foi possível carregar a lista de itens.";
+                return;
+            }
+            carregando.classList.add("d-none");
+            document.getElementById("conta-produtos").textContent = dadosItens.produtos.length;
+            document.getElementById("conta-servicos").textContent = dadosItens.servicos.length;
+            mudarAba(abaItem);
+        });
+        modalItem.addEventListener("shown.bs.modal", () => busca.focus());
+        modalItem.addEventListener("hidden.bs.modal", () => {
+            carregando.textContent = "Carregando...";
+            if (leitor) leitor.focus();
+        });
+
+        // Coloca o valor no select escondido e dispara o "change" (preço, estoque, bloqueio, rótulo)
+        function selecionar(campo, valor, texto) {
+            if (valor && !campo.querySelector(`option[value="${valor}"]`)) campo.add(new Option(texto, valor));
+            campo.disabled = false;
+            if ($) {
+                $(campo).val(valor).trigger("change");
+            } else {
+                campo.value = valor;
+                campo.dispatchEvent(new Event("change"));
+            }
+        }
+
+        function escolher(item) {
+            const tipo = abaItem;
+            bootstrap.Modal.getOrCreateInstance(modalItem).hide();
+
+            // Produto que já está em outra linha: soma 1 na quantidade (como o leitor)
+            if (tipo === "produto") {
+                const existente = linhasAtivas().find(r =>
+                    r !== linhaAlvo && r.querySelector(".item-produto")?.value === String(item.id));
+                if (existente) {
+                    const qtd = (parseFloat(existente.querySelector(".item-quantidade").value) || 0) + 1;
+                    definirQuantidade(existente, qtd);
+                    if (qtd > item.estoque) {
+                        avisarLeitor(`${item.descricao}: quantidade ${qtd} passa do estoque disponível (${numero(item.estoque)}).`, "alerta");
+                    } else {
+                        avisarLeitor(`✔ ${item.descricao} · quantidade ${qtd}`);
+                    }
+                    return;
+                }
+            }
+
+            const row = (linhaAlvo && linhaAlvo.isConnected) ? linhaAlvo
+                : (linhasAtivas().find(linhaVazia) || adicionarLinha());
+            const produto = row.querySelector(".item-produto");
+            const servico = row.querySelector(".item-servico");
+            const texto = tipo === "produto" ? `${item.codigo} - ${item.descricao}` : item.descricao;
+
+            // Troca de produto para serviço (ou o contrário): limpa o outro campo primeiro
+            const outro = tipo === "produto" ? servico : produto;
+            if (outro.value) selecionar(outro, "", "");
+            selecionar(tipo === "produto" ? produto : servico, String(item.id), texto);
+
+            const qtd = row.querySelector(".item-quantidade");
+            if (!(parseFloat(qtd.value) > 0)) definirQuantidade(row, 1);
+            row.querySelector(".item-quantidade").focus();
+        }
+    }
+
+    // F2 abre a lista de qualquer lugar da tela
+    document.addEventListener("keydown", function (e) {
+        if (e.key !== "F2" || document.querySelector(".modal.show")) return;
+        e.preventDefault();
+        abrirEscolha(null);
+    });
 
     calcularTotalVenda();
 });

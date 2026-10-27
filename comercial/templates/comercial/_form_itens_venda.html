@@ -2,15 +2,14 @@
 
 {{ formset.management_form }}
 
-<table class="table table-bordered" id="itens-venda-table">
+<table class="table table-bordered align-middle" id="itens-venda-table">
     <thead class="table-dark">
         <tr>
-            <th style="width: 20%">Produto</th>
-            <th style="width: 20%">Serviço</th>
+            <th style="width: 45%">Item (produto ou serviço)</th>
             <th style="width: 10%">Qtd</th>
-            <th style="width: 10%">Preço</th>
+            <th style="width: 12%">Preço</th>
             <th style="width: 10%">Desc.</th>
-            <th style="width: 15%">Total</th>
+            <th style="width: 13%">Total</th>
             <th style="width: 10%">Ação</th>
         </tr>
     </thead>
@@ -25,11 +24,12 @@
             {% endfor %}
 
             <td>
-                {{ f.produto }}
-            </td>
-
-            <td>
-                {{ f.servico }}
+                {# Produto e serviço continuam no formulário, escondidos: o botão abre o modal "Escolher item" #}
+                <div class="d-none">{{ f.produto }}{{ f.servico }}</div>
+                <button type="button" class="btn btn-outline-secondary w-100 text-start item-escolher"
+                        title="Clique para escolher o produto ou serviço (F2)">
+                    <span class="item-escolhido text-muted">🔎 Escolher produto ou serviço...</span>
+                </button>
             </td>
 
             <td>
@@ -60,9 +60,7 @@
 <button type="button" class="btn btn-secondary" id="add-item-btn-venda">
     ➕ Adicionar Item
 </button>
-<div class="alert alert-warning mt-2 d-none" id="aviso-item-venda">
-    Preencha o produto ou serviço e a quantidade da linha atual antes de adicionar outra.
-</div>
+<span class="form-text ms-2">Atalho: F2 abre a lista de produtos e serviços.</span>
 
 <!-- Template correto do empty_form -->
 <script type="text/template" id="empty-form-template">
@@ -73,11 +71,11 @@
     {% endfor %}
 
     <td>
-        {{ formset.empty_form.produto }}
-    </td>
-
-    <td>
-        {{ formset.empty_form.servico }}
+        <div class="d-none">{{ formset.empty_form.produto }}{{ formset.empty_form.servico }}</div>
+        <button type="button" class="btn btn-outline-secondary w-100 text-start item-escolher"
+                title="Clique para escolher o produto ou serviço (F2)">
+            <span class="item-escolhido text-muted">🔎 Escolher produto ou serviço...</span>
+        </button>
     </td>
 
     <td>
@@ -100,3 +98,50 @@
 
 </tr>
 </script>
+
+<!-- ESCOLHER ITEM: lista larga de produtos (só com estoque) e serviços (por categoria) -->
+<div class="modal fade" id="modalEscolherItem" tabindex="-1" aria-labelledby="modalEscolherItemTitulo" aria-hidden="true"
+     data-url="{% url 'comercial:api_itens_venda' %}">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header flex-column align-items-stretch gap-2">
+                <div class="d-flex align-items-center">
+                    <h5 class="modal-title me-auto" id="modalEscolherItemTitulo">Escolher item</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <ul class="nav nav-tabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button type="button" class="nav-link active" data-aba="produto" role="tab">
+                            📦 Produtos <span class="badge text-bg-light" id="conta-produtos">0</span>
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button type="button" class="nav-link" data-aba="servico" role="tab">
+                            🛠️ Serviços <span class="badge text-bg-light" id="conta-servicos">0</span>
+                        </button>
+                    </li>
+                </ul>
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input type="search" id="busca-item" class="form-control" autocomplete="off"
+                           placeholder="Buscar por nome, código, marca ou código de barras">
+                </div>
+                <div id="filtro-categorias" class="d-flex flex-wrap gap-1 d-none"></div>
+            </div>
+            <div class="modal-body p-0">
+                <div id="itens-carregando" class="p-4 text-center text-muted">Carregando...</div>
+                <table class="table table-hover table-sm mb-0 d-none" id="tabela-escolher-item">
+                    <thead class="table-light sticky-top">
+                        <tr id="cabecalho-escolher-item"></tr>
+                    </thead>
+                    <tbody id="lista-escolher-item"></tbody>
+                </table>
+                <div id="itens-vazio" class="p-4 text-center text-muted d-none">Nenhum item encontrado.</div>
+            </div>
+            <div class="modal-footer justify-content-between">
+                <span class="form-text">↑ ↓ para mover, Enter para escolher. Só aparecem produtos com estoque disponível.</span>
+                <button type="button" class="btn btn-outline-dark" data-bs-dismiss="modal">Cancelar</button>
+            </div>
+        </div>
+    </div>
+</div>
