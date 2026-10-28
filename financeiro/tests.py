@@ -72,9 +72,11 @@ class TelasFinanceiroTests(TestCase):
             data_lancamento=date.today(), data_vencimento=date.today(), cliente=self.contato,
             descricao="Receita", valor=Decimal("10.00"), origem="MANUAL",
         )
-        resp = self.client.get(reverse("financeiro:dashboard"))
+        # O dashboard antigo virou o bloco Financeiro do Painel
+        self.assertRedirects(self.client.get(reverse("financeiro:dashboard")), reverse("relatorios:painel"))
+        resp = self.client.get(reverse("relatorios:painel") + "?atualizar=1")
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(len(resp.context["proximos"]), 1)
+        self.assertEqual(len(resp.context["financeiro"]["proximos"]), 1)
 
     def test_tela_de_pagar_titulo_abre(self):
         titulo = self.titulo_pagar()
@@ -231,18 +233,17 @@ class FluxoFinanceiroTests(TestCase):
 
     def test_painel_e_historico_usam_o_saldo_do_caixa(self):
         self.client.post(reverse("financeiro:caixa_reforco", args=[self.caixa.id]), {"valor": "50"})
-        painel = self.client.get(reverse("financeiro:dashboard"))
+        painel = self.client.get(reverse("relatorios:painel") + "?atualizar=1")
         historico = self.client.get(reverse("financeiro:caixa_historico"))
-        self.assertEqual(painel.context["saldo_atual"], Decimal("150.00"))
+        self.assertEqual(painel.context["financeiro"]["saldo"], Decimal("150.00"))
         self.assertEqual(historico.context["saldo_atual"], Decimal("150.00"))
 
     def test_grafico_tem_seis_meses_seguidos(self):
         from unittest import mock
-        with mock.patch("financeiro.views_caixa.timezone.localdate", return_value=date(2026, 3, 31)):
-            resp = self.client.get(reverse("financeiro:dashboard"))
-        self.assertEqual(resp.context["meses"],
-                         [date(2025, m, 1).strftime("%b/%Y") for m in (10, 11, 12)] +
-                         [date(2026, m, 1).strftime("%b/%Y") for m in (1, 2, 3)])
+        with mock.patch("relatorios.views.painel.timezone.localdate", return_value=date(2026, 3, 31)):
+            resp = self.client.get(reverse("relatorios:painel") + "?atualizar=1")
+        self.assertEqual(resp.context["financeiro"]["grafico"]["rotulos"],
+                         ["out/25", "nov/25", "dez/25", "jan/26", "fev/26", "mar/26"])
 
     def test_totais_de_contas_a_pagar_separam_pago_e_aberto(self):
         pago, aberto = self.titulo_pagar(), self.titulo_pagar()

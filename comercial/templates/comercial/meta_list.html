@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% load permissoes %}
+
+{% block title %}Metas de faturamento{% endblock %}
+
+{% block content %}
+<div class="container mt-4" style="max-width: 760px;">
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1 class="h3">Metas de faturamento</h1>
+        {% pode "comercial:meta_criar" as pode_criar %}{% if pode_criar %}<a href="{% url 'comercial:meta_criar' %}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Nova meta
+        </a>{% endif %}
+    </div>
+    <p class="small text-body-secondary">A meta do mês aparece no Painel, no bloco Vendas, com o realizado e a projeção até o fim do mês.</p>
+
+    <div class="table-responsive">
+        <table class="table table-striped table-hover align-middle">
+            <thead class="table-dark">
+                <tr><th>Mês</th><th class="text-end">Meta</th><th class="text-center">Ações</th></tr>
+            </thead>
+            <tbody>
+                {% pode "comercial:meta_editar" as pode_editar %}
+                {% for m in metas %}
+                <tr>
+                    <td>{{ m.mes|date:"F/Y"|capfirst }}</td>
+                    <td class="text-end">R$ {{ m.valor|floatformat:"2g" }}</td>
+                    <td class="text-center">{% if pode_editar %}<a href="{% url 'comercial:meta_editar' m.id %}" class="btn btn-sm btn-warning">Editar</a>{% endif %}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="3" class="text-center text-muted">Nenhuma meta cadastrada.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

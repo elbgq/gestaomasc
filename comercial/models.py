@@ -4,6 +4,7 @@ from cadastros.models import Produto, Servico, Contato
 from cadastros.precos import atualizar_preco_venda
 from decimal import Decimal
 from django.db import models
+from django.conf import settings
 from django.utils import timezone
 from datetime import timedelta, date
 from financeiro.models import FinanceiroCategoria
@@ -284,6 +285,8 @@ class MovimentacaoEstoque(models.Model):
     
     class Meta:
         ordering = ['-data']
+        # Usado pelo Painel (última movimentação de cada produto)
+        indexes = [models.Index(fields=["produto", "data"], name="movestoque_produto_data_idx")]
 
     # ============================================
     # MÉTODO SAVE → PROCESSA A MOVIMENTAÇÃO
@@ -409,6 +412,8 @@ class Venda(models.Model):
 
     class Meta:
         permissions = [("emitir_recibo", "Pode emitir recibo de venda")]
+        # Usado pelo Painel e pelos relatórios, que filtram vendas finalizadas por data
+        indexes = [models.Index(fields=["status", "data_emissao"], name="venda_status_emissao_idx")]
  
     def __str__(self):
         return f"Venda #{self.id} - {self.cliente}"
@@ -491,3 +496,71 @@ class CMVItem(models.Model):
     def __str__(self):
         return f"CMV {self.produto} - {self.quantidade} un"
     
+
+#===============================================
+# META DE FATURAMENTO (Painel)
+#===============================================
+class MetaFaturamento(models.Model):
+    # Sempre o primeiro dia do mês
+    mes = models.DateField("Mês", unique=True)
+    valor = models.DecimalField("Meta de faturamento", max_digits=12, decimal_places=2)
+
+    class Meta:
+        ordering = ["-mes"]
+        verbose_name = "Meta de faturamento"
+        verbose_name_plural = "Metas de faturamento"
+
+    def save(self, *args, **kwargs):
+        self.mes = self.mes.replace(day=1)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Meta {self.mes:%m/%Y}: {self.valor}"
+
+
+#===============================================
+# PÓS-VENDA (contatos, garantias, reclamações e pedidos de devolução)
+#===============================================
+class PosVenda(models.Model):
+    TIPO_CHOICES = (
+        ("contato", "Contato com o cliente"),
+        ("garantia", "Garantia"),
+        ("reclamacao", "Reclamação"),
+        ("devolucao", "Pedido de devolução"),
+    )
+    STATUS_CHOICES = (
+        ("aberto", "Aberto"),
+        ("resolvido", "Resolvido"),
+    )
+
+    cliente = models.ForeignKey(Contato, on_delete=models.PROTECT, related_name="pos_vendas")
+    venda = models.ForeignKey(Venda, on_delete=models.SET_NULL, null=True, blank=True, related_name="pos_vendas")
+    tipo = models.CharField(max_length=20, choices=TIPO_CHOICES, default="contato")
+    data = models.DateField("Data", default=timezone.localdate)
+    descricao = models.TextField("O que aconteceu")
+    retorno = models.DateField("Retornar até", null=True, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="aberto")
+    solucao = models.TextField("Solução", blank=True, default="")
+    resolvido_em = models.DateField(null=True, blank=True, editable=False)
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, editable=False)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["status", "retorno", "-data"]
+        verbose_name = "Pós-venda"
+        verbose_name_plural = "Pós-venda"
+        indexes = [models.Index(fields=["status", "retorno"], name="posvenda_status_retorno_idx")]
+
+    def save(self, *args, **kwargs):
+        # Guarda quando foi resolvido; reaberto, volta a ficar sem data
+        if self.status == "resolvido" and not self.resolvido_em:
+            self.resolvido_em = timezone.localdate()
+        elif self.status != "resolvido":
+            self.resolvido_em = None
+        super().save(*args, **kwargs)
+
+    def atrasado(self):
+        return self.status == "aberto" and self.retorno is not None and self.retorno < timezone.localdate()
+
+    def __str__(self):
+        return f"{self.get_tipo_display()} - {self.cliente}"

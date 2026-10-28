@@ -21,6 +21,11 @@ def _titulo(acao):
     return regra
 
 
+# Painel (tela inicial): abre para quem pode ver ao menos um bloco
+PAINEL = ("relatorios.painel_financeiro", "relatorios.painel_vendas",
+          "relatorios.painel_estoque", "relatorios.painel_clientes")
+
+
 PERMISSOES = {
     # ---------------- Cadastros ----------------
     "cadastros:produto_list": "cadastros.view_produto",
@@ -84,6 +89,14 @@ PERMISSOES = {
     "comercial:api_produto_codigo": ("comercial.add_venda", "comercial.change_venda"),
     "comercial:api_itens_venda": ("comercial.add_venda", "comercial.change_venda"),
 
+    # Pós-venda e metas de faturamento
+    "comercial:posvenda_list": "comercial.view_posvenda",
+    "comercial:posvenda_criar": "comercial.add_posvenda",
+    "comercial:posvenda_editar": "comercial.change_posvenda",
+    "comercial:meta_list": "comercial.view_metafaturamento",
+    "comercial:meta_criar": "comercial.add_metafaturamento",
+    "comercial:meta_editar": "comercial.change_metafaturamento",
+
     # ---------------- Financeiro ----------------
     "financeiro:categoria_list": "financeiro.view_financeirocategoria",
     "financeiro:categoria_create": "financeiro.add_financeirocategoria",
@@ -128,9 +141,10 @@ PERMISSOES = {
     "financeiro:caixa_sangria": "financeiro.operar_caixa",
     "financeiro:caixa_reforco": "financeiro.operar_caixa",
 
-    "financeiro:dashboard": ("financeiro.view_financeiropagar", "financeiro.view_financeiroreceber"),
+    "financeiro:dashboard": PAINEL,  # endereço antigo: leva ao Painel
 
     # ---------------- Relatórios ----------------
+    "relatorios:painel": PAINEL,
     "relatorios:compras_por_periodo": "relatorios.ver_comercial",
     "relatorios:vendas_por_periodo": "relatorios.ver_comercial",
     "relatorios:movimentacoes_estoque": "relatorios.ver_comercial",

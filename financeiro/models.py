@@ -159,6 +159,8 @@ class FinanceiroReceber(models.Model):
     class Meta:
         verbose_name = "Conta a Receber"
         verbose_name_plural = "Contas a Receber"
+        # Usado pelo Painel (títulos pendentes por vencimento)
+        indexes = [models.Index(fields=["status", "data_vencimento"], name="receber_status_venc_idx")]
     
 
 #====================================
@@ -227,6 +229,8 @@ class FinanceiroPagar(models.Model):
     class Meta:
         verbose_name = "Conta a Pagar"
         verbose_name_plural = "Contas a Pagar"
+        # Usado pelo Painel (títulos pendentes por vencimento)
+        indexes = [models.Index(fields=["status", "data_vencimento"], name="pagar_status_venc_idx")]
         # Ações sobre títulos; valem tanto para contas a pagar quanto a receber
         permissions = [
             ("quitar_titulo", "Pode quitar títulos"),

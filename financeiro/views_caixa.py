@@ -282,80 +282,9 @@ class CaixaDeleteView(DeleteView):
         return reverse("financeiro:caixa_historico")
 
 # DASHBOARD FINANCEIRO
-
-
+# O dashboard antigo virou o bloco Financeiro do Painel (relatorios/services/painel.py);
+# o endereço continua funcionando e leva ao Painel.
 def dashboard_financeiro(request):
-    hoje = timezone.localdate()
-
-    # Saldo atual: o mesmo da tela do caixa (saldo inicial + movimentos)
-    saldo_atual = saldo_geral()
-
-    # Entradas e saídas do mês atual
-    primeiro_dia = hoje.replace(day=1)
-
-    entradas_mes = CaixaMovimento.objects.filter(
-        tipo="E",
-        data__gte=primeiro_dia,
-        data__lte=hoje
-    ).aggregate(total=Sum("valor"))["total"] or 0
-
-    saídas_mes = CaixaMovimento.objects.filter(
-        tipo="S",
-        data__gte=primeiro_dia,
-        data__lte=hoje
-    ).aggregate(total=Sum("valor"))["total"] or 0
-
-    # Títulos vencidos
-    vencidos = FinanceiroReceber.objects.filter(
-        status="pendente",
-        data_vencimento__lt=hoje
-    ).order_by("data_vencimento")
-
-    # Próximos vencimentos (7 dias)
-    proximos = FinanceiroReceber.objects.filter(
-        status="pendente",
-        data_vencimento__gte=hoje,
-        data_vencimento__lte=hoje + timedelta(days=7)
-    )
-
-    # Dados para gráfico (últimos 6 meses)
-    meses = []
-    entradas_graf = []
-    saídas_graf = []
-
-    for i in range(5, -1, -1):
-        # Volta i meses do calendário a partir do mês atual
-        ano, mes = divmod(hoje.year * 12 + hoje.month - 1 - i, 12)
-        mes_inicio = date(ano, mes + 1, 1)
-        mes_fim = (mes_inicio + timedelta(days=32)).replace(day=1) - timedelta(days=1)
-
-        meses.append(mes_inicio.strftime("%b/%Y"))
-
-        entradas_graf.append(
-            CaixaMovimento.objects.filter(
-                tipo="E",
-                data__gte=mes_inicio,
-                data__lte=mes_fim
-            ).aggregate(total=Sum("valor"))["total"] or 0
-        )
-
-        saídas_graf.append(
-            CaixaMovimento.objects.filter(
-                tipo="S",
-                data__gte=mes_inicio,
-                data__lte=mes_fim
-            ).aggregate(total=Sum("valor"))["total"] or 0
-        )
-
-    return render(request, "financeiro/dashboard.html", {
-        "saldo_atual": saldo_atual,
-        "entradas_mes": entradas_mes,
-        "saidas_mes": saídas_mes,
-        "vencidos": vencidos,
-        "proximos": proximos,
-        "meses": meses,
-        "entradas_graf": entradas_graf,
-        "saidas_graf": saídas_graf,
-    })
+    return redirect("relatorios:painel")
     
 

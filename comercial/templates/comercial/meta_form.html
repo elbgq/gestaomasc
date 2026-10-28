@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}Meta de faturamento{% endblock %}
+
+{% block content %}
+<div class="container mt-4" style="max-width: 480px;">
+    <h1 class="h3 mb-3">{% if objeto %}Editar meta{% else %}Nova meta de faturamento{% endif %}</h1>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+        {% for campo in form %}
+        <div class="mb-3">
+            <label class="form-label" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+            {{ campo }}
+            {% for erro in campo.errors %}<div class="text-danger small">{{ erro }}</div>{% endfor %}
+        </div>
+        {% endfor %}
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-success">Salvar</button>
+            <a href="{% url 'comercial:meta_list' %}" class="btn btn-secondary">Voltar</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

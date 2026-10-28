@@ -15,6 +15,9 @@ from .views.views_compras import (
     importar_compra, vincular_itens, confirmar_compra, compra_finalizar_avista,
     compra_finalizar_parcelada, compra_finalizar_duplicatas, compra_xml
 )
+from .views.views_posvenda import (
+    posvenda_list, posvenda_criar, posvenda_editar, meta_list, meta_criar, meta_editar
+)
 
 
 
@@ -63,6 +66,16 @@ urlpatterns = [
     path("api/produto-por-codigo/", api_produto_codigo, name="api_produto_codigo"),
     # Lista do modal "Escolher item" da venda
     path("api/itens-venda/", api_itens_venda, name="api_itens_venda"),
+
+    # Pós-venda
+    path("posvenda/", posvenda_list, name="posvenda_list"),
+    path("posvenda/novo/", posvenda_criar, name="posvenda_criar"),
+    path("posvenda/<int:pk>/editar/", posvenda_editar, name="posvenda_editar"),
+
+    # Metas de faturamento (Painel)
+    path("metas/", meta_list, name="meta_list"),
+    path("metas/nova/", meta_criar, name="meta_criar"),
+    path("metas/<int:pk>/editar/", meta_editar, name="meta_editar"),
 
     # CMV
     path("cmv/", cmv_lista, name="cmv_lista"),

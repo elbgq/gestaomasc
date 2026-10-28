@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% load permissoes %}
+
+{% block title %}Pós-venda{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <!-- Cabeçalho -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1 class="h3">Pós-venda</h1>
+
+        {% pode "comercial:posvenda_criar" as pode_criar %}{% if pode_criar %}<a href="{% url 'comercial:posvenda_criar' %}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Novo registro
+        </a>{% endif %}
+    </div>
+
+    <!-- Filtros -->
+    <form method="get" class="row g-2 mb-3">
+        <div class="col-md-3">
+            <select name="status" class="form-select">
+                <option value="aberto" {% if status == "aberto" %}selected{% endif %}>Abertos</option>
+                <option value="atrasado" {% if status == "atrasado" %}selected{% endif %}>Abertos com retorno atrasado</option>
+                <option value="resolvido" {% if status == "resolvido" %}selected{% endif %}>Resolvidos</option>
+                <option value="todos" {% if status == "todos" %}selected{% endif %}>Todos</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <select name="tipo" class="form-select">
+                <option value="">Todos os tipos</option>
+                {% for codigo, nome in tipos %}<option value="{{ codigo }}" {% if tipo == codigo %}selected{% endif %}>{{ nome }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="col-md-4"><input type="text" name="q" value="{{ q }}" class="form-control" placeholder="Cliente ou descrição"></div>
+        <div class="col-md-2"><button class="btn btn-outline-primary w-100">Filtrar</button></div>
+    </form>
+
+    <!-- Tabela -->
+    <div class="table-responsive">
+        <table class="table table-striped table-hover align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th>Data</th>
+                    <th>Tipo</th>
+                    <th>Cliente</th>
+                    <th>O que aconteceu</th>
+                    <th>Retornar até</th>
+                    <th>Situação</th>
+                    <th class="text-center">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% pode "comercial:posvenda_editar" as pode_editar %}
+                {% pode "comercial:venda_detalhe" as pode_ver_venda %}
+                {% for r in page_obj %}
+                <tr>
+                    <td>{{ r.data|date:"d/m/Y" }}</td>
+                    <td>{{ r.get_tipo_display }}</td>
+                    <td>{{ r.cliente.nome }}
+                        {% if r.cliente.telefone %}<div class="small text-body-secondary">{{ r.cliente.telefone }}</div>{% endif %}
+                        {% if r.venda %}<div class="small">{% if pode_ver_venda %}<a href="{% url 'comercial:venda_detalhe' r.venda.id %}">Venda #{{ r.venda.numero|default:r.venda.id }}</a>{% else %}Venda #{{ r.venda.numero|default:r.venda.id }}{% endif %}</div>{% endif %}
+                    </td>
+                    <td>{{ r.descricao|truncatechars:90 }}
+                        {% if r.solucao %}<div class="small text-body-secondary">Solução: {{ r.solucao|truncatechars:90 }}</div>{% endif %}
+                    </td>
+                    <td class="{% if r.atrasado %}text-danger fw-semibold{% endif %}">{{ r.retorno|date:"d/m/Y"|default:"—" }}</td>
+                    <td>
+                        {% if r.status == "resolvido" %}<span class="badge bg-success">Resolvido {{ r.resolvido_em|date:"d/m" }}</span>
+                        {% elif r.atrasado %}<span class="badge bg-danger">Atrasado</span>
+                        {% else %}<span class="badge bg-warning text-dark">Aberto</span>{% endif %}
+                    </td>
+                    <td class="text-center">
+                        {% if pode_editar %}<a href="{% url 'comercial:posvenda_editar' r.id %}" class="btn btn-sm btn-warning">Editar</a>{% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" class="text-center text-muted">Nenhum registro encontrado.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% include "partials/paginator.html" %}
+</div>
+{% endblock %}

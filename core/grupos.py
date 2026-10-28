@@ -16,6 +16,8 @@ GRUPOS_PADRAO = {
     "Gerente": [
         "cadastros.*", "comercial.*", "financeiro.*", "relatorios.*",
         "-financeiro.delete_*",
+        # No Painel o Gerente vê só Vendas e Estoque (as telas do Financeiro continuam liberadas)
+        "-relatorios.painel_financeiro", "-relatorios.painel_clientes",
     ],
     "Vendedor": [
         "cadastros.view_contato", "cadastros.add_contato", "cadastros.change_contato",
@@ -23,6 +25,7 @@ GRUPOS_PADRAO = {
         "comercial.view_venda", "comercial.add_venda", "comercial.change_venda",
         "comercial.*_vendaitem", "comercial.emitir_recibo",
         "comercial.view_estoque",
+        "comercial.view_posvenda", "comercial.add_posvenda", "comercial.change_posvenda",
     ],
     "Compras/Estoque": [
         "cadastros.view_*", "cadastros.add_produto", "cadastros.change_produto",
@@ -30,12 +33,13 @@ GRUPOS_PADRAO = {
         "comercial.*_compra", "comercial.*_compraitem", "comercial.*_compraduplicata",
         "comercial.*_produtofornecedor", "comercial.*_estoque", "comercial.*_movimentacaoestoque",
         "comercial.importar_nfe", "comercial.ver_custos",
-        "relatorios.ver_comercial",
+        "relatorios.ver_comercial", "relatorios.painel_estoque",
     ],
     "Financeiro": [
         "cadastros.view_contato", "cadastros.view_produto", "cadastros.view_servico",
         "comercial.view_venda", "comercial.view_compra",
         "financeiro.*", "relatorios.*",
+        "-relatorios.painel_vendas", "-relatorios.painel_estoque", "-relatorios.painel_clientes",
     ],
 }
 

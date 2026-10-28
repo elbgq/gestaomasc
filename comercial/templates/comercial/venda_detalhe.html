@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load permissoes %}
 {% block title %}Detalhes da Venda{% endblock %}
 
 {% block content %}
@@ -131,6 +132,11 @@
         <a href="{% url 'financeiro:caixa_list' %}" class="btn btn-outline-secondary">
             Ver Caixa
         </a>
+        {% if venda.status == "finalizada" %}
+            {% pode "comercial:posvenda_criar" as pode_posvenda %}
+            {% if pode_posvenda %}<a href="{% url 'comercial:posvenda_criar' %}?venda={{ venda.id }}" class="btn btn-outline-primary">
+                Registrar pós-venda</a>{% endif %}
+        {% endif %}
 
     </div>
     

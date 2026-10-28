@@ -358,3 +358,241 @@ class JurosMultasRelatorioTests(TestCase):
         self.assertEqual((linha["origem"], linha["multa"], linha["juros"]), ("Manual", Decimal("130.00"), Decimal("0.00")))
         self.assertEqual(pagar["totais_lancados"]["total"], dre_por_periodo(self.hoje, self.hoje)["despesas_financeiras_lancadas"])
         self.assertEqual(pagar["totais_geral"]["multa"], Decimal("132.00"))
+
+
+class PainelTests(TestCase):
+    def setUp(self):
+        from django.core.cache import cache
+        from cadastros.models import Produto
+        from core.tests import usuario
+        cache.clear()
+        self.usuario = usuario
+        self.hoje = timezone.localdate()
+        self.cliente = Contato.objects.create(nome="Cliente", tipo="CLIENTE")
+        self.servico = Servico.objects.create(codsv="S1", descricao="Instalação", unidade="UN")
+        self.produto = Produto.objects.create(codor="P1", descricao="Cabo", unidade="UN", estoque_minimo=5)
+
+    def venda(self, quando, valor="100.00", status="finalizada", forma="pix"):
+        venda = Venda.objects.create(cliente=self.cliente, status=status, forma_pagamento=forma,
+                                     data_emissao=timezone.make_aware(datetime.combine(quando, time(10, 0))))
+        VendaItem.objects.create(venda=venda, servico=self.servico, quantidade=1, preco_unitario=Decimal(valor))
+        return venda
+
+    def test_periodos_e_comparacao(self):
+        from relatorios.services.painel import periodo
+        p = periodo("mes", date(2026, 3, 31))
+        self.assertEqual((p["ini"], p["fim"], p["ini_ant"], p["fim_ant"]),
+                         (date(2026, 3, 1), date(2026, 3, 31), date(2026, 2, 1), date(2026, 2, 28)))
+        p = periodo("mes_anterior", date(2026, 1, 15))
+        self.assertEqual((p["ini"], p["fim"], p["ini_ant"], p["fim_ant"]),
+                         (date(2025, 12, 1), date(2025, 12, 31), date(2025, 11, 1), date(2025, 11, 30)))
+        p = periodo("7dias", date(2026, 3, 10))
+        self.assertEqual((p["ini"], p["ini_ant"], p["fim_ant"]), (date(2026, 3, 4), date(2026, 2, 25), date(2026, 3, 3)))
+        self.assertEqual(periodo("qualquer", date(2026, 3, 10))["codigo"], "mes")
+
+    def test_bloco_vendas(self):
+        from datetime import timedelta
+        from relatorios.services.painel import bloco_vendas, periodo
+        self.venda(self.hoje, "300.00")
+        self.venda(self.hoje, "100.00", forma="dinheiro")
+        self.venda(self.hoje, "999.00", status="rascunho")
+        self.venda(self.hoje - timedelta(days=1), "200.00")  # entra só na comparação de "hoje"
+        dados = bloco_vendas(periodo("hoje", self.hoje), ver_custos=False)
+        self.assertEqual((dados["faturamento"], dados["qtd"], dados["ticket"]), (Decimal("400.00"), 2, Decimal("200.00")))
+        self.assertEqual(dados["faturamento_var"], Decimal("100.0"))
+        self.assertEqual(dados["rascunhos"], 1)
+        self.assertEqual(dados["servicos"], Decimal("400.00"))
+        self.assertEqual([f["nome"] for f in dados["formas"]], ["PIX", "Dinheiro"])
+        self.assertEqual(dados["top_itens"][0], {"nome": "Instalação", "total": Decimal("400.00")})
+        self.assertNotIn("margem", dados)  # sem permissão de custo, sem margem
+        self.assertEqual(len(dados["serie"]["rotulos"]), 7)  # "hoje" mostra a semana no gráfico
+        self.assertEqual(dados["serie"]["atual"][-2:], [200.0, 400.0])
+
+    def test_bloco_estoque(self):
+        from datetime import timedelta
+        from cadastros.models import Produto
+        from comercial.models import MovimentacaoEstoque
+        from relatorios.services.painel import bloco_estoque, periodo
+        parado = Produto.objects.create(codor="P2", descricao="Disjuntor", unidade="UN")
+        MovimentacaoEstoque.objects.create(produto=self.produto, tipo="ENTRADA", quantidade=2,
+                                           preco=Decimal("10.00"), origem="AJUSTE")
+        mov = MovimentacaoEstoque.objects.create(produto=parado, tipo="ENTRADA", quantidade=4,
+                                                 preco=Decimal("25.00"), origem="AJUSTE")
+        MovimentacaoEstoque.objects.filter(pk=mov.pk).update(data=timezone.now() - timedelta(days=120))
+        dados = bloco_estoque(periodo("mes", self.hoje), self.hoje, ver_custos=True)
+        self.assertEqual(dados["abaixo_qtd"], 1)  # Cabo: saldo 2, mínimo 5
+        self.assertEqual(dados["abaixo"][0]["produto"], self.produto)
+        self.assertEqual(dados["valor"], Decimal("120.00"))
+        self.assertEqual([p["produto"] for p in dados["parados"]], [parado])
+        self.assertEqual(dados["parados_valor"], Decimal("100.00"))
+        self.assertNotIn("valor", bloco_estoque(periodo("mes", self.hoje), self.hoje, ver_custos=False))
+
+    def test_cada_perfil_ve_os_seus_blocos(self):
+        from django.urls import reverse
+        self.venda(self.hoje)
+        casos = {
+            "Administrador": {"financeiro", "vendas", "estoque", "clientes"},
+            "Gerente": {"vendas", "estoque"},
+            "Financeiro": {"financeiro"},
+            "Compras/Estoque": {"estoque"},
+        }
+        for grupo, esperado in casos.items():
+            self.client.force_login(self.usuario(grupo.replace("/", "_"), grupo))
+            self.assertRedirects(self.client.get(reverse("home")), reverse("relatorios:painel"))
+            resp = self.client.get(reverse("relatorios:painel"))
+            self.assertEqual(resp.status_code, 200, grupo)
+            self.assertEqual({b for b in ("financeiro", "vendas", "estoque", "clientes") if b in resp.context}, esperado, grupo)
+        # Margem só para quem vê custo
+        self.client.force_login(self.usuario("gerente2", "Gerente"))
+        self.assertContains(self.client.get(reverse("relatorios:painel")), "Margem bruta")
+        self.client.force_login(self.usuario("fin2", "Financeiro"))
+        self.assertNotContains(self.client.get(reverse("relatorios:painel")), "Margem bruta")
+
+    def test_vendedor_nao_tem_painel(self):
+        from django.urls import reverse
+        self.client.force_login(self.usuario("vendedor", "Vendedor"))
+        self.assertEqual(self.client.get(reverse("home")).status_code, 200)
+        self.assertEqual(self.client.get(reverse("relatorios:painel")).status_code, 403)
+
+    def test_cache_e_atualizar(self):
+        from django.urls import reverse
+        self.client.force_login(self.usuario("adm", "Administrador"))
+        self.venda(self.hoje, "100.00")
+        url = reverse("relatorios:painel") + "?periodo=hoje"
+        self.assertEqual(self.client.get(url).context["vendas"]["faturamento"], Decimal("100.00"))
+        self.venda(self.hoje, "50.00")
+        self.assertEqual(self.client.get(url).context["vendas"]["faturamento"], Decimal("100.00"))  # ainda no cache
+        self.assertEqual(self.client.get(url + "&atualizar=1").context["vendas"]["faturamento"], Decimal("150.00"))
+
+    def test_fluxo_projetado(self):
+        from datetime import timedelta
+        from financeiro.models import Caixa, FinanceiroPagar, FinanceiroReceber
+        from relatorios.services.painel import bloco_financeiro
+        Caixa.objects.create(nome="Caixa Principal", saldo_inicial=Decimal("100.00"))
+        despesa = FinanceiroCategoria.objects.create(nome="Despesas", tipo="D")
+
+        def titulo(modelo, dias, valor, **extra):
+            pessoa = {"cliente": self.cliente} if modelo is FinanceiroReceber else {"contato": self.cliente, "categoria": despesa}
+            return modelo.objects.create(data_lancamento=self.hoje, data_vencimento=self.hoje + timedelta(days=dias),
+                                         descricao="T", valor=Decimal(valor), origem="MANUAL", **pessoa, **extra)
+
+        titulo(FinanceiroReceber, 10, "50.00")
+        titulo(FinanceiroPagar, 20, "200.00")
+        titulo(FinanceiroReceber, 45, "300.00")
+        titulo(FinanceiroPagar, -3, "999.00")               # vencido: fica fora da projeção
+        titulo(FinanceiroPagar, 5, "999.00", status="pago")  # pago: fica fora
+        fluxo = bloco_financeiro(self.hoje)["fluxo"]
+        faixas = {f["dias"]: f for f in fluxo["faixas"]}
+        self.assertEqual((faixas[30]["entradas"], faixas[30]["saidas"], faixas[30]["saldo"]),
+                         (Decimal("50.00"), Decimal("200.00"), Decimal("-50.00")))
+        self.assertEqual(faixas[90]["saldo"], Decimal("250.00"))
+        self.assertEqual(fluxo["negativo_em"], self.hoje + timedelta(days=20))
+        self.assertEqual(fluxo["menor"], {"saldo": Decimal("-50.00"), "data": self.hoje + timedelta(days=20)})
+        self.assertEqual(len(fluxo["grafico"]["saldo"]), 91)
+
+        # O alerta aparece na tela
+        self.client.force_login(self.usuario("adm", "Administrador"))
+        resp = self.client.get(reverse("relatorios:painel"))
+        self.assertContains(resp, "Saldo previsto fica negativo em")
+
+    def test_resultado_igual_a_dre(self):
+        from relatorios.services.painel import bloco_resultado, periodo
+        categoria = FinanceiroCategoria.objects.create(nome="Aluguel", tipo="D", grupo_dre="DESPESA_ADM")
+        FinanceiroLancamento.objects.create(data=self.hoje, categoria=categoria, descricao="Aluguel", valor=Decimal("30.00"))
+        self.venda(self.hoje, "100.00")
+        per = periodo("hoje", self.hoje)
+        dados, dre = bloco_resultado(per), dre_por_periodo(self.hoje, self.hoje)
+        for campo in ("receita_liquida", "lucro_bruto", "despesas_operacionais", "lucro_liquido"):
+            self.assertEqual(dados[campo], dre[campo], campo)
+        self.assertEqual(dados["lucro_liquido"], Decimal("70.00"))
+        self.assertEqual(dados["margem_liquida"], Decimal("70.0"))
+        self.assertIsNone(dados["lucro_liquido_var"])  # ontem sem lucro: não compara
+
+    def test_resultado_so_para_quem_ve_a_dre(self):
+        self.venda(self.hoje)
+        self.client.force_login(self.usuario("adm", "Administrador"))
+        self.assertIn("resultado", self.client.get(reverse("relatorios:painel")).context)
+        self.client.force_login(self.usuario("fin", "Financeiro"))
+        self.assertIn("resultado", self.client.get(reverse("relatorios:painel")).context)
+        self.client.force_login(self.usuario("ger", "Gerente"))
+        self.assertNotIn("resultado", self.client.get(reverse("relatorios:painel")).context)  # sem bloco Financeiro
+
+    def test_bloco_clientes(self):
+        from datetime import timedelta
+        from financeiro.models import FinanceiroReceber
+        from relatorios.services.painel import bloco_clientes, periodo
+        antigo = Contato.objects.create(nome="Antigo", tipo="CLIENTE", telefone="1199")
+        novo = Contato.objects.create(nome="Novo", tipo="CLIENTE")
+        fiel = self.cliente
+        # Fiel comprou há 200 dias e de novo hoje (recompra); Novo comprou só hoje; Antigo parou há 120 dias
+        self.venda(self.hoje - timedelta(days=200), "50.00")
+        self.venda(self.hoje, "800.00")
+        venda_novo = self.venda(self.hoje, "200.00")
+        Venda.objects.filter(pk=venda_novo.pk).update(cliente=novo)
+        venda_antigo = self.venda(self.hoje - timedelta(days=120), "500.00")
+        Venda.objects.filter(pk=venda_antigo.pk).update(cliente=antigo)
+        self.venda(self.hoje, "999.00", status="rascunho")  # rascunho não conta
+
+        def receber(dias, valor, status="pendente", pago_em=None):
+            return FinanceiroReceber.objects.create(
+                data_lancamento=self.hoje, data_vencimento=self.hoje + timedelta(days=dias), cliente=antigo,
+                descricao="T", valor=Decimal(valor), origem="MANUAL", status=status, data_pagamento=pago_em)
+
+        receber(-10, "300.00")
+        receber(20, "100.00")
+        receber(-6, "50.00", status="pago", pago_em=self.hoje)    # pago com 6 dias de atraso
+        receber(0, "50.00", status="pago", pago_em=self.hoje)     # pago em dia
+
+        dados = bloco_clientes(periodo("hoje", self.hoje), self.hoje)
+        self.assertEqual((dados["do_periodo"], dados["ativos"], dados["novos"]), (2, 2, 1))
+        self.assertEqual((dados["recompra"], dados["recompra_pct"]), (1, Decimal("50.0")))
+        self.assertEqual([p["cliente"] for p in dados["parados"]], [antigo])
+        self.assertEqual([(l["cliente"], l["classe"]) for l in dados["abc"]], [(fiel, "A"), (novo, "B")])
+        self.assertEqual(dados["abc"][0]["pct"], Decimal("80.0"))
+        self.assertEqual((dados["inad_vencido"], dados["inad_aberto"], dados["inad_pct"]),
+                         (Decimal("300.00"), Decimal("400.00"), Decimal("75.0")))
+        self.assertEqual(dados["devedores"][0]["dias"], 10)
+        self.assertEqual((dados["atraso_medio"], dados["em_dia_pct"]), (Decimal("3.0"), Decimal("50.0")))
+
+        self.client.force_login(self.usuario("adm", "Administrador"))
+        resp = self.client.get(reverse("relatorios:painel") + "?periodo=hoje")
+        self.assertContains(resp, "Curva ABC do período")
+        self.assertContains(resp, "1199")
+
+    def test_meta_de_faturamento(self):
+        from calendar import monthrange
+        from comercial.models import MetaFaturamento
+        from relatorios.services.painel import bloco_meta, periodo
+        per = periodo("mes", self.hoje)
+        self.assertIsNone(bloco_meta(per, self.hoje)["valor"])  # sem meta cadastrada
+        MetaFaturamento.objects.create(mes=self.hoje, valor=Decimal("1000.00"))  # guarda o dia 1
+        self.venda(self.hoje, "250.00")
+        self.venda(self.hoje, "999.00", status="rascunho")
+        dados = bloco_meta(per, self.hoje)
+        dias_mes = monthrange(self.hoje.year, self.hoje.month)[1]
+        restantes = dias_mes - self.hoje.day + 1
+        self.assertEqual((dados["realizado"], dados["pct"], dados["falta"]), (Decimal("250.00"), Decimal("25.0"), Decimal("750.00")))
+        self.assertEqual(dados["dias_restantes"], restantes)
+        self.assertEqual(dados["por_dia"], (Decimal("750.00") / restantes).quantize(Decimal("0.01")))
+        self.assertEqual(dados["projecao"], (Decimal("250.00") / self.hoje.day * dias_mes).quantize(Decimal("0.01")))
+        # Mês anterior sem meta: o período "Mês anterior" mostra a dele
+        self.assertIsNone(bloco_meta(periodo("mes_anterior", self.hoje), self.hoje)["valor"])
+
+        self.client.force_login(self.usuario("adm", "Administrador"))
+        self.assertContains(self.client.get(reverse("relatorios:painel")), "No ritmo de até hoje")
+
+    def test_pos_venda_no_bloco_clientes(self):
+        from datetime import timedelta
+        from comercial.models import PosVenda
+        from relatorios.services.painel import bloco_clientes, periodo
+        PosVenda.objects.create(cliente=self.cliente, tipo="garantia", descricao="Disjuntor queimou",
+                                retorno=self.hoje - timedelta(days=2))
+        PosVenda.objects.create(cliente=self.cliente, tipo="contato", descricao="Ligar", retorno=self.hoje + timedelta(days=5))
+        PosVenda.objects.create(cliente=self.cliente, tipo="reclamacao", descricao="Atraso", status="resolvido", solucao="Ok")
+        pv = bloco_clientes(periodo("hoje", self.hoje), self.hoje)["pos_venda"]
+        self.assertEqual((pv["abertos"], pv["atrasados"], pv["resolvidos_no_periodo"]), (2, 1, 1))
+        self.assertEqual(pv["lista"][0].descricao, "Disjuntor queimou")  # o atrasado primeiro
+        self.assertEqual(sum(t["qtd"] for t in pv["no_periodo"]), 3)
+
+        self.client.force_login(self.usuario("adm", "Administrador"))
+        self.assertContains(self.client.get(reverse("relatorios:painel")), "1 pós-venda(s) com retorno atrasado")

@@ -100,6 +100,14 @@
 </script>
 
 <!-- ESCOLHER ITEM: lista larga de produtos (só com estoque) e serviços (por categoria) -->
+<style>
+    /* Folga nas pontas: a barra de rolagem não cobre a coluna Preço */
+    #modalEscolherItem .modal-body { scrollbar-gutter: stable; }
+    #tabela-escolher-item th:first-child, #tabela-escolher-item td:first-child { padding-left: 1rem; }
+    #tabela-escolher-item th:last-child, #tabela-escolher-item td:last-child { padding-right: 1.20rem; white-space: nowrap; }
+    #lista-itens-modal { padding-right: 1rem; }
+    #tabela-escolher-item td { word-break: break-word; }
+</style>
 <div class="modal fade" id="modalEscolherItem" tabindex="-1" aria-labelledby="modalEscolherItemTitulo" aria-hidden="true"
      data-url="{% url 'comercial:api_itens_venda' %}">
     <div class="modal-dialog modal-xl modal-dialog-scrollable">
@@ -130,12 +138,14 @@
             </div>
             <div class="modal-body p-0">
                 <div id="itens-carregando" class="p-4 text-center text-muted">Carregando...</div>
+                <div id="lista-itens-modal">
                 <table class="table table-hover table-sm mb-0 d-none" id="tabela-escolher-item">
                     <thead class="table-light sticky-top">
                         <tr id="cabecalho-escolher-item"></tr>
                     </thead>
                     <tbody id="lista-escolher-item"></tbody>
                 </table>
+                </div>
                 <div id="itens-vazio" class="p-4 text-center text-muted d-none">Nenhum item encontrado.</div>
             </div>
             <div class="modal-footer justify-content-between">

@@ -2,10 +2,13 @@ from django import forms
 from decimal import Decimal, InvalidOperation
 from .models import (
     Compra, CompraItem,
-    Venda, VendaItem, Estoque
+    Venda, VendaItem, Estoque,
+    MetaFaturamento, PosVenda,
     )
 from django.forms import inlineformset_factory, BaseInlineFormSet
 from django.db.models import Q
+from django.utils import timezone
+from django.utils.formats import number_format
 from cadastros.models import Produto, Servico, Contato
 from django.forms import inlineformset_factory
 from gestaomasc.widgets import DatePickerInput
@@ -350,3 +353,63 @@ class VendaSelecionarClienteForm(forms.Form):
         widget=forms.Select(attrs={"class": "form-select"})
     )
     
+
+
+#===============================
+# META DE FATURAMENTO E PÓS-VENDA
+#===============================
+class MetaFaturamentoForm(BaseFormBootstrap):
+    mes = forms.DateField(
+        label="Mês", input_formats=["%Y-%m"],
+        widget=forms.DateInput(attrs={"type": "month"}, format="%Y-%m"),
+    )
+
+    class Meta:
+        model = MetaFaturamento
+        fields = ["mes", "valor"]
+        widgets = {"valor": forms.NumberInput(attrs={"step": "0.01", "min": "0"})}
+
+    def clean_valor(self):
+        valor = self.cleaned_data["valor"]
+        if valor <= 0:
+            raise forms.ValidationError("Informe uma meta maior que zero.")
+        return valor
+
+
+class PosVendaForm(BaseFormBootstrap):
+    class Meta:
+        model = PosVenda
+        fields = ["cliente", "venda", "tipo", "data", "descricao", "retorno", "status", "solucao"]
+        widgets = {
+            "data": DatePickerInput(),
+            "retorno": DatePickerInput(),
+            "descricao": forms.Textarea(attrs={"rows": 3}),
+            "solucao": forms.Textarea(attrs={"rows": 3}),
+        }
+        help_texts = {
+            "retorno": "Até quando dar uma resposta ao cliente. Passada a data, o Painel avisa.",
+            "venda": "Opcional. Só as vendas finalizadas do cliente.",
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["cliente"].queryset = Contato.objects.order_by("nome")
+        # Vendas finalizadas do cliente escolhido (ou todas, se ainda não houver cliente)
+        cliente = self.data.get("cliente") or self.initial.get("cliente") or getattr(self.instance, "cliente_id", None)
+        vendas = Venda.objects.filter(status="finalizada").select_related("cliente").order_by("-data_emissao")
+        if cliente:
+            vendas = vendas.filter(cliente_id=getattr(cliente, "pk", cliente))
+        self.fields["venda"].queryset = vendas
+        self.fields["venda"].label_from_instance = lambda v: (
+            f"Nº {v.numero or v.id} de {timezone.localtime(v.data_emissao):%d/%m/%Y} - R$ {number_format(v.total, 2, force_grouping=True)}")
+        for nome in ("tipo", "status", "cliente", "venda"):
+            self.fields[nome].widget.attrs["class"] = "form-select"
+
+    def clean(self):
+        dados = super().clean()
+        venda, cliente = dados.get("venda"), dados.get("cliente")
+        if venda and cliente and venda.cliente_id != cliente.pk:
+            self.add_error("venda", "Esta venda é de outro cliente.")
+        if dados.get("status") == "resolvido" and not (dados.get("solucao") or "").strip():
+            self.add_error("solucao", "Conte como foi resolvido.")
+        return dados

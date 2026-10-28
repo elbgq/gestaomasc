@@ -111,7 +111,9 @@ class AcessoPorPerfilTest(TestCase):
 
     def test_menu_do_superusuario_mostra_tudo(self):
         self.client.force_login(get_user_model().objects.create_superuser("admin", password="x"))
-        html = self.client.get(reverse("home")).content.decode()
+        # O início leva ao Painel; o menu é o mesmo em toda tela
+        html = self.client.get(reverse("home"), follow=True).content.decode()
+        self.assertIn(reverse("relatorios:painel"), html)
         for menu in ("menuCadastros", "menuComercial", "menuFinanceiro", "menuRelatorios"):
             self.assertIn(menu, html)
         self.assertIn(reverse("admin:index"), html)

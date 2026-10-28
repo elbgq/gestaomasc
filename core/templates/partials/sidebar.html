@@ -18,6 +18,8 @@
     {% pode "comercial:compra_list" as ver_compras %}
     {% pode "comercial:estoque_list" as ver_estoque %}
     {% pode "comercial:cmv_lista" as ver_cmv %}
+    {% pode "comercial:posvenda_list" as ver_posvenda %}
+    {% pode "comercial:meta_list" as ver_metas %}
     {% pode "financeiro:categoria_list" as ver_categorias %}
     {% pode "financeiro:lancamento_list" as ver_lancamentos %}
     {% pode "financeiro:receber_list" as ver_receber %}
@@ -26,8 +28,18 @@
     {% pode "financeiro:caixa_historico" as ver_caixa %}
     {% pode "relatorios:compras_por_periodo" as ver_rel_comercial %}
     {% pode "relatorios:dre" as ver_rel_gerencial %}
+    {% pode "relatorios:painel" as ver_painel %}
 
     <ul class="nav flex-column">
+
+        <!-- Painel de indicadores -->
+        {% if ver_painel %}
+        <li class="nav-item mb-2">
+            <a class="nav-link text-white" href="{% url 'relatorios:painel' %}">
+                <i class="bi bi-speedometer2"></i>  Painel
+            </a>
+        </li>
+        {% endif %}
 
         <!-- Cadastros -->
         {% if ver_contatos or ver_produtos or ver_servicos %}
@@ -48,7 +60,7 @@
         {% endif %}
 
         <!-- Comercial -->
-        {% if ver_vendas or ver_compras or ver_estoque or ver_cmv %}
+        {% if ver_vendas or ver_compras or ver_estoque or ver_cmv or ver_posvenda or ver_metas %}
         <li class="nav-item mb-2">
             <a class="nav-link text-white" data-bs-toggle="collapse" href="#menuComercial" role="button">
                 <i class="bi bi-cart"></i>  ☰ Comercial
@@ -59,6 +71,8 @@
                     {% if ver_compras %}<li><a class="nav-link text-white" href="{% url 'comercial:compra_list' %}">Compras</a></li>{% endif %}
                     {% if ver_estoque %}<li><a class="nav-link text-white" href="{% url 'comercial:estoque_list' %}">Estoque</a></li>{% endif %}
                     {% if ver_cmv %}<li><a class="nav-link text-white" href="{% url 'comercial:cmv_lista' %}">CMV</a></li>{% endif %}
+                    {% if ver_posvenda %}<li><a class="nav-link text-white" href="{% url 'comercial:posvenda_list' %}">Pós-venda</a></li>{% endif %}
+                    {% if ver_metas %}<li><a class="nav-link text-white" href="{% url 'comercial:meta_list' %}">Metas de faturamento</a></li>{% endif %}
                 </ul>
             </div>
         </li>

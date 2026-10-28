@@ -1,0 +1,552 @@
+{% extends "base.html" %}
+{% load static permissoes %}
+
+{% block title %}Painel - MASC{% endblock %}
+
+{% block head %}
+<style>
+    .painel-bloco { margin-bottom: 2rem; }
+    .painel-bloco > h2 { font-size: 1.25rem; font-weight: 700; margin-bottom: .75rem; }
+    .painel-grafico { position: relative; height: 260px; }
+    .painel-tabela td, .painel-tabela th { padding: .35rem .5rem; font-size: .9rem; }
+    .painel-barra { height: .5rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Cabeçalho: período e atualização -->
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+    <div>
+        <h1 class="h3 mb-1">Painel</h1>
+        <div class="small text-body-secondary">
+            {{ per.ini|date:"d/m/Y" }}{% if per.fim != per.ini %} a {{ per.fim|date:"d/m/Y" }}{% endif %},
+            comparado com {{ per.ini_ant|date:"d/m/Y" }}{% if per.fim_ant != per.ini_ant %} a {{ per.fim_ant|date:"d/m/Y" }}{% endif %}
+        </div>
+    </div>
+    <div class="text-end">
+        <div class="btn-group btn-group-sm flex-wrap" role="group" aria-label="Período">
+            {% for codigo, nome in periodos %}
+            <a href="?periodo={{ codigo }}" class="btn {% if per.codigo == codigo %}btn-primary{% else %}btn-outline-secondary{% endif %}">{{ nome }}</a>
+            {% endfor %}
+        </div>
+        <div class="small text-body-secondary mt-1">
+            Calculado às {{ calculado_em|date:"H:i" }} ·
+            <a href="?periodo={{ per.codigo }}&atualizar=1">Atualizar agora</a>
+        </div>
+    </div>
+</div>
+
+<!-- Alertas: o que pede ação hoje -->
+{% if alertas %}
+<div class="alert alert-warning py-2 d-flex flex-wrap gap-3 align-items-center">
+    <strong>Atenção:</strong>
+    {% for texto, rota, cor in alertas %}
+        {% pode rota as pode_ir %}
+        {% if pode_ir %}<a href="{% url rota %}" class="link-{{ cor }} fw-semibold">{{ texto }}</a>{% else %}<span class="text-{{ cor }} fw-semibold">{{ texto }}</span>{% endif %}
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if not ver.financeiro and not ver.vendas and not ver.estoque and not ver.clientes %}
+<p class="text-body-secondary">Nenhum bloco do Painel está liberado para o seu usuário.</p>
+{% endif %}
+
+<!-- ============ 1. FINANCEIRO ============ -->
+{% if financeiro %}
+{% with f=financeiro %}
+<section class="painel-bloco" id="bloco-financeiro">
+    <h2>Financeiro <span class="small fw-normal text-body-secondary">posição de hoje</span></h2>
+    <div class="row g-3 mb-3">
+        {% include "relatorios/painel/_cartao.html" with titulo="Saldo dos caixas" valor=f.saldo rs=1 sub=f.caixas|length|stringformat:"d"|add:" caixa(s) ativo(s)" link=links.caixa %}
+        {% include "relatorios/painel/_cartao.html" with titulo="A receber em 30 dias" valor=f.receber_30 rs=1 sub=f.receber_30_n|stringformat:"d"|add:" título(s)" link=links.receber %}
+        {% include "relatorios/painel/_cartao.html" with titulo="A pagar em 30 dias" valor=f.pagar_30 rs=1 sub=f.pagar_30_n|stringformat:"d"|add:" conta(s)" link=links.pagar %}
+        <div class="col-6 col-xl-3">
+            <div class="card shadow-sm h-100 {% if f.receber_vencido_n or f.pagar_vencido_n %}border-danger{% endif %}">
+                <div class="card-body py-3">
+                    <div class="small text-body-secondary">Vencidos</div>
+                    <div class="fw-bold {% if f.receber_vencido_n %}text-danger{% endif %}">Receber: R$ {{ f.receber_vencido|floatformat:"2g" }} <span class="small fw-normal">({{ f.receber_vencido_n }})</span></div>
+                    <div class="fw-bold {% if f.pagar_vencido_n %}text-danger{% endif %}">Pagar: R$ {{ f.pagar_vencido|floatformat:"2g" }} <span class="small fw-normal">({{ f.pagar_vencido_n }})</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Fluxo de caixa projetado -->
+    <div class="row g-3 mb-3">
+        <div class="col-lg-8">
+            <div class="card shadow-sm h-100">
+                <div class="card-header fw-semibold d-flex flex-wrap justify-content-between gap-2">
+                    <span>Saldo previsto nos próximos 90 dias</span>
+                    <span class="small fw-normal text-body-secondary">saldo de hoje + a receber − a pagar, sem os vencidos</span>
+                </div>
+                <div class="card-body"><div class="painel-grafico"><canvas id="graficoFluxo"></canvas></div></div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card shadow-sm h-100 {% if f.fluxo.negativo_em %}border-danger{% endif %}">
+                <div class="card-header fw-semibold">Fluxo de caixa projetado</div>
+                <div class="card-body p-0">
+                    <table class="table table-sm painel-tabela mb-0">
+                        <thead><tr><th>Até</th><th class="text-end">Entra</th><th class="text-end">Sai</th><th class="text-end">Saldo</th></tr></thead>
+                        <tbody>
+                        {% for faixa in f.fluxo.faixas %}
+                            <tr>
+                                <td class="text-nowrap">{{ faixa.dias }} dias <span class="small text-body-secondary">({{ faixa.ate|date:"d/m" }})</span></td>
+                                <td class="text-end text-nowrap">{{ faixa.entradas|floatformat:"2g" }}</td>
+                                <td class="text-end text-nowrap">{{ faixa.saidas|floatformat:"2g" }}</td>
+                                <td class="text-end text-nowrap fw-semibold {% if faixa.saldo < 0 %}text-danger{% endif %}">{{ faixa.saldo|floatformat:"2g" }}</td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                    <div class="small px-2 py-2 {% if f.fluxo.menor.saldo < 0 %}text-danger fw-semibold{% else %}text-body-secondary{% endif %}">
+                        Menor saldo previsto: R$ {{ f.fluxo.menor.saldo|floatformat:"2g" }} em {{ f.fluxo.menor.data|date:"d/m" }}.
+                        {% if f.receber_vencido_n %}Se os R$ {{ f.receber_vencido|floatformat:"2g" }} vencidos a receber entrarem, o saldo melhora nesse valor.{% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row g-3">
+        <div class="col-lg-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header fw-semibold">Entradas x saídas do caixa, últimos 6 meses</div>
+                <div class="card-body"><div class="painel-grafico"><canvas id="graficoCaixa"></canvas></div></div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header fw-semibold">Vencidos e vencendo em 7 dias</div>
+                <div class="card-body p-0">
+                    <table class="table table-sm painel-tabela mb-0">
+                        <tbody>
+                        {% for t in f.vencidos %}
+                            {% pode "financeiro:titulo_detalhe" tipo=t.tipo as ver_titulo %}
+                            <tr class="text-danger">
+                                <td>{{ t.vencimento|date:"d/m" }}</td>
+                                <td>{% if t.tipo == "R" %}Receber{% else %}Pagar{% endif %}</td>
+                                <td>{% if ver_titulo %}<a href="{% url 'financeiro:titulo_detalhe' t.tipo t.id %}">{{ t.nome|default:t.descricao|truncatechars:32 }}</a>{% else %}{{ t.nome|default:t.descricao|truncatechars:32 }}{% endif %}</td>
+                                <td class="text-end text-nowrap">R$ {{ t.valor|floatformat:"2g" }}</td>
+                            </tr>
+                        {% endfor %}
+                        {% for t in f.proximos %}
+                            {% pode "financeiro:titulo_detalhe" tipo=t.tipo as ver_titulo %}
+                            <tr>
+                                <td>{{ t.vencimento|date:"d/m" }}</td>
+                                <td>{% if t.tipo == "R" %}Receber{% else %}Pagar{% endif %}</td>
+                                <td>{% if ver_titulo %}<a href="{% url 'financeiro:titulo_detalhe' t.tipo t.id %}">{{ t.nome|default:t.descricao|truncatechars:32 }}</a>{% else %}{{ t.nome|default:t.descricao|truncatechars:32 }}{% endif %}</td>
+                                <td class="text-end text-nowrap">R$ {{ t.valor|floatformat:"2g" }}</td>
+                            </tr>
+                        {% endfor %}
+                        {% if not f.vencidos and not f.proximos %}
+                            <tr><td class="text-body-secondary p-3">Nada vencido nem vencendo nos próximos 7 dias.</td></tr>
+                        {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    {{ f.grafico|json_script:"dados-caixa" }}
+    {{ f.fluxo.grafico|json_script:"dados-fluxo" }}
+
+    <!-- Resultado do período: as mesmas contas da DRE -->
+    {% if resultado %}
+    {% with r=resultado %}
+    <h3 class="h6 fw-bold mt-4 mb-2 d-flex flex-wrap justify-content-between gap-2">
+        <span>Resultado do período <span class="small fw-normal text-body-secondary">pela DRE, comparado com o período anterior</span></span>
+        {% if links.dre %}<a class="small fw-normal" href="{{ links.dre }}?data_inicio={{ per.ini|date:'Y-m-d' }}&data_fim={{ per.fim|date:'Y-m-d' }}">Abrir a DRE do período</a>{% endif %}
+    </h3>
+    <div class="row g-3">
+        {% include "relatorios/painel/_cartao.html" with titulo="Receita líquida" valor=r.receita_liquida rs=1 var=r.receita_liquida_var sub="vendas e outras receitas, menos deduções" %}
+        {% include "relatorios/painel/_cartao.html" with titulo="Lucro bruto" valor=r.lucro_bruto rs=1 var=r.lucro_bruto_var sub="receita líquida menos custos" %}
+        {% include "relatorios/painel/_cartao.html" with titulo="Despesas operacionais" valor=r.despesas_operacionais rs=1 var=r.despesas_operacionais_var neutro=1 sub="vendas, administrativas e gerais" %}
+        {% include "relatorios/painel/_cartao.html" with titulo="Lucro líquido" valor=r.lucro_liquido rs=1 var=r.lucro_liquido_var sub=r.margem_txt alerta=r.lucro_liquido_negativo %}
+    </div>
+    {% if r.fora_do_dre %}
+    <p class="small text-body-secondary mt-2 mb-0">{{ r.fora_do_dre }} categoria(s) com lançamentos ficaram fora da DRE por não terem grupo. Confira na DRE.</p>
+    {% endif %}
+    {% endwith %}
+    {% endif %}
+</section>
+{% endwith %}
+{% endif %}
+
+<!-- ============ 2. VENDAS ============ -->
+{% if vendas %}
+{% with v=vendas %}
+<section class="painel-bloco" id="bloco-vendas">
+    <h2>Vendas e Comercial</h2>
+    <div class="row g-3 mb-3">
+        {% include "relatorios/painel/_cartao.html" with titulo="Faturamento" valor=v.faturamento rs=1 var=v.faturamento_var sub="vs período anterior" %}
+        {% include "relatorios/painel/_cartao.html" with titulo="Vendas finalizadas" valor=v.qtd var=v.qtd_var sub="ticket médio R$ "|add:v.ticket_txt %}
+        {% if ver_custos %}
+        {% include "relatorios/painel/_cartao.html" with titulo="Margem bruta" valor=v.margem rs=1 sub=v.margem_txt %}
+        {% else %}
+        {% include "relatorios/painel/_cartao.html" with titulo="Descontos concedidos" valor=v.descontos rs=1 sub="na venda e nos itens" %}
+        {% endif %}
+        {% include "relatorios/painel/_cartao.html" with titulo="Vendas em rascunho" valor=v.rascunhos sub="iniciadas e não finalizadas" alerta=v.rascunhos link=links.vendas %}
+    </div>
+    <!-- Meta de faturamento do mês -->
+    {% if meta.valor is not None %}
+    <div class="card shadow-sm mb-3">
+        <div class="card-body py-3">
+            <div class="d-flex flex-wrap justify-content-between gap-2 mb-2">
+                <div>
+                    <span class="fw-semibold">Meta de {{ meta.mes|date:"F"|lower }}: R$ {{ meta.valor|floatformat:"2g" }}</span>
+                    <span class="text-body-secondary small">· vendido R$ {{ meta.realizado|floatformat:"2g" }} ({{ meta.pct|floatformat:1 }}%)</span>
+                </div>
+                <div class="small {% if meta.falta %}text-body-secondary{% else %}text-success fw-semibold{% endif %}">
+                    {% if not meta.falta %}Meta batida!
+                    {% elif meta.fechado %}Faltaram R$ {{ meta.falta|floatformat:"2g" }}
+                    {% else %}Faltam R$ {{ meta.falta|floatformat:"2g" }}: R$ {{ meta.por_dia|floatformat:"2g" }} por dia nos {{ meta.dias_restantes }} dia(s) que restam{% endif %}
+                </div>
+            </div>
+            <div class="progress" style="height: .9rem;" role="progressbar" aria-label="Meta do mês" aria-valuenow="{{ meta.pct|floatformat:0 }}" aria-valuemin="0" aria-valuemax="100">
+                <div class="progress-bar {% if meta.pct >= 100 %}bg-success{% elif meta.projecao_pct is not None and meta.projecao_pct < 100 %}bg-warning{% else %}bg-success{% endif %}" style="width: {% if meta.pct > 100 %}100{% else %}{{ meta.pct|floatformat:0 }}{% endif %}%"></div>
+            </div>
+            {% if meta.projecao is not None %}
+            <div class="small text-body-secondary mt-1">
+                No ritmo de até hoje, o mês fecha em R$ {{ meta.projecao|floatformat:"2g" }} ({{ meta.projecao_pct|floatformat:1 }}% da meta).
+                {% if links.metas %}<a href="{{ links.metas }}">Metas</a>{% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% elif links.meta_nova %}
+    <p class="small text-body-secondary mb-3">Sem meta de faturamento para {{ meta.mes|date:"F"|lower }}. <a href="{{ links.meta_nova }}">Cadastrar meta</a></p>
+    {% endif %}
+
+    <div class="row g-3 mb-3">
+        <div class="col-lg-8">
+            <div class="card shadow-sm h-100">
+                <div class="card-header fw-semibold d-flex justify-content-between">
+                    <span>Faturamento {% if per.codigo == "12meses" %}por mês{% else %}por dia{% endif %}</span>
+                    {% if links.rel_vendas %}<a class="small fw-normal" href="{{ links.rel_vendas }}?data_inicio={{ per.ini|date:'Y-m-d' }}&data_fim={{ per.fim|date:'Y-m-d' }}">Ver vendas do período</a>{% endif %}
+                </div>
+                <div class="card-body"><div class="painel-grafico"><canvas id="graficoVendas"></canvas></div></div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header fw-semibold">Como foi vendido</div>
+                <div class="card-body">
+                    {% for forma in v.formas %}
+                    <div class="d-flex justify-content-between small"><span>{{ forma.nome }}</span><span>R$ {{ forma.total|floatformat:"2g" }}</span></div>
+                    <div class="progress painel-barra mb-2"><div class="progress-bar bg-success" style="width: {% widthratio forma.total v.faturamento 100 %}%"></div></div>
+                    {% empty %}
+                    <p class="text-body-secondary small mb-2">Nenhuma venda finalizada no período.</p>
+                    {% endfor %}
+                    <hr>
+                    <div class="d-flex justify-content-between small"><span>Produtos</span><span>R$ {{ v.produtos|floatformat:"2g" }}</span></div>
+                    <div class="d-flex justify-content-between small"><span>Serviços</span><span>R$ {{ v.servicos|floatformat:"2g" }}</span></div>
+                    {% if ver_custos %}<div class="d-flex justify-content-between small"><span>Descontos concedidos</span><span>R$ {{ v.descontos|floatformat:"2g" }}</span></div>{% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row g-3">
+        <div class="col-lg-7">
+            <div class="card shadow-sm h-100">
+                <div class="card-header fw-semibold">Itens que mais faturaram</div>
+                <div class="card-body p-0">
+                    <table class="table table-sm painel-tabela mb-0">
+                        <tbody>
+                        {% for item in v.top_itens %}
+                            <tr><td class="text-body-secondary">{{ forloop.counter }}</td><td>{{ item.nome|truncatechars:60 }}</td><td class="text-end text-nowrap">R$ {{ item.total|floatformat:"2g" }}</td></tr>
+                        {% empty %}
+                            <tr><td class="text-body-secondary p-3">Nenhum item vendido no período.</td></tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-5">
+            <div class="card shadow-sm h-100">
+                <div class="card-header fw-semibold">Vendas por vendedor</div>
+                <div class="card-body p-0">
+                    <table class="table table-sm painel-tabela mb-0">
+                        <tbody>
+                        {% for vend in v.vendedores %}
+                            <tr><td>{{ vend.nome }}</td><td class="text-end">{{ vend.qtd }}</td><td class="text-end text-nowrap">R$ {{ vend.total|floatformat:"2g" }}</td></tr>
+                        {% empty %}
+                            <tr><td class="text-body-secondary p-3">Nenhuma venda no período.</td></tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    {{ v.serie|json_script:"dados-vendas" }}
+</section>
+{% endwith %}
+{% endif %}
+
+<!-- ============ 3. ESTOQUE ============ -->
+{% if estoque %}
+{% with e=estoque %}
+<section class="painel-bloco" id="bloco-estoque">
+    <h2>Operações e Estoque</h2>
+    <div class="row g-3 mb-3">
+        {% if ver_custos %}
+        {% include "relatorios/painel/_cartao.html" with titulo="Valor do estoque" valor=e.valor rs=1 sub=e.cobertura_txt link=links.estoque %}
+        {% endif %}
+        {% include "relatorios/painel/_cartao.html" with titulo="Abaixo do mínimo" valor=e.abaixo_qtd sub=e.zerados|stringformat:"d"|add:" produto(s) zerado(s)" alerta=e.abaixo_qtd link=links.estoque %}
+        {% include "relatorios/painel/_cartao.html" with titulo="Compras no período" valor=e.compras rs=1 var=e.compras_var neutro=1 sub=e.compras_qtd|stringformat:"d"|add:" nota(s)" %}
+        {% include "relatorios/painel/_cartao.html" with titulo="Compras a confirmar" valor=e.compras_pendentes sub=e.itens_sem_vinculo|stringformat:"d"|add:" item(ns) sem vínculo" alerta=e.compras_pendentes link=links.compras %}
+    </div>
+    <div class="row g-3">
+        <div class="col-lg-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header fw-semibold">Abaixo do estoque mínimo{% if e.abaixo_qtd > 10 %} <span class="small fw-normal text-body-secondary">(10 de {{ e.abaixo_qtd }})</span>{% endif %}</div>
+                <div class="card-body p-0">
+                    <table class="table table-sm painel-tabela mb-0">
+                        <thead><tr><th>Produto</th><th class="text-end">Saldo</th><th class="text-end">Mínimo</th></tr></thead>
+                        <tbody>
+                        {% for linha in e.abaixo %}
+                            <tr><td>{{ linha.produto.descricao|truncatechars:50 }}</td><td class="text-end {% if linha.saldo <= 0 %}text-danger{% endif %}">{{ linha.saldo|floatformat:"-3" }}</td><td class="text-end">{{ linha.minimo }}</td></tr>
+                        {% empty %}
+                            <tr><td colspan="3" class="text-body-secondary p-3">Nenhum produto abaixo do mínimo.</td></tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header fw-semibold">
+                    Parados há 90 dias: {{ e.parados_qtd }} produto(s){% if ver_custos %}, R$ {{ e.parados_valor|floatformat:"2g" }}{% endif %}
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-sm painel-tabela mb-0">
+                        <thead><tr><th>Produto</th><th class="text-end">Saldo</th>{% if ver_custos %}<th class="text-end">Valor</th>{% endif %}<th class="text-end">Última mov.</th></tr></thead>
+                        <tbody>
+                        {% for linha in e.parados %}
+                            <tr>
+                                <td>{{ linha.produto.descricao|truncatechars:42 }}</td>
+                                <td class="text-end">{{ linha.quantidade|floatformat:"-3" }}</td>
+                                {% if ver_custos %}<td class="text-end text-nowrap">R$ {{ linha.valor|floatformat:"2g" }}</td>{% endif %}
+                                <td class="text-end">{{ linha.ultima|date:"d/m/Y"|default:"—" }}</td>
+                            </tr>
+                        {% empty %}
+                            <tr><td colspan="4" class="text-body-secondary p-3">Nenhum produto parado.</td></tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% if ver_custos and e.precos_revisar %}
+    <p class="small mt-2 mb-0">
+        {{ e.precos_revisar }} produto(s) com preço abaixo do custo ou fora do sugerido.
+        {% if links.precos %}<a href="{{ links.precos }}">Abrir Revisão de preços</a>{% endif %}
+    </p>
+    {% endif %}
+</section>
+{% endwith %}
+{% endif %}
+
+<!-- ============ 4. CLIENTES ============ -->
+{% if clientes %}
+{% with c=clientes %}
+<section class="painel-bloco" id="bloco-clientes">
+    <h2>Clientes</h2>
+    <div class="row g-3 mb-3">
+        {% include "relatorios/painel/_cartao.html" with titulo="Clientes que compraram" valor=c.do_periodo var=c.do_periodo_var sub=c.ativos|stringformat:"d"|add:" ativo(s) nos últimos 90 dias" link=links.clientes %}
+        {% include "relatorios/painel/_cartao.html" with titulo="Clientes novos" valor=c.novos var=c.novos_var sub="primeira compra no período" %}
+        {% include "relatorios/painel/_cartao.html" with titulo="Recompra" valor=c.recompra sub=c.recompra_txt %}
+        {% include "relatorios/painel/_cartao.html" with titulo="Inadimplência" valor=c.inad_vencido rs=1 sub=c.inad_txt alerta=c.inad_vencido link=links.receber %}
+    </div>
+    <div class="row g-3">
+        <div class="col-lg-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header fw-semibold">
+                    Curva ABC do período
+                    {% if c.top10_pct is not None %}<div class="small fw-normal text-body-secondary">{% if c.abc_qtd > 10 %}os 10 maiores somam {{ c.top10_pct|floatformat:1 }}% · {% endif %}A: {{ c.abc_classes.A }} · B: {{ c.abc_classes.B }} · C: {{ c.abc_classes.C }}</div>{% endif %}
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-sm painel-tabela mb-0">
+                        <tbody>
+                        {% for linha in c.abc %}
+                            <tr>
+                                <td><span class="badge {% if linha.classe == 'A' %}bg-success{% elif linha.classe == 'B' %}bg-primary{% else %}bg-secondary{% endif %}">{{ linha.classe }}</span></td>
+                                <td>{{ linha.cliente.nome|truncatechars:30 }}</td>
+                                <td class="text-end text-nowrap">R$ {{ linha.total|floatformat:"2g" }}</td>
+                                <td class="text-end text-body-secondary">{{ linha.pct|floatformat:1 }}%</td>
+                            </tr>
+                        {% empty %}
+                            <tr><td class="text-body-secondary p-3">Nenhuma venda no período.</td></tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header fw-semibold">
+                    Parados há 90 dias: {{ c.parados_qtd }} cliente(s)
+                    <div class="small fw-normal text-body-secondary">compravam e pararam; os que mais compraram primeiro</div>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-sm painel-tabela mb-0">
+                        <tbody>
+                        {% for p in c.parados %}
+                            {% pode "cadastros:contato_detail" as ver_contato %}
+                            <tr>
+                                <td>{% if ver_contato %}<a href="{% url 'cadastros:contato_detail' p.cliente.pk %}">{{ p.cliente.nome|truncatechars:26 }}</a>{% else %}{{ p.cliente.nome|truncatechars:26 }}{% endif %}
+                                    <div class="small text-body-secondary">{{ p.cliente.telefone|default:"sem telefone" }}</div></td>
+                                <td class="text-end text-nowrap">R$ {{ p.total|floatformat:"2g" }}<div class="small text-body-secondary">última {{ p.ultima|date:"d/m/Y" }}</div></td>
+                            </tr>
+                        {% empty %}
+                            <tr><td class="text-body-secondary p-3">Nenhum cliente parado.</td></tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header fw-semibold">
+                    Maiores devedores
+                    <div class="small fw-normal text-body-secondary">{% if c.atraso_medio is not None %}atraso médio de {{ c.atraso_medio|floatformat:1 }} dia(s) no período, {% endif %}{{ c.atraso_txt }}</div>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-sm painel-tabela mb-0">
+                        <tbody>
+                        {% for d in c.devedores %}
+                            <tr class="text-danger">
+                                <td>{{ d.nome|truncatechars:26 }}<div class="small text-body-secondary">{{ d.telefone|default:"sem telefone" }}</div></td>
+                                <td class="text-end text-nowrap">R$ {{ d.total|floatformat:"2g" }}<div class="small">{{ d.qtd }} título(s), {{ d.dias }} dia(s)</div></td>
+                            </tr>
+                        {% empty %}
+                            <tr><td class="text-body-secondary p-3">Nenhum cliente com título vencido.</td></tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pós-venda -->
+    {% with pv=c.pos_venda %}
+    <div class="card shadow-sm mt-3 {% if pv.atrasados %}border-danger{% endif %}">
+        <div class="card-header fw-semibold d-flex flex-wrap justify-content-between gap-2">
+            <span>Pós-venda: {{ pv.abertos }} aberto(s){% if pv.atrasados %}, <span class="text-danger">{{ pv.atrasados }} com retorno atrasado</span>{% endif %}</span>
+            <span class="small fw-normal">
+                {% if links.posvenda %}<a href="{{ links.posvenda }}">Ver todos</a>{% endif %}
+                {% if links.posvenda_novo %} · <a href="{{ links.posvenda_novo }}">Novo registro</a>{% endif %}
+            </span>
+        </div>
+        <div class="card-body p-0">
+            <div class="small text-body-secondary px-2 pt-2">
+                No período: {% for t in pv.no_periodo %}{{ t.qtd }} {{ t.tipo|lower }}{% if not forloop.last %}, {% endif %}{% empty %}nenhum registro{% endfor %}; {{ pv.resolvidos_no_periodo }} resolvido(s).
+            </div>
+            <table class="table table-sm painel-tabela mb-0">
+                <tbody>
+                {% for r in pv.lista %}
+                    <tr class="{% if r.atrasado %}text-danger{% endif %}">
+                        <td class="text-nowrap">{{ r.retorno|date:"d/m"|default:"—" }}</td>
+                        <td>{{ r.get_tipo_display }}</td>
+                        <td>{{ r.cliente.nome|truncatechars:28 }}<div class="small text-body-secondary">{{ r.cliente.telefone|default:"" }}</div></td>
+                        <td>{{ r.descricao|truncatechars:60 }}</td>
+                    </tr>
+                {% empty %}
+                    <tr><td class="text-body-secondary p-3">Nenhum pós-venda aberto.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endwith %}
+</section>
+{% endwith %}
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{{ block.super }}
+<script src="{% static 'vendor/chart.umd.min.js' %}"></script>
+<script>
+(function () {
+    if (typeof Chart === "undefined") return;
+    // Cores do tema (masc_tema.css)
+    const css = getComputedStyle(document.documentElement);
+    const cor = (nome, reserva) => (css.getPropertyValue(nome) || "").trim() || reserva;
+    const verde = cor("--masc-verde", "#2e7d32");
+    const petroleo = cor("--masc-petroleo", "#2f6f8f");
+    const vermelho = cor("--masc-vermelho", "#c62828");
+    const cinza = cor("--masc-texto-suave", "#56665b");
+    const linha = cor("--masc-linha", "#e4ebe6");
+
+    Chart.defaults.color = cinza;
+    Chart.defaults.borderColor = linha;
+    Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
+
+    const reais = v => "R$ " + Number(v).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const opcoes = {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: "index", intersect: false },
+        plugins: {
+            legend: { position: "bottom", labels: { boxWidth: 12 } },
+            tooltip: { callbacks: { label: c => c.dataset.label + ": " + reais(c.parsed.y) } },
+        },
+        scales: { y: { beginAtZero: true, ticks: { callback: v => reais(v).replace(",00", "") } } },
+    };
+    const ler = id => { const el = document.getElementById(id); return el ? JSON.parse(el.textContent) : null; };
+
+    const vendas = ler("dados-vendas");
+    if (vendas) {
+        new Chart(document.getElementById("graficoVendas"), {
+            type: "line",
+            data: {
+                labels: vendas.rotulos,
+                datasets: [
+                    { label: "Período atual", data: vendas.atual, borderColor: verde, backgroundColor: verde + "22", fill: true, cubicInterpolationMode: "monotone", pointRadius: 2 },
+                    { label: "Período anterior", data: vendas.anterior, borderColor: cinza, borderDash: [5, 4], cubicInterpolationMode: "monotone", pointRadius: 0, spanGaps: false },
+                ],
+            },
+            options: opcoes,
+        });
+    }
+
+    const fluxo = ler("dados-fluxo");
+    if (fluxo) {
+        new Chart(document.getElementById("graficoFluxo"), {
+            type: "line",
+            data: {
+                labels: fluxo.rotulos,
+                datasets: [{
+                    label: "Saldo previsto", data: fluxo.saldo, borderColor: petroleo, stepped: true, pointRadius: 0,
+                    // Abaixo de zero a área fica vermelha
+                    fill: { target: "origin", above: petroleo + "22", below: vermelho + "33" },
+                }],
+            },
+            options: { ...opcoes, scales: { y: { beginAtZero: false, ticks: opcoes.scales.y.ticks }, x: { ticks: { maxTicksLimit: 10 } } } },
+        });
+    }
+
+    const caixa = ler("dados-caixa");
+    if (caixa) {
+        new Chart(document.getElementById("graficoCaixa"), {
+            type: "bar",
+            data: {
+                labels: caixa.rotulos,
+                datasets: [
+                    { label: "Entradas", data: caixa.entradas, backgroundColor: petroleo, borderRadius: 4 },
+                    { label: "Saídas", data: caixa.saidas, backgroundColor: vermelho, borderRadius: 4 },
+                ],
+            },
+            options: opcoes,
+        });
+    }
+})();
+</script>
+{% endblock %}

@@ -10,6 +10,66 @@ Depois de copiar os arquivos, rode `python manage.py migrate` (há uma migraçã
 
 ---
 
+## Painel de indicadores, fase 4: meta de faturamento e pós-venda (28/10/2026)
+
+Rode `python manage.py migrate` (migrações novas `comercial/0012_meta_posvenda.py` e `core/0003_permissoes_posvenda_meta.py`). A migração do `core` só acrescenta as permissões novas aos grupos; o resto fica como está.
+
+| O que mudou | Onde |
+|---|---|
+| Tela **Metas de faturamento** (Comercial > Metas de faturamento): uma meta por mês | `comercial/models.py` (`MetaFaturamento`), `comercial/forms.py`, `comercial/views/views_posvenda.py`, `comercial/templates/comercial/meta_list.html`, `meta_form.html` |
+| No bloco Vendas do Painel, barra da meta do mês com o vendido, quanto falta, quanto vender por dia nos dias que restam e a projeção no ritmo do mês. No período "Mês anterior" mostra a meta daquele mês. Sem meta cadastrada, aparece o link para cadastrar | `relatorios/services/painel.py` (`bloco_meta`), `relatorios/templates/relatorios/painel.html` |
+| Tela **Pós-venda** (Comercial > Pós-venda): registro de contato com o cliente, garantia, reclamação e pedido de devolução, com data para retornar, situação (aberto ou resolvido) e solução. Filtros por situação (inclusive "retorno atrasado"), tipo e cliente. Botão "Registrar pós-venda" no detalhe da venda finalizada, que já traz o cliente e a venda. O pedido de devolução é só o registro: estoque e financeiro não mudam | `comercial/models.py` (`PosVenda`), `comercial/forms.py`, `comercial/views/views_posvenda.py`, `comercial/templates/comercial/posvenda_list.html`, `posvenda_form.html`, `venda_detalhe.html`, `comercial/urls.py`, `core/templates/partials/sidebar.html` |
+| No bloco Clientes do Painel, os pós-vendas abertos (os de retorno atrasado primeiro) e o que foi registrado e resolvido no período. Retorno atrasado entra nos alertas do topo | `relatorios/services/painel.py` (`bloco_clientes`), `relatorios/views/painel.py` (`alertas`) |
+| Permissões: Administrador e Gerente cuidam das metas e do pós-venda; o Vendedor pode ver, registrar e editar pós-venda | `core/grupos.py`, `core/permissoes.py`, `core/migrations/0003_permissoes_posvenda_meta.py` |
+| Testes: meta e projeção, pós-venda no Painel, registro a partir da venda, validações e permissões | `relatorios/tests.py` (`PainelTests`), `comercial/tests.py` (`PosVendaEMetaTests`) |
+
+---
+
+## Painel de indicadores, fase 3: Clientes (27/10/2026)
+
+Sem migração nova: basta copiar os arquivos e reiniciar o servidor. O bloco usa a permissão `relatorios.painel_clientes`, criada na fase 1; hoje só o Administrador a tem.
+
+| O que mudou | Onde |
+|---|---|
+| Bloco **Clientes** no Painel, seguindo o período escolhido: clientes que compraram (com variação) e quantos estão ativos (compraram nos últimos 90 dias), clientes novos (primeira compra caiu no período), recompra (clientes do período que já compraram mais de uma vez) e inadimplência (receber vencido sobre o total em aberto) | `relatorios/services/painel.py` (`bloco_clientes`), `relatorios/views/painel.py` |
+| Curva ABC do período (A até 80% do faturamento, B até 95%, C o resto), com os 10 maiores e quanto somam | idem |
+| Clientes parados: compravam e não compram há 90 dias, com telefone e data da última compra, os que mais compraram primeiro | idem |
+| Maiores devedores (valor vencido, títulos e dias de atraso, com telefone) e atraso médio dos títulos recebidos no período (pagos em dia contam zero) | idem |
+| Testes do bloco e do que cada perfil vê | `relatorios/tests.py` (`PainelTests`) |
+
+---
+
+## Painel de indicadores, fase 2 (27/10/2026)
+
+Sem migração nova: basta copiar os arquivos e reiniciar o servidor.
+
+| O que mudou | Onde |
+|---|---|
+| **Fluxo de caixa projetado** no bloco Financeiro: gráfico do saldo previsto dia a dia nos próximos 90 dias (saldo dos caixas + a receber − a pagar, só títulos pendentes que vencem de hoje em diante) e tabela com entradas, saídas e saldo em 30, 60 e 90 dias. Mostra o menor saldo previsto e a data. Se o saldo previsto ficar negativo, a área fica vermelha e entra um alerta no topo ("Saldo previsto fica negativo em dd/mm") | `relatorios/services/painel.py` (`fluxo_projetado`), `relatorios/views/painel.py` (`alertas`), `relatorios/templates/relatorios/painel.html` |
+| **Resultado do período** no bloco Financeiro: receita líquida, lucro bruto, despesas operacionais e lucro líquido (com a margem líquida), pelas mesmas contas da DRE, seguindo o período escolhido e comparando com o anterior. Link "Abrir a DRE do período". Só aparece para quem pode ver a DRE (`relatorios.ver_gerencial`). A variação do lucro só é mostrada quando o período anterior teve lucro | `relatorios/services/painel.py` (`bloco_resultado`, usa `dre_service.dre_por_periodo`), `relatorios/views/painel.py` |
+| Testes: projeção (vencidos e pagos ficam fora, data em que fica negativo, alerta na tela), resultado igual ao da DRE, quem vê o resultado | `relatorios/tests.py` (`PainelTests`) |
+
+---
+
+## Painel de indicadores, fase 1 (27/10/2026)
+
+Rode `python manage.py migrate` (migrações novas `relatorios/0002_permissoes_painel.py`, `core/0002_permissoes_painel.py`, `comercial/0011_indices_painel.py` e `financeiro/0023_indices_painel.py`). A migração do `core` só acrescenta as permissões do Painel aos grupos; o resto dos grupos fica como está.
+
+| O que mudou | Onde |
+|---|---|
+| Tela **Painel** (`/relatorios/painel/`), que vira a página inicial de quem pode ver ao menos um bloco. Quem não pode continua vendo a tela de boas-vindas. Link "Painel" no topo do menu | `relatorios/views/painel.py`, `relatorios/templates/relatorios/painel.html`, `relatorios/templates/relatorios/painel/_cartao.html`, `relatorios/urls.py`, `core/views.py`, `gestaomasc/urls.py`, `core/templates/partials/sidebar.html` |
+| Filtro de período (Hoje, 7 dias, Mês, Mês anterior, 12 meses), sempre comparado com o período anterior de mesmo tamanho. Faixa de alertas com o que pede ação hoje | `relatorios/services/painel.py` (`periodo`), `relatorios/views/painel.py` (`alertas`) |
+| Bloco **Financeiro** (aproveita o antigo Dashboard Financeiro): saldo dos caixas, a receber e a pagar em 30 dias, vencidos, gráfico de entradas x saídas de 6 meses (agora numa consulta só) e lista de vencidos e vencendo em 7 dias. O endereço antigo `financeiro/dashboard/` leva ao Painel | `relatorios/services/painel.py` (`bloco_financeiro`), `financeiro/views_caixa.py` (`dashboard_financeiro` só redireciona). O arquivo `financeiro/templates/financeiro/dashboard.html` não é mais usado e pode ser apagado |
+| Bloco **Vendas**: faturamento, quantidade e ticket médio com variação, margem bruta (só com "ver custos"; mesmo CMV da DRE), rascunhos, gráfico de faturamento por dia (por mês em 12 meses) contra o período anterior, formas de pagamento, produtos x serviços, descontos, 10 itens que mais faturaram, vendas por vendedor. Datas pela emissão da venda, como na DRE | `relatorios/services/painel.py` (`bloco_vendas`) |
+| Bloco **Estoque**: valor do estoque e quanto tempo ele dura no ritmo de saída dos últimos 90 dias (só com "ver custos"), produtos abaixo do mínimo, zerados, parados há 90 dias (sem nenhuma movimentação), compras do período, compras a confirmar, itens importados sem vínculo, produtos na Revisão de preços | `relatorios/services/painel.py` (`bloco_estoque`) |
+| Permissões por bloco: `relatorios.painel_financeiro`, `painel_vendas`, `painel_estoque`, `painel_clientes` (este para a fase 3). Administrador vê tudo; Gerente vê Vendas e Estoque (continua com as telas do Financeiro); Financeiro vê o bloco Financeiro; Compras/Estoque vê Estoque; Vendedor não tem Painel | `relatorios/models.py`, `core/grupos.py`, `core/permissoes.py` |
+| Desempenho: cada bloco fica 5 minutos guardado em memória (o link "Atualizar agora" recalcula na hora); contas feitas no banco; índices novos em vendas (status, emissão), títulos (status, vencimento) e movimentações de estoque (produto, data) | `relatorios/services/painel.py` (`em_cache`), `comercial/models.py`, `financeiro/models.py` |
+| Gráficos com Chart.js 4.4.7 guardado no projeto (funciona sem internet), nas cores do tema | `core/static/vendor/chart.umd.min.js` |
+| Comando novo para os saldos de estoque em dobro: `python manage.py corrigir_saldos_estoque` mostra o que mudaria; com `--aplicar` refaz saldo e preço médio pelas movimentações (a mesma rotina dos estornos) | `comercial/management/commands/corrigir_saldos_estoque.py` |
+| Testes: períodos, blocos de vendas e estoque, o que cada perfil vê, cache, comando de saldos; os testes do dashboard antigo passaram a olhar o Painel | `relatorios/tests.py` (`PainelTests`), `comercial/tests.py` (`CorrigirSaldosEstoqueTests`), `financeiro/tests.py`, `core/tests.py` |
+
+---
+
 ## Venda: modal "Escolher item" com coluna Item única (26/10/2026)
 
 Não há migração. Basta copiar os arquivos e recarregar a tela de venda.

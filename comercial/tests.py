@@ -735,3 +735,71 @@ class EscolherItemVendaTests(BaseComercialTest):
         venda = self.criar_venda(quantidade=2)
         html = self.client.get(reverse("comercial:venda_editar", args=[venda.id])).content.decode()
         self.assertIn(f'<option value="{self.produto.id}" selected>P1 - Produto 1</option>', html)
+
+
+class CorrigirSaldosEstoqueTests(TestCase):
+    def test_simula_e_depois_corrige_saldo_dobrado(self):
+        from io import StringIO
+        from django.core.management import call_command
+        from cadastros.models import Produto
+        from comercial.models import Estoque, MovimentacaoEstoque
+        produto = Produto.objects.create(codor="D1", descricao="Dobrado", unidade="UN")
+        MovimentacaoEstoque.objects.create(produto=produto, tipo="ENTRADA", quantidade=3,
+                                           preco=Decimal("10.00"), origem="Compra")
+        Estoque.objects.filter(produto=produto).update(quantidade=6)  # saldo gravado em dobro
+
+        call_command("corrigir_saldos_estoque", stdout=StringIO())
+        self.assertEqual(Estoque.objects.get(produto=produto).quantidade, 6)  # só simulou
+
+        saida = StringIO()
+        call_command("corrigir_saldos_estoque", "--aplicar", stdout=saida)
+        self.assertEqual(Estoque.objects.get(produto=produto).quantidade, 3)
+        self.assertIn("1 produto(s) corrigido(s)", saida.getvalue())
+
+
+class PosVendaEMetaTests(TestCase):
+    def setUp(self):
+        from core.tests import usuario
+        self.usuario = usuario
+        self.cliente = Contato.objects.create(nome="Cliente", tipo="CLIENTE", telefone="1199")
+        self.outro = Contato.objects.create(nome="Outro", tipo="CLIENTE")
+        self.venda = Venda.objects.create(cliente=self.cliente, status="finalizada")
+
+    def test_registrar_a_partir_da_venda(self):
+        from comercial.models import PosVenda
+        self.client.force_login(self.usuario("vend", "Vendedor"))
+        url = reverse("comercial:posvenda_criar")
+        resp = self.client.get(f"{url}?venda={self.venda.id}")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.context["form"].initial, {"venda": self.venda.pk, "cliente": self.cliente.pk})
+        dados = {"cliente": self.cliente.pk, "venda": self.venda.pk, "tipo": "devolucao", "data": "28/10/2026",
+                 "descricao": "Quer devolver o cabo", "retorno": "", "status": "aberto", "solucao": ""}
+        resp = self.client.post(url, dados)
+        self.assertRedirects(resp, reverse("comercial:posvenda_list"))
+        registro = PosVenda.objects.get()
+        self.assertEqual((registro.usuario.username, registro.resolvido_em), ("vend", None))
+
+        # Venda de outro cliente e resolvido sem solução não passam
+        resp = self.client.post(url, {**dados, "cliente": self.outro.pk})
+        self.assertIn("venda", resp.context["form"].errors)
+        resp = self.client.post(reverse("comercial:posvenda_editar", args=[registro.pk]), {**dados, "status": "resolvido"})
+        self.assertIn("solucao", resp.context["form"].errors)
+
+        # Resolvido guarda a data; reaberto, perde
+        self.client.post(reverse("comercial:posvenda_editar", args=[registro.pk]), {**dados, "status": "resolvido", "solucao": "Trocado"})
+        registro.refresh_from_db()
+        self.assertIsNotNone(registro.resolvido_em)
+        self.assertContains(self.client.get(reverse("comercial:posvenda_list") + "?status=resolvido"), "Trocado")
+
+    def test_metas(self):
+        from comercial.models import MetaFaturamento
+        self.client.force_login(self.usuario("vend", "Vendedor"))
+        self.assertEqual(self.client.get(reverse("comercial:meta_list")).status_code, 403)  # meta é do gerente
+        self.client.force_login(self.usuario("ger", "Gerente"))
+        resp = self.client.post(reverse("comercial:meta_criar"), {"mes": "2026-11", "valor": "15000.00"})
+        self.assertRedirects(resp, reverse("comercial:meta_list"))
+        self.assertEqual(MetaFaturamento.objects.get().mes, date(2026, 11, 1))
+        resp = self.client.post(reverse("comercial:meta_criar"), {"mes": "2026-11", "valor": "1.00"})
+        self.assertIn("mes", resp.context["form"].errors)  # um mês, uma meta
+        resp = self.client.post(reverse("comercial:meta_criar"), {"mes": "2026-12", "valor": "0"})
+        self.assertIn("valor", resp.context["form"].errors)
