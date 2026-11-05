@@ -30,6 +30,7 @@ from financeiro.models import (
 from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
 from comercial.views.views_estoque import registrar_cmv, estornar_saidas_venda
+from comercial.services.devolucoes import venda_tem_devolucao, total_devolvido, itens_devolviveis
 
 
 # Títulos a receber gerados para a venda
@@ -99,6 +100,11 @@ def venda_create(request):
 def venda_editar(request, venda_id):
     venda = get_object_or_404(Venda, id=venda_id)
     
+    # Venda com devolução não pode mais mudar: a devolução foi calculada sobre estes itens
+    if venda_tem_devolucao(venda):
+        messages.error(request, "Esta venda tem devolução registrada e não pode ser editada.")
+        return redirect("comercial:venda_detalhe", venda.id)
+
     # 1. Impede edição se houver títulos recebidos
     if titulos_da_venda(venda).filter(valor_pago__gt=0).exists():
         messages.error(request, "Esta venda possui parcelas já recebidas e não pode ser editada.")
@@ -218,7 +224,11 @@ def venda_detalhe(request, venda_id):
         "movimento_caixa": movimento_caixa, # Usando a opção A
         "cmv_total": venda.cmv,
         "parcelas": parcelas,
-        
+        # Devoluções desta venda e se ainda há o que devolver
+        "devolucoes": venda.devolucoes.order_by("data", "id"),
+        "total_devolvido": total_devolvido(venda),
+        "pode_devolver": venda.status == "finalizada" and any(l["disponivel"] > 0 for l in itens_devolviveis(venda)),
+
     })
 
 
@@ -400,6 +410,10 @@ def registrar_financeiro_venda(venda, parcelas, dias, data_inicial):
 def venda_parcelamento(request, venda_id):
     venda = get_object_or_404(Venda, id=venda_id)
 
+    if venda_tem_devolucao(venda):
+        messages.error(request, "Esta venda tem devolução registrada e não pode ser parcelada de novo.")
+        return redirect("comercial:venda_detalhe", venda.id)
+
     # Venda finalizada só pode ser parcelada de novo se nada foi recebido
     if titulos_da_venda(venda).filter(valor_pago__gt=0).exists():
         messages.error(request, "Esta venda possui parcelas já recebidas e não pode ser alterada.")
@@ -439,6 +453,10 @@ def venda_parcelamento(request, venda_id):
 # Views para o estorno de venda
 def estornar_venda(venda):
     with transaction.atomic():
+
+        # Com devolução, o estorno devolveria ao estoque de novo o que já voltou
+        if venda_tem_devolucao(venda):
+            raise ValueError("Não é possível estornar venda com devolução registrada. Cancele a devolução antes.")
 
         # 1. Impedir estorno de venda com parcelas recebidas (a entrada/sinal é devolvida abaixo)
         if titulos_da_venda(venda).filter(valor_pago__gt=0).exclude(descricao__endswith=" - Entrada").exists():

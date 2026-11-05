@@ -83,6 +83,7 @@ LINKS = {
     "clientes": "cadastros:contato_list",
     "posvenda": "comercial:posvenda_list",
     "posvenda_novo": "comercial:posvenda_criar",
+    "devolucoes": "comercial:devolucao_list",
     "metas": "comercial:meta_list",
     "meta_nova": "comercial:meta_criar",
 }
@@ -112,8 +113,12 @@ def textos(ctx):
     if ven:
         ven["ticket_txt"] = reais(ven["ticket"])
         if "margem" in ven:
-            ven["margem_txt"] = (f"{number_format(ven['margem_pct'], 1)}% do faturamento" if ven["margem_pct"] is not None
+            ven["margem_txt"] = (f"{number_format(ven['margem_pct'], 1)}% do faturamento líquido" if ven["margem_pct"] is not None
                                  else "sem vendas no período")
+        ven["devolucoes_txt"] = (
+            f"{number_format(ven['devolucoes_pct'], 1)}% do faturamento · líquido R$ {reais(ven['faturamento_liquido'])}"
+            if ven["devolucoes"] and ven["devolucoes_pct"] is not None
+            else f"{ven['devolucoes_qtd']} devolução(ões) no período")
     if est and "valor" in est:
         dias = est["cobertura_dias"]
         if dias is None:

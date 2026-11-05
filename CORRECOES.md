@@ -10,6 +10,46 @@ Depois de copiar os arquivos, rode `python manage.py migrate` (há uma migraçã
 
 ---
 
+## Devolução de compras (28/10/2026)
+
+Sem migração nova além das da devolução de vendas (abaixo): um único `python manage.py migrate` cobre as duas.
+
+| O que mudou | Onde |
+|---|---|
+| Botão **Registrar devolução ao fornecedor** no detalhe da compra confirmada; tela com a quantidade de cada item (na unidade da nota, convertida pelo fator de conversão), saldo em estoque, motivo, acerto e NF-e de devolução, com resumo antes de confirmar. O detalhe da compra lista as devoluções e o total devolvido | `comercial/views/views_devolucoes.py` (`devolucao_compra_criar`), `comercial/templates/comercial/devolucao_compra_form.html`, `compras_detalhe.html`, `comercial/views/views_compras.py` (`compra_detalhe`), `comercial/urls.py`, `core/permissoes.py` |
+| Regras: só compra confirmada; não devolve mais que o comprado nem mais que o saldo em estoque; valor pela nota (produtos, frete, IPI, ST, menos desconto), proporcional à quantidade | `comercial/services/devolucoes.py` (`itens_devolviveis_compra`, `planejar_devolucao_compra`) |
+| Estoque: saída `DEVOLUCAO_COMPRA` pelo custo com que o item entrou; o **preço médio é recalculado** como se aquela entrada não tivesse existido (ex.: 20 a R$ 6,00, devolve 4 que custaram R$ 5,00 → 16 a R$ 6,25). O recálculo pelo histórico (`recalcular_preco_medio`) faz a mesma conta. Produtos com preço automático acompanham | `comercial/models.py` (`preco_medio_apos_saida`, `MovimentacaoEstoque.save`, `Estoque.recalcular_preco_medio`) |
+| Financeiro: abate as duplicatas em aberto da compra, da última para a primeira. O que já foi pago vira **reembolso do fornecedor** (entrada no Caixa Principal) ou **crédito com o fornecedor** (conta a receber origem "Devolução de compra", categoria "Devoluções de compras"). Não entra no DRE (a compra também não entra) | `comercial/services/devolucoes.py` (`registrar_devolucao_compra`) |
+| Cancelar devolução de compra: a mercadoria volta pelo mesmo custo (o preço médio volta ao que era), as duplicatas voltam ao valor anterior, o reembolso sai de novo do caixa e o crédito é cancelado. Recusa se a duplicata abatida já foi paga ou o crédito já foi recebido. O cancelamento de venda e de compra agora usa a mesma função | `comercial/services/devolucoes.py` (`cancelar_devolucao`), `devolucao_detalhe.html`, `devolucao_cancelar.html` |
+| Painel, bloco Estoque: cartões "Devolvido a fornecedores" e "Perdas com devoluções" (custo do que o cliente devolveu sem condição de revenda; só para quem vê custo) | `relatorios/services/painel.py` (`_devolucoes_estoque`), `relatorios/templates/relatorios/painel.html` |
+| Relatório de movimentações: nomes e filtro "Devoluções" incluem as de compra | `relatorios/services/estoque_service.py` |
+| Permissão: a mesma da devolução de venda (Administrador e Gerente). O grupo Compras/Estoque não registra devolução | `core/permissoes.py` |
+| Testes: preço médio, abatimento, reembolso, crédito, limites (comprado e saldo), fator de conversão, cancelamento (e quando é recusado), permissões, DRE e Painel | `comercial/tests.py` (`DevolucaoCompraTests`) |
+
+---
+
+## Devolução de vendas (28/10/2026)
+
+Rode `python manage.py migrate` (migrações novas `financeiro/0024_origem_devolucao.py`, `comercial/0013_devolucoes.py` e `core/0004_permissoes_devolucao.py`). A migração do `core` só dá as permissões de devolução ao Administrador e ao Gerente; o resto dos grupos fica como está. A proposta está em `PROPOSTA_DEVOLUCOES.md`. A devolução de compra fica para a próxima etapa.
+
+| O que mudou | Onde |
+|---|---|
+| Modelos **Devolucao** (tipo venda ou compra, motivo, data, acerto, valores, NF-e de devolução), **DevolucaoItem** (quantidade, valor líquido, custo do CMV, "volta ao estoque") e **DevolucaoTitulo** (parcelas abatidas e crédito gerado, para o cancelamento saber o que desfazer) | `comercial/models.py`, `comercial/migrations/0013_devolucoes.py` |
+| Regras: só venda finalizada; não devolve mais que o vendido (devoluções parciais somam); valor líquido de cada item com rateio do desconto e acréscimo da venda; venda devolvida por inteiro fecha no total exato | `comercial/services/devolucoes.py` (`itens_devolviveis`, `planejar_devolucao_venda`) |
+| Estoque: o produto volta pelo custo com que saiu na venda (entrada `DEVOLUCAO_VENDA`). Sem condição de revenda, entra e sai na hora como perda (`PERDA_DEVOLUCAO`). Serviço não mexe no estoque | `comercial/services/devolucoes.py` (`registrar_devolucao_venda`), `relatorios/services/estoque_service.py`, `relatorios/forms.py` (filtro "Devoluções" nas movimentações) |
+| Financeiro: o valor abate as parcelas em aberto da venda, da última para a primeira (inteira fica "cancelado", parcial tem o valor reduzido, com nota na observação). O que o cliente já pagou vira **reembolso** (saída no Caixa Principal, origem "Devolução", confere o saldo) ou **crédito do cliente** (conta a pagar origem "Devolução de venda", categoria "Devoluções de vendas", só o vencimento é editável) | `comercial/services/devolucoes.py`, `financeiro/models.py`, `financeiro/migrations/0024_origem_devolucao.py`, `financeiro/views_contas_pagar.py` |
+| **Cancelar devolução**: tira de novo do estoque o que voltou, devolve as parcelas ao valor anterior, estorna o reembolso no caixa e cancela o crédito. Recusa se a parcela abatida já foi recebida ou o crédito já foi pago | `comercial/services/devolucoes.py` (`cancelar_devolucao`), `comercial/views/views_devolucoes.py` |
+| Telas: botão **Registrar devolução** no detalhe da venda finalizada (e no pós-venda do tipo "Pedido de devolução"); tela com a quantidade de cada item, "volta ao estoque?", motivo, acerto e NF-e, e um **resumo do impacto** antes de confirmar; aviso (sem bloquear) quando a venda tem mais de 7, 30 ou 90 dias; **Comercial > Devoluções** com filtros e total; detalhe com itens, parcelas, caixa e botão de cancelar. O detalhe da venda mostra as devoluções e o total devolvido | `comercial/views/views_devolucoes.py`, `comercial/urls.py`, `comercial/templates/comercial/devolucao_form.html`, `devolucao_detalhe.html`, `devolucao_list.html`, `devolucao_cancelar.html`, `venda_detalhe.html`, `posvenda_list.html`, `posvenda_form.html`, `core/templates/partials/sidebar.html`, `comercial/admin.py` (só consulta) |
+| NF-e de devolução (emitida fora do sistema): número, chave (44 números) e XML. Enviando o XML, a chave e o número são lidos dele; o XML pode ser baixado no detalhe | `comercial/forms.py` (`DevolucaoVendaForm`), `comercial/services/devolucoes.py` (`dados_do_xml`) |
+| Venda com devolução não pode mais ser editada, parcelada de novo nem estornada (o estorno devolveria ao estoque o que já voltou) | `comercial/views/views_vendas.py` |
+| **DRE**, pela data da devolução: linha "Devoluções de Vendas" nas deduções (com link para a lista), CMV das vendas menos o custo dos produtos devolvidos, e "Perdas com Devoluções" nas despesas operacionais. A receita bruta não muda | `relatorios/services/dre_service.py` (`devolucoes_de_vendas`), `relatorios/templates/relatorios/dre/dre.html`, `relatorios/views/dre.py` |
+| **Painel**: cartão "Devoluções" no bloco Vendas (valor, variação, % do faturamento e faturamento líquido); a margem bruta passa a ser sobre o faturamento líquido; no bloco Clientes, devoluções do período por motivo e os clientes que mais devolveram | `relatorios/services/painel.py`, `relatorios/views/painel.py`, `relatorios/templates/relatorios/painel.html` |
+| Permissões: registrar e ver devoluções, Administrador e Gerente; cancelar, `change_devolucao` | `core/permissoes.py`, `core/migrations/0004_permissoes_devolucao.py` |
+| Correção à parte: o botão "Finalizar Venda" do detalhe de venda em rascunho apontava para uma rota que não existe e a página dava erro; agora é "Editar / Finalizar Venda" | `comercial/templates/comercial/venda_detalhe.html` |
+| Testes: resumo sem gravar, parcial com abatimento, reembolso, crédito, perda, limite do vendido, rateio do desconto, cancelamento (e quando é recusado), bloqueios da venda, XML, permissões, DRE, competência e Painel | `comercial/tests.py` (`DevolucaoVendaTests`), `relatorios/tests.py` (`DevolucaoNoDreEPainelTests`) |
+
+---
+
 ## Painel de indicadores, fase 4: meta de faturamento e pós-venda (28/10/2026)
 
 Rode `python manage.py migrate` (migrações novas `comercial/0012_meta_posvenda.py` e `core/0003_permissoes_posvenda_meta.py`). A migração do `core` só acrescenta as permissões novas aos grupos; o resto fica como está.

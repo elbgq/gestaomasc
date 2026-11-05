@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}Cancelar devolução{% endblock %}
+
+{% block content %}
+<div class="container mt-4" style="max-width: 640px;">
+    <h1 class="h3 mb-3">Cancelar a devolução #{{ dev.id }}?</h1>
+    <p>O cancelamento desfaz tudo o que a devolução fez:</p>
+    <ul>
+        {% if dev.tipo == "VENDA" %}
+        <li>os produtos que voltaram ao estoque saem de novo;</li>
+        <li>as parcelas abatidas voltam ao valor anterior;</li>
+        {% if dev.valor_reembolso %}<li>o reembolso de R$ {{ dev.valor_reembolso|floatformat:"2g" }} volta para o caixa;</li>{% endif %}
+        {% if dev.valor_credito %}<li>o crédito de R$ {{ dev.valor_credito|floatformat:"2g" }} do cliente é cancelado;</li>{% endif %}
+        <li>a devolução deixa de contar no DRE e no Painel.</li>
+        {% else %}
+        <li>os produtos voltam ao estoque pelo mesmo custo (o preço médio volta ao que era);</li>
+        <li>as duplicatas abatidas voltam ao valor anterior;</li>
+        {% if dev.valor_reembolso %}<li>o reembolso de R$ {{ dev.valor_reembolso|floatformat:"2g" }} sai de novo do caixa;</li>{% endif %}
+        {% if dev.valor_credito %}<li>o crédito de R$ {{ dev.valor_credito|floatformat:"2g" }} com o fornecedor é cancelado;</li>{% endif %}
+        {% endif %}
+    </ul>
+    <form method="post">
+        {% csrf_token %}
+        <label class="form-label" for="motivo">Por que está cancelando?</label>
+        <textarea name="motivo" id="motivo" rows="2" class="form-control mb-3"></textarea>
+        <button type="submit" class="btn btn-danger">Cancelar devolução</button>
+        <a href="{% url 'comercial:devolucao_detalhe' dev.id %}" class="btn btn-secondary">Voltar</a>
+    </form>
+</div>
+{% endblock %}

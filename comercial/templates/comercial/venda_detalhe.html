@@ -98,6 +98,28 @@
     </div>
     {% endif %}
 
+    <!-- Devoluções -->
+    {% if devolucoes %}
+    {% pode "comercial:devolucao_detalhe" as pode_ver_devolucao %}
+    <div class="card shadow-sm p-4 mb-4">
+        <h4 class="mb-3">Devoluções</h4>
+        <table class="table table-sm table-bordered mb-2">
+            <thead><tr><th>Data</th><th>Motivo</th><th>Valor</th><th>Situação</th></tr></thead>
+            <tbody>
+                {% for d in devolucoes %}
+                <tr>
+                    <td>{% if pode_ver_devolucao %}<a href="{% url 'comercial:devolucao_detalhe' d.id %}">{{ d.data|date:"d/m/Y" }}</a>{% else %}{{ d.data|date:"d/m/Y" }}{% endif %}</td>
+                    <td>{{ d.get_motivo_display }}</td>
+                    <td>R$ {{ d.valor_total|floatformat:2 }}</td>
+                    <td>{% if d.status == "cancelada" %}<span class="badge bg-secondary">Cancelada</span>{% else %}<span class="badge bg-success">Confirmada</span>{% endif %}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <p class="mb-0"><strong>Devolvido:</strong> R$ {{ total_devolvido|floatformat:2 }} de R$ {{ venda.total|floatformat:2 }}</p>
+    </div>
+    {% endif %}
+
     <!-- Movimentos de caixa -->
     <div class="card shadow-sm p-4 mb-4">
         <h4 class="mb-3">Movimento de Caixa</h4>
@@ -125,9 +147,7 @@
 
         {% if venda.status == "rascunho" %}
             <a href="{% url 'comercial:venda_editar' venda.id %}" class="btn btn-success">
-                Editar Venda</a>
-            <a href="{% url 'comercial:modal_finalizar_venda' venda.id %}" class="btn btn-success">
-                Finalizar Venda</a>
+                Editar / Finalizar Venda</a>
         {% endif %}
         <a href="{% url 'financeiro:caixa_list' %}" class="btn btn-outline-secondary">
             Ver Caixa
@@ -136,6 +156,9 @@
             {% pode "comercial:posvenda_criar" as pode_posvenda %}
             {% if pode_posvenda %}<a href="{% url 'comercial:posvenda_criar' %}?venda={{ venda.id }}" class="btn btn-outline-primary">
                 Registrar pós-venda</a>{% endif %}
+            {% pode "comercial:devolucao_venda_criar" as pode_devolucao %}
+            {% if pode_devolucao and pode_devolver %}<a href="{% url 'comercial:devolucao_venda_criar' venda.id %}" class="btn btn-outline-danger">
+                Registrar devolução</a>{% endif %}
         {% endif %}
 
     </div>

@@ -42,6 +42,9 @@
     {% if dre.descontos_vendas %}
     <tr><th class="ps-3">Descontos nas Vendas</th><td class="text-end">R$ {{ dre.descontos_vendas|floatformat:2 }}</td></tr>
     {% endif %}
+    {% if dre.devolucoes_vendas %}
+    <tr><th class="ps-3">{% if link_devolucoes %}<a href="{{ link_devolucoes }}">Devoluções de Vendas</a>{% else %}Devoluções de Vendas{% endif %}</th><td class="text-end">R$ {{ dre.devolucoes_vendas|floatformat:2 }}</td></tr>
+    {% endif %}
     <tr><th class="ps-3">ICMS</th><td class="text-end">R$ {{ dre.icms|floatformat:2 }}</td></tr>
     <tr><th class="ps-3">ISS</th><td class="text-end">R$ {{ dre.iss|floatformat:2 }}</td></tr>
     <tr><th class="ps-3">PIS</th><td class="text-end">R$ {{ dre.pis|floatformat:2 }}</td></tr>
@@ -62,6 +65,10 @@
 
     <!-- CMV -->
     <tr><th>(-) CMV</th><td class="text-end">R$ {{ dre.cmv|floatformat:2 }}</td></tr>
+    {% if dre.cmv_devolucoes %}
+    <tr><th class="ps-3">CMV das vendas</th><td class="text-end">R$ {{ dre.cmv_vendas|floatformat:2 }}</td></tr>
+    <tr><th class="ps-3">(-) Custo dos produtos devolvidos</th><td class="text-end">R$ {{ dre.cmv_devolucoes|floatformat:2 }}</td></tr>
+    {% endif %}
     {% if dre.custos_lancados %}
     <tr><th>(-) Custos lançados (CMV/CSP)</th><td class="text-end">R$ {{ dre.custos_lancados|floatformat:2 }}</td></tr>
     {% endif %}
@@ -74,6 +81,9 @@
     <tr><th>Despesas com Vendas</th><td class="text-end">R$ {{ dre.despesas_vendas|floatformat:2 }}</td></tr>
     <tr><th>Despesas Administrativas</th><td class="text-end">R$ {{ dre.despesas_adm|floatformat:2 }}</td></tr>
     <tr><th>Despesas Gerais</th><td class="text-end">R$ {{ dre.despesas_gerais|floatformat:2 }}</td></tr>
+    {% if dre.perdas_devolucoes %}
+    <tr><th>Perdas com Devoluções (produto sem revenda)</th><td class="text-end">R$ {{ dre.perdas_devolucoes|floatformat:2 }}</td></tr>
+    {% endif %}
 
     <tr class="table-secondary">
         <th>Total Despesas Operacionais</th>

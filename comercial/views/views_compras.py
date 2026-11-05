@@ -367,8 +367,13 @@ def compra_detalhe(request, compra_id):
         Q(content_type=ContentType.objects.get_for_model(Compra), object_id=compra.id)
     ).distinct()
     
+    from comercial.services.devolucoes import itens_devolviveis_compra, total_devolvido_compra
     return render(request, "comercial/compras_detalhe.html", {
         "compra": compra,
+        # Devoluções ao fornecedor e se ainda há o que devolver
+        "devolucoes": compra.devolucoes.order_by("data", "id"),
+        "total_devolvido": total_devolvido_compra(compra),
+        "pode_devolver": compra.confirmada and any(l["disponivel"] > 0 for l in itens_devolviveis_compra(compra)),
         "itens": itens,
         "movimentacoes": movimentacoes,
         "titulos": titulos,

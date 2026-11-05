@@ -121,6 +121,7 @@ class FinanceiroReceber(models.Model):
         ("MANUAL", "Manual"),
         ("VENDA", "Venda"),
         ("RECEITA", "Receita Diversa"),
+        ("DEVOLUCAO", "Devolução de compra"),
     )
     origem = models.CharField(max_length=20, choices=ORIGEM_CHOICES)
     # Campos para referência genérica
@@ -191,6 +192,7 @@ class FinanceiroPagar(models.Model):
         ("COMPRA", "Compra"),
         ("LANCAMENTO", "Lançamento"),
         ("MANUAL", "Manual"),
+        ("DEVOLUCAO", "Devolução de venda"),
     )
 
     origem = models.CharField(max_length=20, choices=ORIGEM_CHOICES)
@@ -256,6 +258,7 @@ class CaixaMovimento(models.Model):
         ("TRANSFERENCIA", "Transferência"),
         ("VENDA", "Entrada de Venda"),
         ("ESTORNO", "Estorno"),
+        ("DEVOLUCAO", "Devolução"),
     )
 
     data = models.DateField()

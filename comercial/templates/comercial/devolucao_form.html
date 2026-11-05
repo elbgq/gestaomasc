@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block title %}Devolução da venda{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="h3 mb-1">Devolução da venda {{ venda.numero_formatado }}</h1>
+    <p class="text-body-secondary mb-3">
+        {{ venda.cliente }} · {{ venda.data_emissao|date:"d/m/Y" }} · total R$ {{ venda.total|floatformat:"2g" }}
+        {% if ja_devolvido %}· já devolvido R$ {{ ja_devolvido|floatformat:"2g" }}{% endif %}
+        {% if posvenda %}· ligada ao pós-venda de {{ posvenda.data|date:"d/m/Y" }}{% endif %}
+    </p>
+
+    {% if aviso %}<div class="alert alert-warning py-2">{{ aviso }}</div>{% endif %}
+    {% if erro %}<div class="alert alert-danger py-2">{{ erro }}</div>{% endif %}
+    {{ form.non_field_errors }}
+
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        {% if posvenda %}<input type="hidden" name="posvenda" value="{{ posvenda.id }}">{% endif %}
+        <input type="hidden" name="xml_texto" value="{{ xml_texto }}">
+
+        <!-- Itens -->
+        <div class="card shadow-sm mb-3">
+            <div class="card-header fw-semibold">O que o cliente devolveu</div>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th class="text-end">Vendido</th>
+                            <th class="text-end">Já devolvido</th>
+                            <th class="text-end">Valor unit. líquido</th>
+                            <th style="width: 9rem;">Devolver agora</th>
+                            <th>Volta ao estoque?</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for l in linhas %}
+                        <tr class="{% if not l.disponivel %}text-body-secondary{% endif %}">
+                            <td>{{ l.item.produto|default:l.item.servico }}{% if l.item.servico %} <span class="badge bg-secondary">serviço</span>{% endif %}</td>
+                            <td class="text-end">{{ l.vendido|floatformat:"-3" }}</td>
+                            <td class="text-end">{{ l.devolvido|floatformat:"-3" }}</td>
+                            <td class="text-end">R$ {{ l.valor_unitario|floatformat:"2g" }}</td>
+                            <td>
+                                {% if l.disponivel %}
+                                <input type="number" name="qtd_{{ l.item.id }}" value="{{ l.pedido|floatformat:'-3' }}" min="0" max="{{ l.disponivel|floatformat:'-3' }}" step="any" class="form-control form-control-sm">
+                                <div class="form-text">até {{ l.disponivel|floatformat:"-3" }}</div>
+                                {% else %}<span class="small">devolvido</span>{% endif %}
+                            </td>
+                            <td>
+                                {% if l.item.produto and l.disponivel %}
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="estoque_{{ l.item.id }}" value="1" id="estoque_{{ l.item.id }}" {% if l.volta %}checked{% endif %}>
+                                    <label class="form-check-label small" for="estoque_{{ l.item.id }}">sim (desmarque se não serve para revenda: baixa como perda)</label>
+                                </div>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Dados da devolução -->
+        <div class="card shadow-sm mb-3">
+            <div class="card-body">
+                <div class="row g-3">
+                    {% for campo in form %}
+                    <div class="{% if campo.name == 'observacao' or campo.name == 'acerto' %}col-12{% else %}col-md-4{% endif %}">
+                        <label class="form-label" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+                        {% if campo.name == "acerto" %}
+                            {% for opcao in campo %}<div class="form-check">{{ opcao.tag }} <label class="form-check-label" for="{{ opcao.id_for_label }}">{{ opcao.choice_label }}</label></div>{% endfor %}
+                        {% else %}{{ campo }}{% endif %}
+                        {% if campo.help_text %}<div class="form-text">{{ campo.help_text }}</div>{% endif %}
+                        {% for e in campo.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% if xml_texto %}<p class="small text-success mt-2 mb-0">XML da NF-e já anexado.</p>{% endif %}
+            </div>
+        </div>
+
+        {% if plano %}
+        <!-- Resumo do impacto -->
+        <div class="card shadow-sm mb-3 border-primary">
+            <div class="card-header fw-semibold">Confira antes de confirmar</div>
+            <div class="card-body">
+                <table class="table table-sm mb-3">
+                    <thead><tr><th>Item</th><th class="text-end">Qtd</th><th class="text-end">Valor</th>{% if ver_custos %}<th class="text-end">Custo (CMV)</th>{% endif %}<th>Estoque</th></tr></thead>
+                    <tbody>
+                        {% for i in plano.itens %}
+                        <tr>
+                            <td>{{ i.item.produto|default:i.item.servico }}</td>
+                            <td class="text-end">{{ i.quantidade|floatformat:"-3" }}</td>
+                            <td class="text-end">R$ {{ i.valor|floatformat:"2g" }}</td>
+                            {% if ver_custos %}<td class="text-end">{% if i.produto %}R$ {{ i.custo_total|floatformat:"2g" }}{% else %}—{% endif %}</td>{% endif %}
+                            <td>{% if not i.produto %}—{% elif i.volta_estoque %}volta ao estoque{% else %}perda{% endif %}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot><tr class="fw-semibold"><td colspan="2">Total devolvido</td><td class="text-end">R$ {{ plano.valor_total|floatformat:"2g" }}</td>{% if ver_custos %}<td class="text-end">R$ {{ plano.valor_custo|floatformat:"2g" }}</td>{% endif %}<td></td></tr></tfoot>
+                </table>
+
+                <ul class="mb-0">
+                    {% for ab in plano.abatimentos %}
+                    <li>Parcela "{{ ab.titulo.descricao }}" (venc. {{ ab.titulo.data_vencimento|date:"d/m/Y" }}):
+                        {% if ab.cancela %}cancelada (R$ {{ ab.valor|floatformat:"2g" }}){% else %}reduzida em R$ {{ ab.valor|floatformat:"2g" }}{% endif %}</li>
+                    {% endfor %}
+                    {% if plano.restante > 0 %}
+                    <li>Já pago pelo cliente: <strong>R$ {{ plano.restante|floatformat:"2g" }}</strong>
+                        {% if form.cleaned_data.acerto == "credito" %}vira crédito do cliente (conta a pagar).{% else %}sai do caixa como reembolso.{% endif %}</li>
+                    {% endif %}
+                    <li>No DRE de {{ form.cleaned_data.data|date:"m/Y" }}: R$ {{ plano.valor_total|floatformat:"2g" }} em "(−) Devoluções de vendas"{% if ver_custos and plano.valor_custo %} e o CMV diminui R$ {{ plano.valor_custo|floatformat:"2g" }}{% endif %}.</li>
+                </ul>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="d-flex gap-2">
+            {% if plano and not form.errors %}
+            <button type="submit" name="confirmar" value="1" class="btn btn-success">Confirmar devolução</button>
+            <button type="submit" class="btn btn-outline-primary">Recalcular</button>
+            {% else %}
+            <button type="submit" class="btn btn-primary">Ver resumo</button>
+            {% endif %}
+            <a href="{% url 'comercial:venda_detalhe' venda.id %}" class="btn btn-secondary">Voltar</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

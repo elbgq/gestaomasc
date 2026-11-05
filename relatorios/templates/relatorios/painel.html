@@ -186,6 +186,7 @@
         {% include "relatorios/painel/_cartao.html" with titulo="Descontos concedidos" valor=v.descontos rs=1 sub="na venda e nos itens" %}
         {% endif %}
         {% include "relatorios/painel/_cartao.html" with titulo="Vendas em rascunho" valor=v.rascunhos sub="iniciadas e não finalizadas" alerta=v.rascunhos link=links.vendas %}
+        {% include "relatorios/painel/_cartao.html" with titulo="Devoluções" valor=v.devolucoes rs=1 var=v.devolucoes_var neutro=1 sub=v.devolucoes_txt link=links.devolucoes %}
     </div>
     <!-- Meta de faturamento do mês -->
     {% if meta.valor is not None %}
@@ -296,6 +297,10 @@
         {% include "relatorios/painel/_cartao.html" with titulo="Abaixo do mínimo" valor=e.abaixo_qtd sub=e.zerados|stringformat:"d"|add:" produto(s) zerado(s)" alerta=e.abaixo_qtd link=links.estoque %}
         {% include "relatorios/painel/_cartao.html" with titulo="Compras no período" valor=e.compras rs=1 var=e.compras_var neutro=1 sub=e.compras_qtd|stringformat:"d"|add:" nota(s)" %}
         {% include "relatorios/painel/_cartao.html" with titulo="Compras a confirmar" valor=e.compras_pendentes sub=e.itens_sem_vinculo|stringformat:"d"|add:" item(ns) sem vínculo" alerta=e.compras_pendentes link=links.compras %}
+        {% include "relatorios/painel/_cartao.html" with titulo="Devolvido a fornecedores" valor=e.devolvido_fornecedor rs=1 sub=e.devolvido_fornecedor_qtd|stringformat:"d"|add:" devolução(ões) no período" link=links.devolucoes %}
+        {% if ver_custos %}
+        {% include "relatorios/painel/_cartao.html" with titulo="Perdas com devoluções" valor=e.perdas_devolucao rs=1 sub="custo do que o cliente devolveu sem condição de revenda" alerta=e.perdas_devolucao %}
+        {% endif %}
     </div>
     <div class="row g-3">
         <div class="col-lg-6">
@@ -433,6 +438,28 @@
             </div>
         </div>
     </div>
+
+    <!-- Devoluções -->
+    {% with dv=c.devolucoes %}
+    <div class="card shadow-sm mt-3">
+        <div class="card-header fw-semibold d-flex flex-wrap justify-content-between gap-2">
+            <span>Devoluções no período: {{ dv.qtd }} · R$ {{ dv.valor|floatformat:"2g" }}{% if dv.taxa is not None %} ({{ dv.taxa|floatformat:1 }}% do faturamento){% endif %}</span>
+            {% if links.devolucoes %}<a class="small fw-normal" href="{{ links.devolucoes }}?tipo=VENDA&de={{ per.ini|date:'Y-m-d' }}&ate={{ per.fim|date:'Y-m-d' }}">Ver devoluções</a>{% endif %}
+        </div>
+        {% if dv.qtd %}
+        <div class="card-body row g-3">
+            <div class="col-md-6">
+                <div class="small fw-semibold mb-1">Por motivo</div>
+                {% for m in dv.motivos %}<div class="d-flex justify-content-between small"><span>{{ m.motivo }} ({{ m.qtd }})</span><span>R$ {{ m.valor|floatformat:"2g" }}</span></div>{% endfor %}
+            </div>
+            <div class="col-md-6">
+                <div class="small fw-semibold mb-1">Clientes que mais devolveram</div>
+                {% for cl in dv.clientes %}<div class="d-flex justify-content-between small"><span>{{ cl.nome|truncatechars:30 }} ({{ cl.qtd }})</span><span>R$ {{ cl.valor|floatformat:"2g" }}</span></div>{% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    {% endwith %}
 
     <!-- Pós-venda -->
     {% with pv=c.pos_venda %}

@@ -596,3 +596,76 @@ class PainelTests(TestCase):
 
         self.client.force_login(self.usuario("adm", "Administrador"))
         self.assertContains(self.client.get(reverse("relatorios:painel")), "1 pós-venda(s) com retorno atrasado")
+
+
+class DevolucaoNoDreEPainelTests(TestCase):
+    # Venda de 2 x R$ 20,00 (custo R$ 5,00) e devolução de 1 unidade
+    def setUp(self):
+        from django.core.cache import cache
+        from cadastros.models import Produto
+        from comercial.models import MovimentacaoEstoque
+        from comercial.views.views_estoque import registrar_cmv
+        from comercial.views.views_vendas import registrar_financeiro_venda
+        cache.clear()
+        self.hoje = timezone.localdate()
+        self.cliente = Contato.objects.create(nome="Cliente", tipo="CLIENTE")
+        self.produto = Produto.objects.create(codor="P1", descricao="Cabo", unidade="UN")
+        MovimentacaoEstoque.objects.create(produto=self.produto, tipo="ENTRADA", quantidade=10,
+                                           preco=Decimal("5.00"), origem="AJUSTE")
+        self.venda = Venda.objects.create(cliente=self.cliente, status="finalizada", forma_pagamento="pix",
+                                          data_emissao=timezone.make_aware(datetime.combine(self.hoje, time(10, 0))))
+        self.item = VendaItem.objects.create(venda=self.venda, produto=self.produto, quantidade=2, preco_unitario=Decimal("20.00"))
+        registrar_financeiro_venda(self.venda, parcelas=1, dias=0, data_inicial=self.hoje)
+        registrar_cmv(self.venda)
+
+    def devolver(self, quantidade=1, data=None, volta=True):
+        from comercial.services.devolucoes import registrar_devolucao_venda
+        return registrar_devolucao_venda(self.venda, {self.item.id: (Decimal(quantidade), volta)},
+                                         {"data": data or self.hoje, "motivo": "defeito"})
+
+    def test_dre_deduz_devolucao_e_reduz_cmv(self):
+        self.devolver()
+        dre = dre_por_periodo(self.hoje, self.hoje)
+        self.assertEqual(dre["receita_bruta"], Decimal("40.00"))  # a venda continua inteira
+        self.assertEqual(dre["devolucoes_vendas"], Decimal("20.00"))
+        self.assertEqual(dre["receita_liquida"], Decimal("20.00"))
+        self.assertEqual((dre["cmv_vendas"], dre["cmv_devolucoes"], dre["cmv"]), (Decimal("10.00"), Decimal("5.00"), Decimal("5.00")))
+        self.assertEqual(dre["lucro_bruto"], Decimal("15.00"))
+        from django.contrib.auth import get_user_model
+        self.client.force_login(get_user_model().objects.create_superuser("adm", password="x"))
+        resp = self.client.get(reverse("relatorios:dre"), {"data_inicio": self.hoje.strftime("%d/%m/%Y"),
+                                                          "data_fim": self.hoje.strftime("%d/%m/%Y")})
+        self.assertContains(resp, "Devoluções de Vendas")
+        self.assertContains(resp, "Custo dos produtos devolvidos")
+
+    def test_devolucao_entra_no_mes_dela(self):
+        from datetime import timedelta
+        amanha = self.hoje + timedelta(days=1)
+        self.devolver(data=amanha)
+        self.assertEqual(dre_por_periodo(self.hoje, self.hoje)["devolucoes_vendas"], Decimal("0"))
+        dre = dre_por_periodo(amanha, amanha)
+        self.assertEqual((dre["devolucoes_vendas"], dre["cmv"]), (Decimal("20.00"), Decimal("-5.00")))
+
+    def test_devolucao_cancelada_nao_conta(self):
+        from comercial.services.devolucoes import cancelar_devolucao
+        cancelar_devolucao(self.devolver())
+        dre = dre_por_periodo(self.hoje, self.hoje)
+        self.assertEqual((dre["devolucoes_vendas"], dre["cmv"]), (Decimal("0"), Decimal("10.00")))
+
+    def test_painel_mostra_devolucoes(self):
+        from relatorios.services.painel import bloco_clientes, bloco_vendas, periodo
+        self.devolver()
+        per = periodo("mes", self.hoje)
+        dados = bloco_vendas(per, ver_custos=True)
+        self.assertEqual((dados["faturamento"], dados["devolucoes"], dados["faturamento_liquido"]),
+                         (Decimal("40.00"), Decimal("20.00"), Decimal("20.00")))
+        self.assertEqual(dados["devolucoes_pct"], Decimal("50.0"))
+        self.assertEqual((dados["cmv"], dados["margem"]), (Decimal("5.00"), Decimal("15.00")))
+        clientes = bloco_clientes(per, self.hoje)["devolucoes"]
+        self.assertEqual((clientes["qtd"], clientes["taxa"]), (1, Decimal("50.0")))
+        self.assertEqual(clientes["motivos"][0]["motivo"], "Defeito")
+        self.assertEqual(clientes["clientes"][0]["nome"], "Cliente")
+        # A tela do Painel mostra o cartão
+        from django.contrib.auth import get_user_model
+        self.client.force_login(get_user_model().objects.create_superuser("adm", password="x"))
+        self.assertContains(self.client.get(reverse("relatorios:painel")), "Devoluções")

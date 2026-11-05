@@ -15,6 +15,9 @@ from .views.views_compras import (
     importar_compra, vincular_itens, confirmar_compra, compra_finalizar_avista,
     compra_finalizar_parcelada, compra_finalizar_duplicatas, compra_xml
 )
+from .views.views_devolucoes import (
+    devolucao_venda_criar, devolucao_compra_criar, devolucao_list, devolucao_detalhe, devolucao_cancelar, devolucao_xml
+)
 from .views.views_posvenda import (
     posvenda_list, posvenda_criar, posvenda_editar, meta_list, meta_criar, meta_editar
 )
@@ -66,6 +69,14 @@ urlpatterns = [
     path("api/produto-por-codigo/", api_produto_codigo, name="api_produto_codigo"),
     # Lista do modal "Escolher item" da venda
     path("api/itens-venda/", api_itens_venda, name="api_itens_venda"),
+
+    # Devoluções
+    path("venda/<int:venda_id>/devolucao/", devolucao_venda_criar, name="devolucao_venda_criar"),
+    path("compras/<int:compra_id>/devolucao/", devolucao_compra_criar, name="devolucao_compra_criar"),
+    path("devolucoes/", devolucao_list, name="devolucao_list"),
+    path("devolucoes/<int:pk>/", devolucao_detalhe, name="devolucao_detalhe"),
+    path("devolucoes/<int:pk>/cancelar/", devolucao_cancelar, name="devolucao_cancelar"),
+    path("devolucoes/<int:pk>/xml/", devolucao_xml, name="devolucao_xml"),
 
     # Pós-venda
     path("posvenda/", posvenda_list, name="posvenda_list"),

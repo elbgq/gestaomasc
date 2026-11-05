@@ -3,7 +3,7 @@ from decimal import Decimal, InvalidOperation
 from .models import (
     Compra, CompraItem,
     Venda, VendaItem, Estoque,
-    MetaFaturamento, PosVenda,
+    MetaFaturamento, PosVenda, Devolucao,
     )
 from django.forms import inlineformset_factory, BaseInlineFormSet
 from django.db.models import Q
@@ -412,4 +412,67 @@ class PosVendaForm(BaseFormBootstrap):
             self.add_error("venda", "Esta venda é de outro cliente.")
         if dados.get("status") == "resolvido" and not (dados.get("solucao") or "").strip():
             self.add_error("solucao", "Conte como foi resolvido.")
+        return dados
+
+
+#===============================
+# DEVOLUÇÃO DE VENDA
+#===============================
+# Cabeçalho da devolução; as quantidades de cada item vêm da tabela da tela (qtd_<id do item>)
+class DevolucaoVendaForm(BaseFormBootstrap):
+    xml = forms.FileField(label="XML da NF-e de devolução", required=False,
+                          help_text="Opcional. A chave e o número são lidos do XML se ficarem em branco.")
+
+    class Meta:
+        model = Devolucao
+        fields = ["data", "motivo", "acerto", "observacao", "nf_numero", "nf_chave"]
+        widgets = {
+            "data": DatePickerInput(),
+            "observacao": forms.Textarea(attrs={"rows": 2}),
+            "acerto": forms.RadioSelect,
+        }
+        help_texts = {
+            "acerto": "Só usado se o cliente já pagou parte do valor devolvido. O resto abate as parcelas em aberto.",
+            "nf_chave": "NF-e de devolução emitida no emissor (cliente pessoa física) ou recebida do cliente (CNPJ).",
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["motivo"].widget.attrs["class"] = "form-select"
+        self.fields["acerto"].widget.attrs["class"] = "form-check-input"
+        self.fields["acerto"].choices = Devolucao.ACERTO_CHOICES
+        self.fields["acerto"].required = False
+        if not self.is_bound and not self.initial.get("acerto"):
+            self.initial["acerto"] = "reembolso"
+
+    def clean_nf_chave(self):
+        chave = "".join(c for c in (self.cleaned_data.get("nf_chave") or "") if c.isdigit())
+        if chave and len(chave) != 44:
+            raise forms.ValidationError("A chave da NF-e tem 44 números.")
+        return chave
+
+    def clean_xml(self):
+        arquivo = self.cleaned_data.get("xml")
+        if not arquivo:
+            return ""
+        conteudo = arquivo.read()
+        for codificacao in ("utf-8", "latin-1"):
+            try:
+                texto = conteudo.decode(codificacao)
+                break
+            except UnicodeDecodeError:
+                continue
+        if "<" not in texto or "NFe" not in texto:
+            raise forms.ValidationError("O arquivo não parece ser o XML de uma NF-e.")
+        return texto
+
+    def clean(self):
+        from comercial.services.devolucoes import dados_do_xml
+        dados = super().clean()
+        if dados.get("xml"):
+            chave, numero = dados_do_xml(dados["xml"])
+            if dados.get("nf_chave") and chave and chave != dados["nf_chave"]:
+                self.add_error("nf_chave", "A chave informada não é a do XML enviado.")
+            dados["nf_chave"] = dados.get("nf_chave") or chave
+            dados["nf_numero"] = dados.get("nf_numero") or numero
         return dados

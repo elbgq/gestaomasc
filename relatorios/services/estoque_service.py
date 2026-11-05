@@ -10,6 +10,13 @@ ORIGENS = {
     "VENDA_ESTORNADA": "Venda estornada",
     "ESTORNO_VENDA": "Estorno de venda",
     "AJUSTE": "Ajuste",
+    "DEVOLUCAO_VENDA": "Devolução de venda",
+    "ESTORNO_DEVOLUCAO_VENDA": "Devolução de venda",
+    "PERDA_DEVOLUCAO": "Perda (devolução sem revenda)",
+    "DEVOLUCAO_CANCELADA": "Devolução cancelada",
+    "DEVOLUCAO_COMPRA": "Devolução ao fornecedor",
+    "DEVOLUCAO_COMPRA_CANCELADA": "Devolução ao fornecedor cancelada",
+    "ESTORNO_DEVOLUCAO_COMPRA_CANCELADA": "Devolução ao fornecedor cancelada",
 }
 
 # Grupos do filtro de origem
@@ -18,6 +25,8 @@ FILTRO_ORIGEM = {
     "venda": ["VENDA", "VENDA_ESTORNADA"],
     "estorno": ["ESTORNO_VENDA"],
     "ajuste": ["AJUSTE"],
+    "devolucao": ["DEVOLUCAO_VENDA", "ESTORNO_DEVOLUCAO_VENDA", "PERDA_DEVOLUCAO", "DEVOLUCAO_CANCELADA",
+                  "DEVOLUCAO_COMPRA", "DEVOLUCAO_COMPRA_CANCELADA", "ESTORNO_DEVOLUCAO_COMPRA_CANCELADA"],
 }
 
 

@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% load permissoes %}
+
+{% block title %}Devoluções{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-1">
+        <h1 class="h3">Devoluções</h1>
+    </div>
+    <p class="small text-body-secondary">Para registrar uma devolução, abra a venda (ou a compra) e use "Registrar devolução".</p>
+
+    <!-- Filtros -->
+    <form method="get" class="row g-2 mb-3">
+        <div class="col-md-2">
+            <select name="status" class="form-select">
+                <option value="confirmada" {% if status == "confirmada" %}selected{% endif %}>Confirmadas</option>
+                <option value="cancelada" {% if status == "cancelada" %}selected{% endif %}>Canceladas</option>
+                <option value="todas" {% if status == "todas" %}selected{% endif %}>Todas</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <select name="tipo" class="form-select">
+                <option value="">Todos os tipos</option>
+                {% for codigo, nome in tipos %}<option value="{{ codigo }}" {% if tipo == codigo %}selected{% endif %}>{{ nome }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <select name="motivo" class="form-select">
+                <option value="">Todos os motivos</option>
+                {% for codigo, nome in motivos %}<option value="{{ codigo }}" {% if motivo == codigo %}selected{% endif %}>{{ nome }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2"><input type="date" name="de" value="{{ de|date:'Y-m-d' }}" class="form-control" title="De"></div>
+        <div class="col-md-2"><input type="date" name="ate" value="{{ ate|date:'Y-m-d' }}" class="form-control" title="Até"></div>
+        <div class="col-md-2"><input type="text" name="q" value="{{ q }}" class="form-control" placeholder="Cliente ou NF"></div>
+        <div class="col-12 col-md-2"><button class="btn btn-outline-primary w-100">Filtrar</button></div>
+    </form>
+
+    <div class="table-responsive">
+        <table class="table table-striped table-hover align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th>Data</th>
+                    <th>Tipo</th>
+                    <th>Cliente / fornecedor</th>
+                    <th>Documento</th>
+                    <th>Motivo</th>
+                    <th class="text-end">Valor</th>
+                    <th>Situação</th>
+                    <th class="text-center">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for d in page_obj %}
+                <tr>
+                    <td>{{ d.data|date:"d/m/Y" }}</td>
+                    <td>{{ d.get_tipo_display }}</td>
+                    <td>{{ d.contato.nome }}</td>
+                    <td>{% if d.venda %}Venda {{ d.venda.numero_formatado }}{% elif d.compra %}Compra {{ d.compra.numero_formatado }}{% endif %}
+                        {% if d.nf_numero %}<div class="small text-body-secondary">NF-e {{ d.nf_numero }}</div>{% endif %}</td>
+                    <td>{{ d.get_motivo_display }}</td>
+                    <td class="text-end">R$ {{ d.valor_total|floatformat:"2g" }}</td>
+                    <td>{% if d.status == "cancelada" %}<span class="badge bg-secondary">Cancelada</span>{% else %}<span class="badge bg-success">Confirmada</span>{% endif %}</td>
+                    <td class="text-center"><a href="{% url 'comercial:devolucao_detalhe' d.id %}" class="btn btn-sm btn-outline-primary">Ver</a></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="8" class="text-center text-muted">Nenhuma devolução encontrada.</td></tr>
+                {% endfor %}
+            </tbody>
+            {% if page_obj.paginator.count %}
+            <tfoot><tr class="fw-semibold"><td colspan="5">Total confirmado no filtro</td><td class="text-end">R$ {{ total|floatformat:"2g" }}</td><td colspan="2"></td></tr></tfoot>
+            {% endif %}
+        </table>
+    </div>
+    {% include "partials/paginator.html" %}
+</div>
+{% endblock %}

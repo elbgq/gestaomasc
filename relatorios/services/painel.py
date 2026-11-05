@@ -12,8 +12,8 @@ from django.db.models.functions import Coalesce, TruncDate, TruncMonth
 
 from cadastros.models import Contato, Produto
 from cadastros.precos import produtos_sinalizados
-from comercial.models import (CMVItem, Compra, CompraItem, Estoque, MetaFaturamento, MovimentacaoEstoque, PosVenda,
-                               Venda, VendaItem)
+from comercial.models import (CMVItem, Compra, CompraItem, Devolucao, DevolucaoItem, Estoque, MetaFaturamento, MovimentacaoEstoque,
+                               PosVenda, Venda, VendaItem)
 from financeiro.models import CaixaMovimento, Caixa, FinanceiroPagar, FinanceiroReceber
 from relatorios.services.dre_service import dre_por_periodo
 
@@ -92,6 +92,11 @@ def _vendas(ini, fim):
     return Venda.objects.filter(status="finalizada", data_emissao__date__gte=ini, data_emissao__date__lte=fim)
 
 
+# Devoluções de venda confirmadas no período, pela data da devolução (igual ao DRE)
+def _devolucoes(ini, fim):
+    return Devolucao.objects.filter(tipo="VENDA", status="confirmada", data__gte=ini, data__lte=fim)
+
+
 def _serie_vendas(per):
     # Faturamento por dia (por mês no período de 12 meses), com o período anterior alinhado ao lado
     ini, fim, ini_ant, fim_ant = per["ini"], per["fim"], per["ini_ant"], per["fim_ant"]
@@ -156,8 +161,18 @@ def bloco_vendas(per, ver_custos):
         for linha in vendas.values("vendedor__nome").annotate(total=Sum("total"), qtd=Count("id")).order_by("-total")
     ]
 
+    dev = _devolucoes(per["ini"], per["fim"]).aggregate(valor=Sum("valor_total"), custo=Sum("valor_custo"), qtd=Count("id"))
+    dev_ant = _devolucoes(per["ini_ant"], per["fim_ant"]).aggregate(valor=Sum("valor_total"))
+    devolucoes = dev["valor"] or ZERO
+    liquido = faturamento - devolucoes
+
     dados = {
         "faturamento": faturamento,
+        "devolucoes": devolucoes,
+        "devolucoes_qtd": dev["qtd"],
+        "devolucoes_var": variacao(devolucoes, dev_ant["valor"]),
+        "devolucoes_pct": (devolucoes / faturamento * 100).quantize(Decimal("0.1")) if faturamento else None,
+        "faturamento_liquido": liquido,
         "faturamento_var": variacao(faturamento, antes["fat"]),
         "qtd": qtd,
         "qtd_var": variacao(qtd, antes["qtd"]),
@@ -173,11 +188,11 @@ def bloco_vendas(per, ver_custos):
         "serie": _serie_vendas(per),
     }
     if ver_custos:
-        # Mesmo CMV da DRE (itens de CMV das vendas finalizadas do período)
-        cmv = CMVItem.objects.filter(venda__in=vendas).aggregate(t=Sum("total_cmv"))["t"] or ZERO
+        # Mesmo CMV da DRE (itens de CMV das vendas finalizadas do período, menos o custo devolvido)
+        cmv = (CMVItem.objects.filter(venda__in=vendas).aggregate(t=Sum("total_cmv"))["t"] or ZERO) - (dev["custo"] or ZERO)
         dados["cmv"] = cmv
-        dados["margem"] = faturamento - cmv
-        dados["margem_pct"] = ((faturamento - cmv) / faturamento * 100).quantize(Decimal("0.1")) if faturamento else None
+        dados["margem"] = liquido - cmv
+        dados["margem_pct"] = ((liquido - cmv) / liquido * 100).quantize(Decimal("0.1")) if liquido else None
     return dados
 
 
@@ -250,6 +265,7 @@ def bloco_estoque(per, hoje, ver_custos):
         "compras_qtd": compras.count(),
         "compras_var": variacao(total_compras, compras_ant.aggregate(t=Sum("valor_total"))["t"]),
         "compras_pendentes": Compra.objects.filter(confirmada=False).count(),
+        **_devolucoes_estoque(per),
         "itens_sem_vinculo": CompraItem.objects.filter(status="pendente").count(),
     }
     if ver_custos:
@@ -263,6 +279,20 @@ def bloco_estoque(per, hoje, ver_custos):
         dados["parados_valor"] = parados_resumo["total"] or ZERO
         dados["precos_revisar"] = len(produtos_sinalizados(Produto.objects.prefetch_related("estoque_set")))
     return dados
+
+
+# Devoluções ao fornecedor no período e produtos devolvidos por clientes que viraram perda
+def _devolucoes_estoque(per):
+    compras = Devolucao.objects.filter(tipo="COMPRA", status="confirmada", data__gte=per["ini"], data__lte=per["fim"])
+    somas = compras.aggregate(valor=Sum("valor_total"), qtd=Count("id"))
+    perdas = DevolucaoItem.objects.filter(
+        devolucao__in=_devolucoes(per["ini"], per["fim"]), volta_estoque=False, produto__isnull=False)
+    return {
+        "devolvido_fornecedor": somas["valor"] or ZERO,
+        "devolvido_fornecedor_qtd": somas["qtd"],
+        "perdas_devolucao": sum((i.custo_total for i in perdas), ZERO),
+        "perdas_devolucao_qtd": perdas.count(),
+    }
 
 
 # ---------------- Financeiro (aproveita o antigo Dashboard Financeiro) ----------------
@@ -461,8 +491,27 @@ def bloco_clientes(per, hoje):
         "resolvidos_no_periodo": PosVenda.objects.filter(resolvido_em__gte=per["ini"], resolvido_em__lte=per["fim"]).count(),
     }
 
+    # Devoluções do período: taxa sobre o faturamento, motivos e clientes que mais devolveram
+    devolvidas = _devolucoes(per["ini"], per["fim"])
+    nomes_motivo = dict(Devolucao.MOTIVO_CHOICES)
+    total_dev = devolvidas.aggregate(t=Sum("valor_total"))["t"] or ZERO
+    devolucoes = {
+        "qtd": devolvidas.count(),
+        "valor": total_dev,
+        "taxa": (total_dev / faturamento * 100).quantize(Decimal("0.1")) if faturamento else None,
+        "motivos": [
+            {"motivo": nomes_motivo.get(linha["motivo"], linha["motivo"]), "qtd": linha["qtd"], "valor": linha["valor"]}
+            for linha in devolvidas.values("motivo").annotate(qtd=Count("id"), valor=Sum("valor_total")).order_by("-valor")
+        ],
+        "clientes": [
+            {"nome": linha["contato__nome"], "qtd": linha["qtd"], "valor": linha["valor"]}
+            for linha in devolvidas.values("contato__nome").annotate(qtd=Count("id"), valor=Sum("valor_total")).order_by("-valor")[:5]
+        ],
+    }
+
     return {
         "pos_venda": pos_venda,
+        "devolucoes": devolucoes,
         "ativos": len(set(finalizadas.filter(data_emissao__date__gt=limite).values_list("cliente_id", flat=True))),
         "do_periodo": len(do_periodo),
         "do_periodo_var": variacao(len(do_periodo), len(do_anterior)),

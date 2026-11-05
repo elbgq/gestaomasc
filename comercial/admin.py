@@ -1,7 +1,7 @@
 from django.contrib import admin
 from comercial.models import(
     Compra, CompraItem, Estoque, MovimentacaoEstoque, Venda, VendaItem, CMVItem,
-    ProdutoFornecedor,
+    ProdutoFornecedor, Devolucao, DevolucaoItem,
     )
 
 
@@ -69,3 +69,25 @@ class CMVItemAdmin(admin.ModelAdmin):
 class ProdutoFornecedorAdmin(admin.ModelAdmin):
     list_display = ("fornecedor", "codigo_fornecedor", "produto", "unidade_fornecedor", "fator_conversao")
     search_fields = ("codigo_fornecedor", "ean", "produto__descricao", "fornecedor__nome")
+
+
+# Devoluções: só consulta (registrar e cancelar pelas telas, que acertam estoque e financeiro)
+class DevolucaoItemInline(admin.TabularInline):
+    model = DevolucaoItem
+    extra = 0
+    can_delete = False
+    readonly_fields = [f.name for f in DevolucaoItem._meta.fields]
+
+
+@admin.register(Devolucao)
+class DevolucaoAdmin(admin.ModelAdmin):
+    list_display = ("id", "tipo", "data", "contato", "valor_total", "status")
+    list_filter = ("tipo", "status", "motivo")
+    inlines = [DevolucaoItemInline]
+    readonly_fields = [f.name for f in Devolucao._meta.fields]
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False

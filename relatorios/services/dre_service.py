@@ -1,6 +1,6 @@
 from decimal import Decimal
 from django.db.models import Sum
-from comercial.models import VendaItem, CMVItem, Venda
+from comercial.models import VendaItem, CMVItem, Venda, Devolucao, DevolucaoItem
 from financeiro.models import FinanceiroCategoria, FinanceiroLancamento, FinanceiroPagar, FinanceiroReceber
 
 GRUPOS_DRE = {codigo for codigo, _ in FinanceiroCategoria.GRUPO_DRE_CHOICES}
@@ -44,6 +44,19 @@ def acrescimos_das_quitacoes(data_inicio, data_fim):
         for campo, valor in somas.items():
             totais[f"{prefixo}_{campo}"] = valor or Decimal("0")
     return totais
+
+
+# Devoluções de venda confirmadas, pela data da devolução (a venda continua no mês dela):
+# o valor devolvido é dedução da receita; o custo dos produtos sai do CMV; o que não voltou
+# ao estoque (perda) vira despesa.
+def devolucoes_de_vendas(data_inicio, data_fim):
+    devolucoes = Devolucao.objects.filter(tipo="VENDA", status="confirmada", data__gte=data_inicio, data__lte=data_fim)
+    perdas = sum(
+        (i.custo_total for i in DevolucaoItem.objects.filter(devolucao__in=devolucoes, volta_estoque=False, produto__isnull=False)),
+        Decimal("0"),
+    )
+    somas = devolucoes.aggregate(valor=Sum("valor_total"), custo=Sum("valor_custo"))
+    return {"valor": somas["valor"] or Decimal("0"), "custo": somas["custo"] or Decimal("0"), "perdas": perdas}
 
 
 def dre_por_periodo(data_inicio, data_fim):
@@ -116,7 +129,9 @@ def dre_por_periodo(data_inicio, data_fim):
     # ============================
     # DEDUÇÕES DA RECEITA BRUTA
     # ============================
-    deducoes = descontos_vendas + icms + iss + pis + cofins + pis_cofins_juntos
+    devolucoes = devolucoes_de_vendas(data_inicio, data_fim)
+    devolucoes_vendas = devolucoes["valor"]
+    deducoes = descontos_vendas + devolucoes_vendas + icms + iss + pis + cofins + pis_cofins_juntos
     receita_liquida = receita_bruta - deducoes
 
     # ============================
@@ -131,6 +146,11 @@ def dre_por_periodo(data_inicio, data_fim):
         )
     )
 
+    # Produtos devolvidos voltam pelo custo com que saíram: o CMV do período diminui
+    cmv_vendas = cmv
+    cmv_devolucoes = devolucoes["custo"]
+    cmv = cmv_vendas - cmv_devolucoes
+
     # Custos lançados à mão (categorias do grupo Custos, ex.: CSP). O CMV das vendas já vem acima,
     # calculado pelo estoque; a tela avisa para não lançar o mesmo custo de novo
     custos_lancados = g("CUSTOS")
@@ -141,7 +161,9 @@ def dre_por_periodo(data_inicio, data_fim):
     # ============================
     # DESPESAS OPERACIONAIS
     # ============================
-    despesas_operacionais = despesas_vendas + despesas_adm + despesas_gerais
+    # Produto devolvido sem condição de revenda: o custo dele é perda
+    perdas_devolucoes = devolucoes["perdas"]
+    despesas_operacionais = despesas_vendas + despesas_adm + despesas_gerais + perdas_devolucoes
     resultado_operacional = lucro_bruto - despesas_operacionais
 
     # ============================
@@ -167,6 +189,7 @@ def dre_por_periodo(data_inicio, data_fim):
         "receita_outras": receita_outras,
         "receita_acrescimos": receita_acrescimos,
         "descontos_vendas": descontos_vendas,
+        "devolucoes_vendas": devolucoes_vendas,
         
         "icms": icms,
         "iss": iss,
@@ -177,6 +200,8 @@ def dre_por_periodo(data_inicio, data_fim):
         "receita_liquida": receita_liquida,
         
         "cmv": cmv,
+        "cmv_vendas": cmv_vendas,
+        "cmv_devolucoes": cmv_devolucoes,
         "custos_lancados": custos_lancados,
         "custo_total": custo_total,
         "lucro_bruto": lucro_bruto,
@@ -184,6 +209,7 @@ def dre_por_periodo(data_inicio, data_fim):
         "despesas_vendas": despesas_vendas,
         "despesas_adm": despesas_adm,
         "despesas_gerais": despesas_gerais,
+        "perdas_devolucoes": perdas_devolucoes,
         "despesas_operacionais": despesas_operacionais,
         
         "resultado_operacional": resultado_operacional,

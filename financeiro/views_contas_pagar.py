@@ -26,8 +26,8 @@ def pagar_update(request, pk):
         messages.error(request, "Título pago não pode ser alterado. Estorne a quitação antes.")
         return redirect("financeiro:titulo_detalhe", titulo.tipo, titulo.id)
 
-    # Se for COMPRA ou LANCAMENTO, só permite editar vencimento
-    if titulo.origem in ["COMPRA", "LANCAMENTO"]:
+    # Se for COMPRA, LANCAMENTO ou crédito de DEVOLUCAO, só permite editar vencimento
+    if titulo.origem in ["COMPRA", "LANCAMENTO", "DEVOLUCAO"]:
         form = PagarVencimentoForm(request.POST or None, instance=titulo)
         template = "financeiro/conta_pagar_vencimento_form.html"
     else:

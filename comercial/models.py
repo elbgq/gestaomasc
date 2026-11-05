@@ -251,9 +251,10 @@ class Estoque(models.Model):
                     
             # SAÍDA DO ESTOQUE
             elif mov.tipo == "SAIDA":
+                preco_medio = preco_medio_apos_saida(saldo, preco_medio, qtd, mov)
                 saldo -= qtd
                 if saldo < 0:
-                    saldo = Decimal("0.00") # preço médio NÃO muda em saídas
+                    saldo = Decimal("0.00") # preço médio NÃO muda em saídas (exceto devolução de compra)
                 
         # Atualiza o estoque final
         self.quantidade = saldo
@@ -261,6 +262,17 @@ class Estoque(models.Model):
         self.save()
         # O custo mudou: produto com preço automático acompanha
         atualizar_preco_venda(self.produto)
+
+# Preço médio depois de uma saída. Saída comum não muda o preço médio.
+# Devolução ao fornecedor sai pelo custo com que entrou: tira esse valor do estoque,
+# como se aquela entrada não tivesse acontecido.
+def preco_medio_apos_saida(saldo, preco_medio, qtd, mov):
+    preco = Decimal(mov.preco or 0)
+    restante = saldo - qtd
+    if mov.origem != "DEVOLUCAO_COMPRA" or preco <= 0 or restante <= 0:
+        return preco_medio
+    return max((saldo * preco_medio - qtd * preco) / restante, Decimal("0.00"))
+
 
 #====================================
 # Models de movimentações de estoques
@@ -339,11 +351,15 @@ class MovimentacaoEstoque(models.Model):
             )
 
             novo_saldo = qtd_atual - qtd_mov
+            novo_preco_medio = preco_medio_apos_saida(qtd_atual, preco_atual, qtd_mov, self)
             estoque.quantidade = novo_saldo
+            estoque.preco_medio = novo_preco_medio
             estoque.save()
+            if novo_preco_medio != preco_atual:
+                atualizar_preco_venda(self.produto)
 
             self.saldo_apos = novo_saldo
-            self.preco_medio_apos = preco_atual
+            self.preco_medio_apos = novo_preco_medio
 
         # Atualiza os campos saldo_apos e preco_medio_apos
         super().save(update_fields=["saldo_apos", "preco_medio_apos"])
@@ -564,3 +580,115 @@ class PosVenda(models.Model):
 
     def __str__(self):
         return f"{self.get_tipo_display()} - {self.cliente}"
+
+
+#===============================================
+# DEVOLUÇÕES (de venda: o cliente devolve; de compra: devolvemos ao fornecedor)
+#===============================================
+# A devolução não apaga a venda: a venda continua no mês em que aconteceu e a devolução
+# entra no mês dela (DRE por competência). Pode haver várias devoluções parciais da mesma venda.
+# As regras ficam em comercial/services/devolucoes.py.
+class Devolucao(models.Model):
+    TIPO_CHOICES = (
+        ("VENDA", "Devolução de venda"),
+        ("COMPRA", "Devolução de compra"),
+    )
+    MOTIVO_CHOICES = (
+        ("defeito", "Defeito"),
+        ("avaria", "Avaria no transporte"),
+        ("erro_pedido", "Erro no pedido"),
+        ("arrependimento", "Arrependimento (CDC art. 49)"),
+        ("garantia", "Garantia"),
+        ("outro", "Outro"),
+    )
+    STATUS_CHOICES = (
+        ("confirmada", "Confirmada"),
+        ("cancelada", "Cancelada"),
+    )
+    # O que sobra depois de abater as parcelas em aberto (o cliente já tinha pago)
+    ACERTO_CHOICES = (
+        ("reembolso", "Reembolso no caixa"),
+        ("credito", "Crédito do cliente (conta a pagar)"),
+    )
+
+    tipo = models.CharField(max_length=10, choices=TIPO_CHOICES, default="VENDA")
+    venda = models.ForeignKey(Venda, on_delete=models.PROTECT, null=True, blank=True, related_name="devolucoes")
+    compra = models.ForeignKey(Compra, on_delete=models.PROTECT, null=True, blank=True, related_name="devolucoes")
+    contato = models.ForeignKey(Contato, on_delete=models.PROTECT, related_name="devolucoes")
+    posvenda = models.ForeignKey(PosVenda, on_delete=models.SET_NULL, null=True, blank=True, related_name="devolucoes")
+    data = models.DateField("Data da devolução", default=timezone.localdate)
+    motivo = models.CharField(max_length=20, choices=MOTIVO_CHOICES, default="defeito")
+    observacao = models.TextField("Observação", blank=True, default="")
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="confirmada")
+    acerto = models.CharField("Acerto do valor já pago", max_length=10, choices=ACERTO_CHOICES, blank=True, default="")
+
+    valor_total = models.DecimalField("Valor devolvido", max_digits=12, decimal_places=2, default=0)
+    valor_custo = models.DecimalField("Custo devolvido", max_digits=12, decimal_places=2, default=0)
+    valor_abatido = models.DecimalField("Abatido de parcelas em aberto", max_digits=12, decimal_places=2, default=0)
+    valor_reembolso = models.DecimalField("Reembolsado no caixa", max_digits=12, decimal_places=2, default=0)
+    valor_credito = models.DecimalField("Crédito gerado", max_digits=12, decimal_places=2, default=0)
+
+    # NF-e de devolução emitida fora do sistema (a emissão fica para o módulo fiscal)
+    nf_numero = models.CharField("Número da NF-e de devolução", max_length=20, blank=True, default="")
+    nf_chave = models.CharField("Chave da NF-e de devolução", max_length=44, blank=True, default="")
+    xml_nfe = models.TextField("XML da NF-e de devolução", blank=True, default="")
+
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, editable=False)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    cancelada_em = models.DateTimeField(null=True, blank=True, editable=False)
+    motivo_cancelamento = models.TextField(blank=True, default="")
+
+    class Meta:
+        ordering = ["-data", "-id"]
+        verbose_name = "Devolução"
+        verbose_name_plural = "Devoluções"
+        indexes = [models.Index(fields=["tipo", "status", "data"], name="devolucao_tipo_status_data_idx")]
+
+    def __str__(self):
+        return f"{self.get_tipo_display()} #{self.id} - {self.contato}"
+
+    @property
+    def documento(self):
+        return self.venda if self.tipo == "VENDA" else self.compra
+
+
+class DevolucaoItem(models.Model):
+    devolucao = models.ForeignKey(Devolucao, on_delete=models.CASCADE, related_name="itens")
+    venda_item = models.ForeignKey(VendaItem, on_delete=models.PROTECT, null=True, blank=True, related_name="devolucoes")
+    compra_item = models.ForeignKey(CompraItem, on_delete=models.PROTECT, null=True, blank=True, related_name="devolucoes")
+    produto = models.ForeignKey(Produto, on_delete=models.PROTECT, null=True, blank=True)
+    servico = models.ForeignKey(Servico, on_delete=models.PROTECT, null=True, blank=True)
+    quantidade = models.DecimalField(max_digits=10, decimal_places=3)
+    # Valor devolvido do item: preço líquido (com o desconto do item e o rateio do desconto/acréscimo da venda)
+    valor_total = models.DecimalField(max_digits=12, decimal_places=2)
+    # Custo com que o item saiu do estoque na venda (o do CMV)
+    custo_unitario = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    # Não: produto sem condição de revenda; entra e sai na hora como perda
+    volta_estoque = models.BooleanField("Volta ao estoque", default=True)
+
+    class Meta:
+        verbose_name = "Item devolvido"
+        verbose_name_plural = "Itens devolvidos"
+
+    def __str__(self):
+        return f"{self.produto or self.servico} ({self.quantidade})"
+
+    @property
+    def descricao(self):
+        item = self.produto or self.servico
+        return item.descricao if item else "—"
+
+    @property
+    def custo_total(self):
+        return (self.quantidade * self.custo_unitario).quantize(Decimal("0.01")) if self.produto_id else Decimal("0.00")
+
+
+# Títulos mexidos pela devolução: as parcelas em aberto abatidas e o crédito gerado.
+# Guardado para o cancelamento da devolução saber o que desfazer.
+class DevolucaoTitulo(models.Model):
+    devolucao = models.ForeignKey(Devolucao, on_delete=models.CASCADE, related_name="titulos")
+    receber = models.ForeignKey("financeiro.FinanceiroReceber", on_delete=models.PROTECT, null=True, blank=True)
+    pagar = models.ForeignKey("financeiro.FinanceiroPagar", on_delete=models.PROTECT, null=True, blank=True)
+    valor_abatido = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    cancelou = models.BooleanField(default=False)  # o abatimento levou o título inteiro
+    gerado = models.BooleanField(default=False)    # título criado pela devolução (crédito)

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load permissoes %}
 {% block content %}
 
 <h2>Detalhes da Compra {{ compra.id }}</h2>
@@ -116,6 +117,29 @@
 </table>
 {% endif %}
 
-<a href="{% url 'comercial:compra_list' %}" class="btn btn-secondary mt-3">Voltar</a>
+{% if devolucoes %}
+{% pode "comercial:devolucao_detalhe" as pode_ver_devolucao %}
+<h3>Devoluções ao fornecedor</h3>
+<table class="table table-bordered">
+    <thead><tr><th>Data</th><th>Motivo</th><th>Valor</th><th>Situação</th></tr></thead>
+    <tbody>
+        {% for d in devolucoes %}
+        <tr>
+            <td>{% if pode_ver_devolucao %}<a href="{% url 'comercial:devolucao_detalhe' d.id %}">{{ d.data|date:"d/m/Y" }}</a>{% else %}{{ d.data|date:"d/m/Y" }}{% endif %}</td>
+            <td>{{ d.get_motivo_display }}</td>
+            <td>R$ {{ d.valor_total|floatformat:2 }}</td>
+            <td>{% if d.status == "cancelada" %}<span class="badge bg-secondary">Cancelada</span>{% else %}<span class="badge bg-success">Confirmada</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<p><strong>Devolvido:</strong> R$ {{ total_devolvido|floatformat:2 }} de R$ {{ compra.valor_total|floatformat:2 }}</p>
+{% endif %}
+
+<div class="d-flex gap-2 mt-3">
+    <a href="{% url 'comercial:compra_list' %}" class="btn btn-secondary">Voltar</a>
+    {% pode "comercial:devolucao_compra_criar" as pode_devolucao %}
+    {% if pode_devolucao and pode_devolver %}<a href="{% url 'comercial:devolucao_compra_criar' compra.id %}" class="btn btn-outline-danger">Registrar devolução ao fornecedor</a>{% endif %}
+</div>
 
 {% endblock %}

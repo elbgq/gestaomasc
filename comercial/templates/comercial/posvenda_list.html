@@ -52,6 +52,7 @@
             <tbody>
                 {% pode "comercial:posvenda_editar" as pode_editar %}
                 {% pode "comercial:venda_detalhe" as pode_ver_venda %}
+                {% pode "comercial:devolucao_venda_criar" as pode_devolucao %}
                 {% for r in page_obj %}
                 <tr>
                     <td>{{ r.data|date:"d/m/Y" }}</td>
@@ -71,6 +72,7 @@
                     </td>
                     <td class="text-center">
                         {% if pode_editar %}<a href="{% url 'comercial:posvenda_editar' r.id %}" class="btn btn-sm btn-warning">Editar</a>{% endif %}
+                        {% if pode_devolucao and r.tipo == "devolucao" and r.venda and r.venda.status == "finalizada" %}<a href="{% url 'comercial:devolucao_venda_criar' r.venda.id %}?posvenda={{ r.id }}" class="btn btn-sm btn-outline-danger">Registrar devolução</a>{% endif %}
                     </td>
                 </tr>
                 {% empty %}

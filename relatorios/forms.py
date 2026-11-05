@@ -128,7 +128,7 @@ class FiltroMovimentacaoEstoqueForm(PeriodoMixin, forms.Form):
     origem = forms.ChoiceField(
         label="Origem",
         choices=[("", "Todas"), ("compra", "Compras"), ("venda", "Vendas"),
-                 ("estorno", "Estornos de venda"), ("ajuste", "Ajustes")],
+                 ("estorno", "Estornos de venda"), ("devolucao", "Devoluções"), ("ajuste", "Ajustes")],
         required=False,
         widget=forms.Select(attrs={"class": "form-select"}),
     )

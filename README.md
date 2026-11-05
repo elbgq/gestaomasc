@@ -39,6 +39,15 @@ Este documento descreve o estado atual da aplicação e um **projeto de evoluç�
 - **Estoque**: custo médio ponderado recalculado a cada entrada, histórico de movimentações com saldo após.
 - **Financeiro**: quitação de títulos com movimento de caixa, abertura/fechamento de caixa, sangria e reforço, dashboard.
 - **Relatórios**: compras e vendas por período, CMV e DRE (receita bruta, deduções, CMV, despesas por grupo, resultado).
+- **Devoluções de venda e de compra** (28/10/2026, menu Comercial → Devoluções): devolução parcial ou total, em várias vezes até zerar o documento. Serviço em `comercial/services/devolucoes.py`, telas em `comercial/views/views_devolucoes.py`, modelos `Devolucao`, `DevolucaoItem` e `DevolucaoTitulo`. Só Gerente e Administrador registram e cancelam (permissões `add_devolucao`, `view_devolucao`, `change_devolucao`).
+  - **Venda** (botão "Registrar devolução" no detalhe da venda finalizada): o produto volta ao estoque pelo custo do CMV original (ENTRADA `DEVOLUCAO_VENDA`). Se não tiver condição de revenda, entra e sai como perda (`PERDA_DEVOLUCAO`). O valor abate as parcelas em aberto, das últimas para as primeiras; o que o cliente já pagou vira **reembolso** (saída do caixa) ou **crédito do cliente** (conta a pagar, origem `DEVOLUCAO`). Uma venda com devolução não pode mais ser editada, reparcelada nem estornada. Avisos (sem bloqueio) acima de 7, 30 e 90 dias.
+  - **Compra** (botão "Registrar devolução ao fornecedor" no detalhe da compra confirmada): a mercadoria sai pelo custo da compra (SAÍDA `DEVOLUCAO_COMPRA`) e o preço médio é recalculado como se aquela entrada não tivesse acontecido (`preco_medio_apos_saida`). Bloqueia se o saldo atual for menor que a quantidade. O valor abate as duplicatas em aberto; o que já foi pago vira **reembolso** (entrada no caixa) ou **crédito com o fornecedor** (conta a receber, origem `DEVOLUCAO`).
+  - **Cancelar** uma devolução desfaz estoque, títulos e caixa, desde que o crédito gerado ainda não tenha sido pago.
+  - **DRE** (por competência, na data da devolução): linha "(−) Devoluções de vendas" nas deduções, CMV líquido (CMV das vendas menos o custo devolvido) e perdas com devoluções nas despesas operacionais. A devolução de compra não entra no DRE.
+  - **Painel**: cartão Devoluções e faturamento líquido no bloco Vendas (margem sobre o líquido), taxa de devolução, motivos e clientes no bloco Clientes, e "Devolvido a fornecedores" e "Perdas com devoluções" no bloco Estoque.
+  - **NF-e de devolução**: por enquanto só se registra número, chave e o XML (que pode ser baixado depois). A emissão fica para a Fase 7 (módulo fiscal).
+  - **Migrações**: `financeiro 0024_origem_devolucao`, `comercial 0013_devolucoes`, `core 0004_permissoes_devolucao`.
+  - **Pendente**: usar o crédito do cliente para abater uma nova venda (hoje ele só pode ser pago).
 
 ### 1.4 Pontos de atenção encontrados na leitura do código
 

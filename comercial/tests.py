@@ -803,3 +803,343 @@ class PosVendaEMetaTests(TestCase):
         self.assertIn("mes", resp.context["form"].errors)  # um mês, uma meta
         resp = self.client.post(reverse("comercial:meta_criar"), {"mes": "2026-12", "valor": "0"})
         self.assertIn("valor", resp.context["form"].errors)
+
+
+class DevolucaoVendaTests(BaseComercialTest):
+    # Venda de 2 x R$ 20,00 com custo R$ 5,00, finalizada à vista (título de R$ 40,00 em aberto)
+    def setUp(self):
+        super().setUp()
+        from financeiro.models import Caixa
+        self.caixa = Caixa.objects.create(nome="Caixa Principal", saldo_inicial=Decimal("100.00"))
+        self.dar_entrada(10, preco="5.00")
+        self.venda = self.criar_venda(quantidade=2)
+        self.post_editar_venda(self.venda, 2)
+        self.venda.refresh_from_db()
+        self.item = self.venda.itens.get()
+
+    def devolver(self, quantidade, confirmar=True, estoque=True, acerto="reembolso", venda=None, **extra):
+        venda = venda or self.venda
+        dados = {"data": date.today().strftime("%d/%m/%Y"), "motivo": "defeito", "acerto": acerto,
+                 "observacao": "", "nf_numero": "", "nf_chave": ""}
+        for item in venda.itens.all():
+            dados[f"qtd_{item.id}"] = "0"
+            dados[f"estoque_{item.id}"] = "1"
+        dados[f"qtd_{self.item.id}"] = str(quantidade)
+        if not estoque:
+            dados.pop(f"estoque_{self.item.id}")
+        dados.update(extra)
+        url = reverse("comercial:devolucao_venda_criar", args=[venda.id])
+        resp = self.client.post(url, dados)
+        if confirmar and resp.status_code == 200 and resp.context["plano"]:
+            resp = self.client.post(url, {**dados, "confirmar": "1"})
+        return resp
+
+    def titulo(self):
+        return FinanceiroReceber.objects.get(object_id=self.venda.id, origem="VENDA")
+
+    def test_resumo_antes_de_confirmar_nao_grava(self):
+        from comercial.models import Devolucao
+        resp = self.devolver(1, confirmar=False)
+        self.assertEqual(resp.context["plano"]["valor_total"], Decimal("20.00"))
+        self.assertContains(resp, "Confirmar devolução")
+        self.assertFalse(Devolucao.objects.exists())
+        self.assertEqual(self.estoque().quantidade, Decimal("8"))
+
+    def test_parcial_volta_ao_estoque_e_abate_parcela_em_aberto(self):
+        from comercial.models import Devolucao
+        resp = self.devolver(1)
+        dev = Devolucao.objects.get()
+        self.assertRedirects(resp, reverse("comercial:devolucao_detalhe", args=[dev.id]))
+        self.assertEqual((dev.valor_total, dev.valor_custo, dev.valor_abatido, dev.valor_reembolso),
+                         (Decimal("20.00"), Decimal("5.00"), Decimal("20.00"), Decimal("0")))
+        self.assertEqual(self.estoque().quantidade, Decimal("9"))
+        self.assertEqual(self.estoque().preco_medio, Decimal("5.00"))
+        titulo = self.titulo()
+        self.assertEqual((titulo.valor, titulo.status), (Decimal("20.00"), "pendente"))
+        self.assertIn(f"devolução #{dev.id}", titulo.observacao)
+        self.assertEqual(self.caixa.saldo_atual(), Decimal("100.00"))
+        # A venda mostra a devolução e ainda deixa devolver o outro item
+        resp = self.client.get(reverse("comercial:venda_detalhe", args=[self.venda.id]))
+        self.assertEqual(resp.context["total_devolvido"], Decimal("20.00"))
+        self.assertTrue(resp.context["pode_devolver"])
+
+    def test_venda_ja_paga_reembolso_no_caixa(self):
+        from comercial.models import Devolucao
+        from financeiro.services import quitar_titulo
+        quitar_titulo(self.titulo())
+        self.assertEqual(self.caixa.saldo_atual(), Decimal("140.00"))
+        self.devolver(2, acerto="reembolso")
+        dev = Devolucao.objects.get()
+        self.assertEqual((dev.valor_abatido, dev.valor_reembolso), (Decimal("0"), Decimal("40.00")))
+        self.assertEqual(self.caixa.saldo_atual(), Decimal("100.00"))
+        self.assertEqual(self.estoque().quantidade, Decimal("10"))
+        # Tudo devolvido: não há mais o que devolver
+        resp = self.client.get(reverse("comercial:venda_detalhe", args=[self.venda.id]))
+        self.assertFalse(resp.context["pode_devolver"])
+
+    def test_venda_ja_paga_credito_do_cliente(self):
+        from comercial.models import Devolucao
+        from financeiro.services import quitar_titulo
+        quitar_titulo(self.titulo())
+        self.devolver(1, acerto="credito")
+        dev = Devolucao.objects.get()
+        credito = FinanceiroPagar.objects.get(origem="DEVOLUCAO")
+        self.assertEqual((credito.valor, credito.contato, credito.status), (Decimal("20.00"), self.cliente, "pendente"))
+        self.assertEqual(dev.valor_credito, Decimal("20.00"))
+        self.assertEqual(self.caixa.saldo_atual(), Decimal("140.00"))
+
+    def test_produto_sem_revenda_vira_perda(self):
+        from relatorios.services.dre_service import dre_por_periodo
+        self.devolver(1, estoque=False)
+        self.assertEqual(self.estoque().quantidade, Decimal("8"))
+        self.assertEqual(
+            sorted(MovimentacaoEstoque.objects.filter(origem__in=["DEVOLUCAO_VENDA", "PERDA_DEVOLUCAO"]).values_list("origem", flat=True)),
+            ["DEVOLUCAO_VENDA", "PERDA_DEVOLUCAO"])
+        dre = dre_por_periodo(date.today(), date.today())
+        self.assertEqual(dre["perdas_devolucoes"], Decimal("5.00"))
+        self.assertEqual(dre["cmv"], Decimal("5.00"))  # 10 das vendas - 5 devolvidos
+
+    def test_nao_devolve_mais_que_o_vendido(self):
+        from comercial.models import Devolucao
+        resp = self.devolver(3)
+        self.assertIn("só restam 2", resp.context["erro"])
+        self.devolver(2)
+        resp = self.devolver(1)
+        self.assertRedirects(resp, reverse("comercial:venda_detalhe", args=[self.venda.id]), fetch_redirect_response=False)
+        self.assertEqual(Devolucao.objects.count(), 1)
+
+    def test_venda_paga_exige_reembolso_ou_credito(self):
+        from comercial.models import Devolucao
+        from financeiro.services import quitar_titulo
+        quitar_titulo(self.titulo())
+        resp = self.devolver(1, acerto="", confirmar=False)
+        self.assertIn("acerto", resp.context["form"].errors)
+        self.assertNotContains(resp, "Confirmar devolução")
+        resp = self.devolver(1, acerto="")  # confirmando direto também não passa
+        self.assertIn("reembolso ou crédito", resp.context["erro"])
+        self.assertFalse(Devolucao.objects.exists())
+
+    def test_rateio_do_desconto_da_venda(self):
+        from comercial.models import Devolucao
+        self.venda.desconto = Decimal("10.00")
+        self.venda.atualizar_total()  # 40 - 10 = 30
+        self.devolver(1)
+        self.devolver(1)
+        self.assertEqual([d.valor_total for d in Devolucao.objects.order_by("id")], [Decimal("15.00"), Decimal("15.00")])
+
+    def test_cancelar_desfaz_estoque_e_parcela(self):
+        from comercial.models import Devolucao
+        self.devolver(1)
+        dev = Devolucao.objects.get()
+        resp = self.client.post(reverse("comercial:devolucao_cancelar", args=[dev.id]), {"motivo": "Lançada errada"})
+        self.assertRedirects(resp, reverse("comercial:devolucao_detalhe", args=[dev.id]))
+        dev.refresh_from_db()
+        self.assertEqual((dev.status, dev.motivo_cancelamento), ("cancelada", "Lançada errada"))
+        self.assertEqual(self.estoque().quantidade, Decimal("8"))
+        self.assertEqual((self.titulo().valor, self.titulo().status), (Decimal("40.00"), "pendente"))
+        # Cancelada não conta mais: pode devolver de novo os 2
+        self.devolver(2)
+        self.assertEqual(Devolucao.objects.filter(status="confirmada").count(), 1)
+
+    def test_cancelar_desfaz_reembolso_e_credito(self):
+        from comercial.models import Devolucao
+        from financeiro.services import quitar_titulo
+        quitar_titulo(self.titulo())
+        self.devolver(1, acerto="reembolso")
+        self.devolver(1, acerto="credito")
+        reembolso, credito = Devolucao.objects.order_by("id")
+        self.client.post(reverse("comercial:devolucao_cancelar", args=[reembolso.id]))
+        self.assertEqual(self.caixa.saldo_atual(), Decimal("140.00"))
+        self.client.post(reverse("comercial:devolucao_cancelar", args=[credito.id]))
+        self.assertEqual(FinanceiroPagar.objects.get(origem="DEVOLUCAO").status, "cancelado")
+        self.assertEqual(self.estoque().quantidade, Decimal("8"))
+
+    def test_nao_cancela_se_a_parcela_abatida_ja_foi_recebida(self):
+        from comercial.models import Devolucao
+        from financeiro.services import quitar_titulo
+        self.devolver(1)
+        quitar_titulo(self.titulo())
+        dev = Devolucao.objects.get()
+        self.client.post(reverse("comercial:devolucao_cancelar", args=[dev.id]))
+        dev.refresh_from_db()
+        self.assertEqual(dev.status, "confirmada")
+        self.assertEqual(self.estoque().quantidade, Decimal("9"))
+
+    def test_nao_cancela_se_o_credito_ja_foi_pago(self):
+        from comercial.models import Devolucao
+        from financeiro.services import quitar_titulo
+        quitar_titulo(self.titulo())
+        self.devolver(1, acerto="credito")
+        quitar_titulo(FinanceiroPagar.objects.get(origem="DEVOLUCAO"))
+        dev = Devolucao.objects.get()
+        self.client.post(reverse("comercial:devolucao_cancelar", args=[dev.id]))
+        dev.refresh_from_db()
+        self.assertEqual(dev.status, "confirmada")
+
+    def test_venda_com_devolucao_nao_edita_nem_estorna(self):
+        from comercial.views.views_vendas import estornar_venda
+        self.devolver(1)
+        resp = self.client.get(reverse("comercial:venda_editar", args=[self.venda.id]))
+        self.assertRedirects(resp, reverse("comercial:venda_detalhe", args=[self.venda.id]))
+        resp = self.client.get(reverse("comercial:venda_parcelamento", args=[self.venda.id]))
+        self.assertRedirects(resp, reverse("comercial:venda_detalhe", args=[self.venda.id]))
+        with self.assertRaises(ValueError):
+            estornar_venda(self.venda)
+
+    def test_venda_em_rascunho_nao_tem_devolucao(self):
+        rascunho = self.criar_venda(quantidade=1)
+        resp = self.client.get(reverse("comercial:devolucao_venda_criar", args=[rascunho.id]))
+        self.assertRedirects(resp, reverse("comercial:venda_detalhe", args=[rascunho.id]), fetch_redirect_response=False)
+
+    def test_nfe_de_devolucao_lida_do_xml(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from comercial.models import Devolucao
+        chave = "4" * 44
+        xml = (f'<nfeProc><NFe><infNFe Id="NFe{chave}"><ide><nNF>123</nNF><finNFe>4</finNFe></ide></infNFe></NFe>'
+               f'<protNFe><infProt><chNFe>{chave}</chNFe></infProt></protNFe></nfeProc>').encode()
+        dados = {"data": date.today().strftime("%d/%m/%Y"), "motivo": "defeito", "acerto": "reembolso",
+                 f"qtd_{self.item.id}": "1", f"estoque_{self.item.id}": "1"}
+        url = reverse("comercial:devolucao_venda_criar", args=[self.venda.id])
+        resp = self.client.post(url, {**dados, "xml": SimpleUploadedFile("dev.xml", xml)})
+        # O XML segue escondido na tela de confirmação
+        self.assertEqual(resp.context["xml_texto"], xml.decode())
+        self.client.post(url, {**dados, "xml_texto": xml.decode(), "confirmar": "1"})
+        dev = Devolucao.objects.get()
+        self.assertEqual((dev.nf_chave, dev.nf_numero), (chave, "123"))
+        resp = self.client.get(reverse("comercial:devolucao_xml", args=[dev.id]))
+        self.assertEqual(resp.content, xml)
+
+    def test_lista_e_permissoes(self):
+        from core.tests import usuario
+        self.devolver(1)
+        resp = self.client.get(reverse("comercial:devolucao_list"))
+        self.assertEqual(resp.context["total"], Decimal("20.00"))
+        url = reverse("comercial:devolucao_venda_criar", args=[self.venda.id])
+        self.client.force_login(usuario("vend", "Vendedor"))
+        self.assertEqual(self.client.get(url).status_code, 403)
+        self.assertNotContains(self.client.get(reverse("comercial:venda_detalhe", args=[self.venda.id])), "Registrar devolução")
+        self.client.force_login(usuario("ger", "Gerente"))
+        self.assertEqual(self.client.get(url).status_code, 200)
+        self.assertEqual(self.client.get(reverse("comercial:devolucao_list")).status_code, 200)
+
+
+class DevolucaoCompraTests(BaseComercialTest):
+    # Estoque com 10 a R$ 7,00 e compra de 10 a R$ 5,00 confirmada à vista: 20 a R$ 6,00, duplicata de R$ 50,00
+    def setUp(self):
+        super().setUp()
+        from financeiro.models import Caixa
+        self.caixa = Caixa.objects.create(nome="Caixa Principal", saldo_inicial=Decimal("100.00"))
+        self.dar_entrada(10, preco="7.00")
+        self.compra = self.criar_compra(quantidade=10, preco="5.00")
+        self.client.post(reverse("comercial:compras_confirmar", args=[self.compra.id]), {"forma_pagamento": "avista"})
+        self.compra.refresh_from_db()
+        self.item = self.compra.itens.get()
+
+    def devolver(self, quantidade, confirmar=True, acerto="reembolso", **extra):
+        dados = {"data": date.today().strftime("%d/%m/%Y"), "motivo": "avaria", "acerto": acerto,
+                 f"qtd_{self.item.id}": str(quantidade), **extra}
+        url = reverse("comercial:devolucao_compra_criar", args=[self.compra.id])
+        resp = self.client.post(url, dados)
+        if confirmar and resp.status_code == 200 and resp.context["plano"]:
+            resp = self.client.post(url, {**dados, "confirmar": "1"})
+        return resp
+
+    def duplicata(self):
+        return FinanceiroPagar.objects.get(compra=self.compra, origem="COMPRA")
+
+    def test_base(self):
+        self.assertTrue(self.compra.confirmada)
+        self.assertEqual((self.estoque().quantidade, self.estoque().preco_medio), (Decimal("20"), Decimal("6.00")))
+
+    def test_sai_pelo_custo_da_compra_e_abate_duplicata(self):
+        from comercial.models import Devolucao
+        resp = self.devolver(4, confirmar=False)
+        self.assertEqual(resp.context["plano"]["valor_total"], Decimal("20.00"))
+        self.devolver(4)
+        dev = Devolucao.objects.get()
+        self.assertEqual((dev.tipo, dev.valor_total, dev.valor_custo, dev.valor_abatido), ("COMPRA", Decimal("20.00"), Decimal("20.00"), Decimal("20.00")))
+        # (20 x 6,00 - 4 x 5,00) / 16 = 6,25
+        self.assertEqual((self.estoque().quantidade, self.estoque().preco_medio), (Decimal("16"), Decimal("6.25")))
+        self.assertEqual((self.duplicata().valor, self.duplicata().status), (Decimal("30.00"), "pendente"))
+        # O recálculo pelo histórico chega ao mesmo preço médio
+        self.estoque().recalcular_preco_medio()
+        self.assertEqual(self.estoque().preco_medio, Decimal("6.25"))
+        resp = self.client.get(reverse("comercial:compra_detalhe", args=[self.compra.id]))
+        self.assertEqual(resp.context["total_devolvido"], Decimal("20.00"))
+        self.assertContains(resp, "Registrar devolução ao fornecedor")
+
+    def test_compra_paga_reembolso_ou_credito_com_fornecedor(self):
+        from comercial.models import Devolucao
+        from financeiro.services import quitar_titulo
+        quitar_titulo(self.duplicata())
+        self.assertEqual(self.caixa.saldo_atual(), Decimal("50.00"))
+        self.devolver(2, acerto="reembolso")
+        self.assertEqual(self.caixa.saldo_atual(), Decimal("60.00"))
+        self.devolver(2, acerto="credito")
+        credito = FinanceiroReceber.objects.get(origem="DEVOLUCAO")
+        self.assertEqual((credito.valor, credito.cliente, credito.status), (Decimal("10.00"), self.fornecedor, "pendente"))
+        self.assertEqual([d.acerto for d in Devolucao.objects.order_by("id")], ["reembolso", "credito"])
+
+    def test_nao_devolve_mais_que_o_comprado_nem_o_que_nao_tem_no_estoque(self):
+        resp = self.devolver(11)
+        self.assertIn("só restam 10", resp.context["erro"])
+        MovimentacaoEstoque.objects.create(produto=self.produto, tipo="SAIDA", quantidade=15, origem="AJUSTE")
+        resp = self.devolver(6)
+        self.assertIn("o estoque tem 5", resp.context["erro"])
+
+    def test_fator_de_conversao(self):
+        from comercial.models import Devolucao
+        type(self.item).objects.filter(pk=self.item.pk).update(fator_conversao=2)  # a nota vem em caixas de 2
+        self.devolver(1)
+        dev = Devolucao.objects.get()
+        self.assertEqual(dev.itens.get().quantidade, Decimal("2"))
+        self.assertEqual(self.estoque().quantidade, Decimal("18"))
+
+    def test_cancelar_volta_estoque_preco_medio_e_duplicata(self):
+        from comercial.models import Devolucao
+        from financeiro.services import quitar_titulo
+        self.devolver(4)
+        dev = Devolucao.objects.get()
+        self.client.post(reverse("comercial:devolucao_cancelar", args=[dev.id]))
+        dev.refresh_from_db()
+        self.assertEqual(dev.status, "cancelada")
+        self.assertEqual((self.estoque().quantidade, self.estoque().preco_medio), (Decimal("20"), Decimal("6.00")))
+        self.assertEqual(self.duplicata().valor, Decimal("50.00"))
+        # Com reembolso: o cancelamento tira de novo do caixa
+        quitar_titulo(self.duplicata())
+        self.devolver(2)
+        dev = Devolucao.objects.get(status="confirmada")
+        self.assertEqual(self.caixa.saldo_atual(), Decimal("60.00"))
+        self.client.post(reverse("comercial:devolucao_cancelar", args=[dev.id]))
+        self.assertEqual(self.caixa.saldo_atual(), Decimal("50.00"))
+
+    def test_nao_cancela_se_o_credito_ja_foi_recebido(self):
+        from comercial.models import Devolucao
+        from financeiro.services import quitar_titulo
+        quitar_titulo(self.duplicata())
+        self.devolver(2, acerto="credito")
+        quitar_titulo(FinanceiroReceber.objects.get(origem="DEVOLUCAO"))
+        dev = Devolucao.objects.get()
+        self.client.post(reverse("comercial:devolucao_cancelar", args=[dev.id]))
+        dev.refresh_from_db()
+        self.assertEqual(dev.status, "confirmada")
+
+    def test_compra_nao_confirmada_e_permissao(self):
+        from core.tests import usuario
+        aberta = self.criar_compra()
+        resp = self.client.get(reverse("comercial:devolucao_compra_criar", args=[aberta.id]))
+        self.assertRedirects(resp, reverse("comercial:compra_detalhe", args=[aberta.id]), fetch_redirect_response=False)
+        url = reverse("comercial:devolucao_compra_criar", args=[self.compra.id])
+        self.client.force_login(usuario("est", "Compras/Estoque"))
+        self.assertEqual(self.client.get(url).status_code, 403)
+        self.client.force_login(usuario("ger", "Gerente"))
+        self.assertEqual(self.client.get(url).status_code, 200)
+
+    def test_nao_entra_no_dre_e_aparece_no_painel(self):
+        from relatorios.services.dre_service import dre_por_periodo
+        from relatorios.services.painel import bloco_estoque, periodo
+        self.devolver(4)
+        dre = dre_por_periodo(date.today(), date.today())
+        self.assertEqual((dre["devolucoes_vendas"], dre["cmv"]), (Decimal("0"), Decimal("0")))
+        dados = bloco_estoque(periodo("mes", date.today()), date.today(), ver_custos=True)
+        self.assertEqual((dados["devolvido_fornecedor"], dados["devolvido_fornecedor_qtd"]), (Decimal("20.00"), 1))

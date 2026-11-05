@@ -89,6 +89,14 @@ PERMISSOES = {
     "comercial:api_produto_codigo": ("comercial.add_venda", "comercial.change_venda"),
     "comercial:api_itens_venda": ("comercial.add_venda", "comercial.change_venda"),
 
+    # Devoluções (Administrador e Gerente)
+    "comercial:devolucao_venda_criar": "comercial.add_devolucao",
+    "comercial:devolucao_compra_criar": "comercial.add_devolucao",
+    "comercial:devolucao_list": "comercial.view_devolucao",
+    "comercial:devolucao_detalhe": "comercial.view_devolucao",
+    "comercial:devolucao_xml": "comercial.view_devolucao",
+    "comercial:devolucao_cancelar": "comercial.change_devolucao",
+
     # Pós-venda e metas de faturamento
     "comercial:posvenda_list": "comercial.view_posvenda",
     "comercial:posvenda_criar": "comercial.add_posvenda",
