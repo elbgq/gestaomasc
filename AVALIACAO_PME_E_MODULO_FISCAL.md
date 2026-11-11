@@ -33,7 +33,7 @@ Em ordem de impacto:
 8. **LGPD.** Controle de acesso a dados de clientes, registro de consentimento e exclusão sob pedido.
 
 As fases 2 a 6 do [README](README.md) já cobrem a maior parte disso. O item 1 é o que mais muda o valor do produto e deveria subir de prioridade.
-
+ 
 ## 4. Módulo fiscal proposto
 
 ### 4.1 Por que agora: reforma tributária
