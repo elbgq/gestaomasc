@@ -10,6 +10,19 @@ Depois de copiar os arquivos, rode `python manage.py migrate` (há uma migraçã
 
 ---
 
+## Login no celular: erro CSRF e tela sem responsividade (12/11/2026)
+
+- `core/templates/base.html`: faltava `<meta name="viewport">`. Sem ela o celular mostrava a versão de computador encolhida (campos minúsculos e as regras de celular do CSS nunca valiam). Vale para todas as telas.
+- `core/templates/registration/login.html`: formulário ocupa a largura do celular, rótulos "Usuário" e "Senha", `autocomplete`/`autocapitalize="none"` (o teclado não põe a 1ª letra maiúscula), mensagem de usuário/senha inválidos e botão "Entrar" que se desativa após o toque (o 2º toque reenviava o código de segurança já usado e dava 403).
+- `core/static/css/masc_tema.css`: no login, conteúdo sem a margem de 250px do menu, campos com fonte 16px (iPhone não dá zoom) e menos margem em telas pequenas.
+- `gestaomasc/settings.py`: `ALLOWED_HOSTS` + `HOSTS_EXTRAS` do .env; `CSRF_TRUSTED_ORIGINS` gerado a partir deles (https e http); `CSRF_FAILURE_VIEW = "core.views.csrf_falhou"`.
+- `core/views.py` `csrf_falhou` + `core/templates/403_csrf.html`: se o CSRF falha no login, volta para a tela de entrada com aviso "A tela de entrada tinha expirado"; nas demais telas mostra "Esta página expirou" em vez do "Proibido (403)".
+- `gestaomasc/urls.py`: login com `redirect_authenticated_user=True` (quem já entrou vai direto ao início).
+
+No PythonAnywhere: copiar os arquivos, rodar `python manage.py collectstatic --noinput` e clicar em Reload na aba Web.
+
+---
+
 ## Devolução de compras (28/10/2026)
 
 Sem migração nova além das da devolução de vendas (abaixo): um único `python manage.py migrate` cobre as duas.

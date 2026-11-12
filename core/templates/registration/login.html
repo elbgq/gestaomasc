@@ -1,17 +1,43 @@
 {% extends "base.html" %}
+{% block title %}Entrar - MASC{% endblock %}
 {% block content %}
 
-<div class="row justify-content-center mt-5">
-    <div class="col-md-4">
+<div class="row justify-content-center mt-4 mt-md-5 mx-0">
+    <div class="col-12 col-sm-9 col-md-6 col-lg-4 px-0 px-sm-2">
         <h3 class="text-center mb-4">Acesso ao Sistema</h3>
 
-        <form method="post">
+        <form method="post" id="form-login" class="form-login">
             {% csrf_token %}
-            {{ form.as_p }}
+            {% if form.non_field_errors %}
+                <div class="alert alert-danger py-2">{{ form.non_field_errors|join:" " }}</div>
+            {% endif %}
 
-            <button type="submit" class="btn btn-primary w-100">Entrar</button>
+            <div class="mb-3">
+                <label for="{{ form.username.id_for_label }}" class="form-label">Usuário</label>
+                <input type="text" name="{{ form.username.html_name }}" id="{{ form.username.id_for_label }}"
+                       value="{{ form.username.value|default_if_none:'' }}" maxlength="150" required autofocus
+                       autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false">
+            </div>
+
+            <div class="mb-3">
+                <label for="{{ form.password.id_for_label }}" class="form-label">Senha</label>
+                <input type="password" name="{{ form.password.html_name }}" id="{{ form.password.id_for_label }}"
+                       required autocomplete="current-password">
+            </div>
+
+            {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+
+            <button type="submit" class="btn btn-primary w-100" id="btn-entrar">Entrar</button>
         </form>
     </div>
 </div>
+
+<!-- Evita o segundo toque no "Entrar": no celular ele reenvia o formulário com o código de segurança já usado -->
+<script>
+    document.getElementById("form-login").addEventListener("submit", function () {
+        const btn = document.getElementById("btn-entrar");
+        setTimeout(function () { btn.disabled = true; btn.textContent = "Entrando..."; }, 0);
+    });
+</script>
 
 {% endblock %}

@@ -27,7 +27,8 @@ from core.views import home
 urlpatterns = [
     # Site protegido por login
     path('', home, name='home'),
-    path('login/', auth_views.LoginView.as_view(template_name='registration/login.html'), name='login'),
+    # redirect_authenticated_user: quem já entrou e abre o login de novo vai direto para o início
+    path('login/', auth_views.LoginView.as_view(template_name='registration/login.html', redirect_authenticated_user=True), name='login'),
     path('logout/', auth_views.LogoutView.as_view(next_page='login'), name='logout'),
 
     path('cadastros/', include('cadastros.urls', namespace='cadastros')),

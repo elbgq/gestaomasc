@@ -31,14 +31,19 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 # DEBUG
 DEBUG = os.getenv("DEBUG", "False") == "True"
 
-# Ajustes para conexao do Ngrok, para permitir que o Django aceite requisições de subdomínios do ngrok.
-ALLOWED_HOSTS = [
-      "eloibgq.pythonanywhere.com", "localhost", "127.0.0.1"
-]
+# Endereços em que o sistema responde. Os padrões cobrem o PythonAnywhere e o computador local.
+# Para acrescentar outro (ex.: domínio próprio), use no .env: HOSTS_EXTRAS=meudominio.com.br,www.meudominio.com.br
+_HOSTS_PADRAO = ["eloibgq.pythonanywhere.com", "localhost", "127.0.0.1"]
+_HOSTS_EXTRAS = [h.strip() for h in os.getenv("HOSTS_EXTRAS", "").split(",") if h.strip()]
+ALLOWED_HOSTS = _HOSTS_PADRAO + _HOSTS_EXTRAS
 
-CSRF_TRUSTED_ORIGINS = [
-    "https://eloibgq.pythonanywhere.com",
-]
+# Origens aceitas nos formulários (proteção CSRF): o mesmo endereço, em https e em http
+CSRF_TRUSTED_ORIGINS = [f"{esquema}://{h}" for h in ALLOWED_HOSTS for esquema in ("https", "http")]
+
+# Quando a proteção CSRF recusa um formulário (página de login aberta há muito tempo, botão tocado
+# duas vezes, aba restaurada no celular), mostra uma tela amigável em vez do "Proibido (403)" do Django.
+# No login, recarrega a tela já com um aviso, e basta entrar de novo.
+CSRF_FAILURE_VIEW = "core.views.csrf_falhou"
 
 # Faz o Django reconhecer que a requisição original veio em HTTPS
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")

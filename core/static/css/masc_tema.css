@@ -608,10 +608,17 @@ body:not(:has(.erp-sidebar)) .erp-content form {
     box-shadow: var(--masc-relevo);
 }
 
+/* Sem menu lateral (tela de login), o conteúdo usa a largura toda, inclusive no computador */
+body:not(:has(.erp-sidebar)) .erp-content,
+body:not(:has(.erp-sidebar)) .erp-footer {
+    margin-left: 0;
+}
+
 body:not(:has(.erp-sidebar)) .erp-content form input:not([type=hidden]) {
     display: block;
     width: 100%;
-    padding: .45rem .75rem;
+    padding: .6rem .75rem;
+    font-size: 16px;           /* 16px ou mais: o iPhone não dá zoom sozinho ao tocar no campo */
     border: 1px solid var(--masc-borda-campo);
     border-radius: .65rem;
     box-shadow: var(--masc-afundado);
@@ -621,6 +628,21 @@ body:not(:has(.erp-sidebar)) .erp-content form input:not([type=hidden]):focus {
     outline: none;
     border-color: #7fbf86;
     box-shadow: var(--masc-afundado), 0 0 0 .2rem rgba(46, 125, 50, .2);
+}
+
+/* Celular: menos margem em volta para o formulário de login ocupar a tela */
+@media (max-width: 576px) {
+    body:not(:has(.erp-sidebar)) .erp-content {
+        padding: 1rem !important;   /* vence o p-4 do base.html */
+    }
+    body:not(:has(.erp-sidebar)) .erp-content form {
+        padding: 1.25rem;
+    }
+    body:not(:has(.erp-sidebar)) .erp-content form .btn {
+        padding-top: .6rem;
+        padding-bottom: .6rem;
+        font-size: 1rem;
+    }
 }
 
 /* =========================
