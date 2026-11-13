@@ -167,6 +167,16 @@ html, body {
     .erp-content {
         margin-left: 0;
     }
+
+    /* Rodapé também usa a largura toda no celular (antes ficava espremido à direita pela margem do menu) */
+    .erp-footer {
+        margin-left: 0;
+        padding: 8px 12px;
+    }
+
+    .erp-footer p {
+        margin-bottom: .25rem;
+    }
 }
 /* Classe de preenchimento de campos das Ações */
 td.acoes {
