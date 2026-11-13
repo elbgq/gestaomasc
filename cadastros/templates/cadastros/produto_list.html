@@ -36,7 +36,7 @@
                     <th>Unidade</th>
                     <th>Preço Venda</th>
                     <th>Marca</th>
-                    <th class="text-center">Ações</th>
+                    <th class="text-center col-acoes">Ações</th>
                 </tr>
             </thead>
 
@@ -51,16 +51,10 @@
                     <td>{{ produto.marca }}</td>
 
                     <td class="text-center align-middle">
-                        <div class="d-flex justify-content-center gap-2">
-                            <a href="{% url 'cadastros:produto_detail' produto.id %}" class="btn btn-sm btn-info">
-                                Detalhes
-                            </a>
-                            {% pode "cadastros:produto_update" as pode_produto_update %}{% if pode_produto_update %}<a href="{% url 'cadastros:produto_update' produto.id %}" class="btn btn-sm btn-warning">
-                                Editar
-                            </a>{% endif %}
-                            {% pode "cadastros:produto_delete" as pode_produto_delete %}{% if pode_produto_delete %}<a href="{% url 'cadastros:produto_delete' produto.id %}" class="btn btn-sm btn-danger">
-                                Excluir
-                            </a>{% endif %}
+                        <div class="d-flex justify-content-center gap-1">
+                            <a href="{% url 'cadastros:produto_detail' produto.id %}" class="btn btn-sm btn-info btn-acao" title="Detalhes" aria-label="Detalhes"><i class="bi bi-eye" aria-hidden="true"></i><span class="visually-hidden">Detalhes</span></a>
+                            {% pode "cadastros:produto_update" as pode_produto_update %}{% if pode_produto_update %}<a href="{% url 'cadastros:produto_update' produto.id %}" class="btn btn-sm btn-warning btn-acao" title="Editar" aria-label="Editar"><i class="bi bi-pencil-square" aria-hidden="true"></i><span class="visually-hidden">Editar</span></a>{% endif %}
+                            {% pode "cadastros:produto_delete" as pode_produto_delete %}{% if pode_produto_delete %}<a href="{% url 'cadastros:produto_delete' produto.id %}" class="btn btn-sm btn-danger btn-acao" title="Excluir" aria-label="Excluir"><i class="bi bi-trash" aria-hidden="true"></i><span class="visually-hidden">Excluir</span></a>{% endif %}
                         </div>
                     </td>
                 </tr>

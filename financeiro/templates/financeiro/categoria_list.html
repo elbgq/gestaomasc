@@ -23,7 +23,7 @@
                     <th>Nome</th>
                     <th>Tipo</th>
                     <th>Grupo DRE</th>
-                    <th class="text-center">Ações</th>
+                    <th class="text-center col-acoes">Ações</th>
                 </tr>
             </thead>
 
@@ -35,13 +35,9 @@
                     <td>{{ c.get_grupo_dre_display }}</td>
 
                     <td >
-                        {% pode "financeiro:categoria_update" as pode_categoria_update %}{% if pode_categoria_update %}<a href="{% url 'financeiro:categoria_update' c.id %}" class="btn btn-sm btn-warning">
-                            Editar
-                        </a>{% endif %} 
+                        {% pode "financeiro:categoria_update" as pode_categoria_update %}{% if pode_categoria_update %}<a href="{% url 'financeiro:categoria_update' c.id %}" class="btn btn-sm btn-warning btn-acao" title="Editar" aria-label="Editar"><i class="bi bi-pencil-square" aria-hidden="true"></i><span class="visually-hidden">Editar</span></a>{% endif %} 
 
-                        {% pode "financeiro:categoria_delete" as pode_categoria_delete %}{% if pode_categoria_delete %}<a href="{% url 'financeiro:categoria_delete' c.id %}" class="btn btn-sm btn-danger">
-                            Excluir
-                        </a>{% endif %}
+                        {% pode "financeiro:categoria_delete" as pode_categoria_delete %}{% if pode_categoria_delete %}<a href="{% url 'financeiro:categoria_delete' c.id %}" class="btn btn-sm btn-danger btn-acao" title="Excluir" aria-label="Excluir"><i class="bi bi-trash" aria-hidden="true"></i><span class="visually-hidden">Excluir</span></a>{% endif %}
                     </td> 
                 </tr>
 

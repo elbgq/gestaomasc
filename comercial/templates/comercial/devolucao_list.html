@@ -48,7 +48,7 @@
                     <th>Motivo</th>
                     <th class="text-end">Valor</th>
                     <th>Situação</th>
-                    <th class="text-center">Ações</th>
+                    <th class="text-center col-acoes">Ações</th>
                 </tr>
             </thead>
             <tbody>
@@ -62,7 +62,7 @@
                     <td>{{ d.get_motivo_display }}</td>
                     <td class="text-end">R$ {{ d.valor_total|floatformat:"2g" }}</td>
                     <td>{% if d.status == "cancelada" %}<span class="badge bg-secondary">Cancelada</span>{% else %}<span class="badge bg-success">Confirmada</span>{% endif %}</td>
-                    <td class="text-center"><a href="{% url 'comercial:devolucao_detalhe' d.id %}" class="btn btn-sm btn-outline-primary">Ver</a></td>
+                    <td class="text-center"><a href="{% url 'comercial:devolucao_detalhe' d.id %}" class="btn btn-sm btn-info btn-acao" title="Detalhes" aria-label="Detalhes"><i class="bi bi-eye" aria-hidden="true"></i><span class="visually-hidden">Detalhes</span></a></td>
                 </tr>
                 {% empty %}
                 <tr><td colspan="8" class="text-center text-muted">Nenhuma devolução encontrada.</td></tr>

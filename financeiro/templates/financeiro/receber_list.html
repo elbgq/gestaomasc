@@ -61,7 +61,7 @@
                                     <th>Descrição</th>
                                     <th class="text-end">Valor</th>
                                     <th>Status</th>
-                                    <th class="text-center">Ações</th>
+                                    <th class="text-center col-acoes">Ações</th>
                                 </tr>
                             </thead>
 
@@ -93,22 +93,18 @@
                                     </td>
 
                                     <td class="text-center align-middle">
-                                        <div class="d-flex justify-content-center gap-2">
+                                        <div class="d-flex justify-content-center gap-1">
                                         {% if r.object_id and not r.esta_pago %}
                                             {% pode "comercial:venda_editar" as pode_venda_editar %}{% if pode_venda_editar %}<a href="{% url 'comercial:venda_editar' r.object_id %}"
-                                                class="btn btn-sm btn-outline-warning">
-                                                Editar Venda
-                                            </a>{% endif %}
+                                                class="btn btn-sm btn-outline-warning btn-acao" title="Editar venda" aria-label="Editar venda"><i class="bi bi-pencil-square" aria-hidden="true"></i><span class="visually-hidden">Editar venda</span></a>{% endif %}
                                         {% endif %}
 
                                         {% if not r.esta_pago %}
                                             {% pode "financeiro:titulo_confirmar_quitacao" as pode_titulo_confirmar_quitacao %}{% if pode_titulo_confirmar_quitacao %}<a href="{% url 'financeiro:titulo_confirmar_quitacao' 'R' r.id %}"
-                                                class="btn btn-sm btn-success">
-                                                Quitar
-                                            </a>{% endif %}
+                                                class="btn btn-sm btn-success btn-acao" title="Quitar" aria-label="Quitar"><i class="bi bi-cash-coin" aria-hidden="true"></i><span class="visually-hidden">Quitar</span></a>{% endif %}
                                         {% endif %}
                                             <a href="{% url 'financeiro:titulo_detalhe' r.tipo r.id %}"
-                                                class="btn btn-sm btn-primary">Detalhes</a>
+                                                class="btn btn-sm btn-info btn-acao" title="Detalhes" aria-label="Detalhes"><i class="bi bi-eye" aria-hidden="true"></i><span class="visually-hidden">Detalhes</span></a>
                                         </div>
                                     </td>
                                 </tr>
@@ -160,7 +156,7 @@
                                     <th>Descrição</th>
                                     <th class="text-end">Valor</th>
                                     <th>Status</th>
-                                    <th class="text-center">Ações</th>
+                                    <th class="text-center col-acoes">Ações</th>
                                 </tr>
                             </thead>
 
@@ -182,7 +178,7 @@
                                     <td class="text-end">R$ {{ r.valor|floatformat:2 }}</td>
 
                                     <td class="text-center align-middle">
-                                        <div class="d-flex justify-content-center gap-2">
+                                        <div class="d-flex justify-content-center gap-1">
                                         {% if r.esta_pago %}
                                             <span class="badge bg-success">Recebido</span>
                                         {% elif r.data_vencimento < hoje %}
@@ -198,12 +194,10 @@
 
                                             {% if not r.esta_pago %}
                                                 {% pode "financeiro:titulo_confirmar_quitacao" as pode_titulo_confirmar_quitacao %}{% if pode_titulo_confirmar_quitacao %}<a href="{% url 'financeiro:titulo_confirmar_quitacao' 'R' r.id %}"
-                                                   class="btn btn-sm btn-success">
-                                                    Quitar
-                                                </a>{% endif %}
+                                                   class="btn btn-sm btn-success btn-acao" title="Quitar" aria-label="Quitar"><i class="bi bi-cash-coin" aria-hidden="true"></i><span class="visually-hidden">Quitar</span></a>{% endif %}
                                             {% endif %}
                                             <a href="{% url 'financeiro:titulo_detalhe' r.tipo r.id %}"
-                                                class="btn btn-sm btn-primary">Detalhes</a>
+                                                class="btn btn-sm btn-info btn-acao" title="Detalhes" aria-label="Detalhes"><i class="bi bi-eye" aria-hidden="true"></i><span class="visually-hidden">Detalhes</span></a>
 
                                             <!-- <span class="text-muted small">Excluir no Lançamento</span> -->
  

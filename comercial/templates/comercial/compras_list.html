@@ -32,7 +32,7 @@
                     <th>Valor Total</th>
                     <th>Status</th>
                     <th>Itens Pendentes</th>
-                    <th class="text-center">Ações</th>
+                    <th class="text-center col-acoes">Ações</th>
                 </tr>
             </thead> 
 
@@ -67,29 +67,21 @@
                         <div class="center-flex-cell">
 
                             {% if compra.importada and not compra.confirmada %}
-                            {% pode "comercial:vincular_itens" as pode_vincular_itens %}{% if pode_vincular_itens %}<a href="{% url 'comercial:vincular_itens' compra.id %}" class="btn btn-sm btn-info">
-                                Vincular Itens
-                            </a>{% endif %}
+                            {% pode "comercial:vincular_itens" as pode_vincular_itens %}{% if pode_vincular_itens %}<a href="{% url 'comercial:vincular_itens' compra.id %}" class="btn btn-sm btn-info btn-acao" title="Vincular itens" aria-label="Vincular itens"><i class="bi bi-link-45deg" aria-hidden="true"></i><span class="visually-hidden">Vincular itens</span></a>{% endif %}
                             {% endif %}
 
                             {% if not compra.confirmada %}
 
-                            {% pode "comercial:compra_editar" as pode_compra_editar %}{% if pode_compra_editar %}<a href="{% url 'comercial:compra_editar' compra.pk %}" class="btn btn-sm btn-warning">
-                                Editar
-                            </a>{% endif %}
+                            {% pode "comercial:compra_editar" as pode_compra_editar %}{% if pode_compra_editar %}<a href="{% url 'comercial:compra_editar' compra.pk %}" class="btn btn-sm btn-warning btn-acao" title="Editar" aria-label="Editar"><i class="bi bi-pencil-square" aria-hidden="true"></i><span class="visually-hidden">Editar</span></a>{% endif %}
                             {% endif %}
                             
                             {% if not compra.confirmada %}
                             {% pode "comercial:compra_excluir" as pode_compra_excluir %}{% if pode_compra_excluir %}<a href="{% url 'comercial:compra_excluir' compra.id %}"
-                            class="btn btn-sm btn-danger"
-                            onclick="return confirm('Tem certeza que deseja excluir esta compra? Esta ação não pode ser desfeita.');">
-                                Excluir
-                            </a>{% endif %}
+                            class="btn btn-sm btn-danger btn-acao"
+                            onclick="return confirm('Tem certeza que deseja excluir esta compra? Esta ação não pode ser desfeita.');" title="Excluir" aria-label="Excluir"><i class="bi bi-trash" aria-hidden="true"></i><span class="visually-hidden">Excluir</span></a>{% endif %}
                             {% endif %}
                             <a href="{% url 'comercial:compra_detalhe' compra.id %}" 
-                                class="btn btn-sm btn-primary">
-                                Detalhes
-                            </a>
+                                class="btn btn-sm btn-info btn-acao" title="Detalhes" aria-label="Detalhes"><i class="bi bi-eye" aria-hidden="true"></i><span class="visually-hidden">Detalhes</span></a>
                         </div>
                     </td>
                 </tr>

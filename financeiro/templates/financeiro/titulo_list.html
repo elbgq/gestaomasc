@@ -61,7 +61,7 @@
                                     <th>Vencimento</th>
                                     <th>Status</th>
                                     <th>Origem</th>
-                                    <th class="text-center">Ações</th>
+                                    <th class="text-center col-acoes">Ações</th>
                                 </tr>
                             </thead>
  
@@ -85,15 +85,15 @@
                                         <td>{{ t.origem }}</td>
                                         <!-- Ações -->
                                         <td class="text-center align-middle">
-                                            <div class="d-flex justify-content-center gap-2">
+                                            <div class="d-flex justify-content-center gap-1">
                                                 {% if t.esta_pago %}
                                                     <span></span>
                                                 {% else %}
                                                     {% pode "financeiro:titulo_confirmar_quitacao" as pode_titulo_confirmar_quitacao %}{% if pode_titulo_confirmar_quitacao %}<a href="{% url 'financeiro:titulo_confirmar_quitacao' t.tipo t.id %}"
-                                                class="btn btn-sm btn-success">Quitar</a>{% endif %}
+                                                class="btn btn-sm btn-success btn-acao" title="Quitar" aria-label="Quitar"><i class="bi bi-cash-coin" aria-hidden="true"></i><span class="visually-hidden">Quitar</span></a>{% endif %}
                                                 {% endif %}
                                                 <a href="{% url 'financeiro:titulo_detalhe' t.tipo t.id %}"
-                                                class="btn btn-sm btn-info">Detalhes</a>
+                                                class="btn btn-sm btn-info btn-acao" title="Detalhes" aria-label="Detalhes"><i class="bi bi-eye" aria-hidden="true"></i><span class="visually-hidden">Detalhes</span></a>
                                             </div>
                                         </td>
                                     </tr>
@@ -134,7 +134,7 @@
                                     <th>Vencimento</th>
                                     <th>Status</th>
                                     <th>Origem</th>
-                                    <th class="text-center">Ações</th>
+                                    <th class="text-center col-acoes">Ações</th>
                                 </tr>
                             </thead>
 
@@ -158,15 +158,15 @@
                                         <td>{{ t.origem }}</td>
                                         <!-- Ações -->
                                         <td class="text-center align-middle">
-                                            <div class="d-flex justify-content-center gap-2">                                                
+                                            <div class="d-flex justify-content-center gap-1">                                                
                                                 {% if t.esta_pago %}
                                                     <span></span>
                                                 {% else %}
                                                     {% pode "financeiro:titulo_confirmar_quitacao" as pode_titulo_confirmar_quitacao %}{% if pode_titulo_confirmar_quitacao %}<a href="{% url 'financeiro:titulo_confirmar_quitacao' t.tipo t.id %}"
-                                                class="btn btn-sm btn-success">Quitar</a>{% endif %}
+                                                class="btn btn-sm btn-success btn-acao" title="Quitar" aria-label="Quitar"><i class="bi bi-cash-coin" aria-hidden="true"></i><span class="visually-hidden">Quitar</span></a>{% endif %}
                                                 {% endif %}
                                                 <a href="{% url 'financeiro:titulo_detalhe' t.tipo t.id %}"
-                                                class="btn btn-sm btn-info">Detalhes</a>
+                                                class="btn btn-sm btn-info btn-acao" title="Detalhes" aria-label="Detalhes"><i class="bi bi-eye" aria-hidden="true"></i><span class="visually-hidden">Detalhes</span></a>
                                             </div>
                                         </td>
                                     </tr>

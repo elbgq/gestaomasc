@@ -60,7 +60,7 @@
                                     <th>Valor</th>
                                     <th>Status</th>
                                     <th>Vencimento</th>
-                                    <th class="text-center">Ações</th>
+                                    <th class="text-center col-acoes">Ações</th>
                                 </tr>
                             </thead>
  
@@ -89,13 +89,13 @@
                                     <td>{{ conta.data_vencimento|date:"d/m/Y" }}</td>
 
                                     <td class="text-center align-middle">
-                                        <div class="d-flex justify-content-center gap-2">
+                                        <div class="d-flex justify-content-center gap-1">
                                         {% if not conta.esta_pago %}
                                             {% pode "financeiro:titulo_confirmar_quitacao" as pode_titulo_confirmar_quitacao %}{% if pode_titulo_confirmar_quitacao %}<a href="{% url 'financeiro:titulo_confirmar_quitacao' conta.tipo conta.id %}"
-                                            class="btn btn-sm btn-success">Quitar</a>{% endif %}
+                                            class="btn btn-sm btn-success btn-acao" title="Quitar" aria-label="Quitar"><i class="bi bi-cash-coin" aria-hidden="true"></i><span class="visually-hidden">Quitar</span></a>{% endif %}
                                         {% endif %}
                                             <a href="{% url 'financeiro:titulo_detalhe' conta.tipo conta.id %}"
-                                            class="btn btn-sm btn-primary">Detalhes</a>
+                                            class="btn btn-sm btn-info btn-acao" title="Detalhes" aria-label="Detalhes"><i class="bi bi-eye" aria-hidden="true"></i><span class="visually-hidden">Detalhes</span></a>
                                         </div>
                                     </td>
                                 </tr>
@@ -146,7 +146,7 @@
                                     <th>Descrição</th>
                                     <th>Valor</th>
                                     <th>Status</th>
-                                    <th class="text-center">Ações</th>
+                                    <th class="text-center col-acoes">Ações</th>
                                 </tr>
                             </thead>
 
@@ -174,13 +174,13 @@
                                     </td>
 
                                     <td class="text-center align-middle">
-                                        <div class="d-flex justify-content-center gap-2">
+                                        <div class="d-flex justify-content-center gap-1">
                                             {% if not p.esta_pago %}
                                                 {% pode "financeiro:titulo_confirmar_quitacao" as pode_titulo_confirmar_quitacao %}{% if pode_titulo_confirmar_quitacao %}<a href="{% url 'financeiro:titulo_confirmar_quitacao' p.tipo p.id %}"
-                                                class="btn btn-sm btn-success">Quitar</a>{% endif %}
+                                                class="btn btn-sm btn-success btn-acao" title="Quitar" aria-label="Quitar"><i class="bi bi-cash-coin" aria-hidden="true"></i><span class="visually-hidden">Quitar</span></a>{% endif %}
                                             {% endif %}
                                             <a href="{% url 'financeiro:titulo_detalhe' p.tipo p.id %}"
-                                            class="btn btn-sm btn-primary">Detalhes</a>
+                                            class="btn btn-sm btn-info btn-acao" title="Detalhes" aria-label="Detalhes"><i class="bi bi-eye" aria-hidden="true"></i><span class="visually-hidden">Detalhes</span></a>
                                         </div>
                                     </td>
                                 </tr>

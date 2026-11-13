@@ -1,43 +1,108 @@
-{% extends "base.html" %}
-{% block title %}Entrar - MASC{% endblock %}
-{% block content %}
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <!-- Faz o celular usar a largura real da tela -->
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Entrar - ERP MASC</title>
+    <link rel="icon" type="image/x-icon" href="{% static 'img/masc_favicon.ico' %}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="{% static 'css/masc_tema.css' %}?v=20261113">
+</head>
 
-<div class="row justify-content-center mt-4 mt-md-5 mx-0">
-    <div class="col-12 col-sm-9 col-md-6 col-lg-4 px-0 px-sm-2">
-        <h3 class="text-center mb-4">Acesso ao Sistema</h3>
+{% comment %}
+    Tela de entrada em página própria (sem menu nem rodapé do base.html): metade esquerda com o cartão de login,
+    metade direita com a apresentação do sistema. No celular a metade direita some.
+{% endcomment %}
+<body class="login-pagina">
+    <header class="login-topo">ERP MASC</header>
 
-        <form method="post" id="form-login" class="form-login">
-            {% csrf_token %}
-            {% if form.non_field_errors %}
-                <div class="alert alert-danger py-2">{{ form.non_field_errors|join:" " }}</div>
-            {% endif %}
+    <div class="login-split">
+        <main class="login-esq">
+            <p class="login-boasvindas login-boasvindas-celular">Bem-vindo ao ERP MASC</p>
 
-            <div class="mb-3">
-                <label for="{{ form.username.id_for_label }}" class="form-label">Usuário</label>
-                <input type="text" name="{{ form.username.html_name }}" id="{{ form.username.id_for_label }}"
-                       value="{{ form.username.value|default_if_none:'' }}" maxlength="150" required autofocus
-                       autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false">
+            <div class="login-cartao">
+                <div class="login-marca" aria-hidden="true">MASC</div>
+                <h1 class="login-titulo">ERP MASC</h1>
+                <p class="login-sub">Faça login para continuar</p>
+
+                {% include "partials/messages.html" %}
+
+                <form method="post" id="form-login" class="form-login">
+                    {% csrf_token %}
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger py-2">{{ form.non_field_errors|join:" " }}</div>
+                    {% endif %}
+
+                    <div class="login-campo">
+                        <label for="{{ form.username.id_for_label }}">Usuário</label>
+                        <div class="login-entrada">
+                            <i class="bi bi-person-fill" aria-hidden="true"></i>
+                            <input type="text" name="{{ form.username.html_name }}" id="{{ form.username.id_for_label }}"
+                                   value="{{ form.username.value|default_if_none:'' }}" maxlength="150" required autofocus
+                                   autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false">
+                        </div>
+                    </div>
+
+                    <div class="login-campo">
+                        <label for="{{ form.password.id_for_label }}">Senha</label>
+                        <div class="login-entrada">
+                            <i class="bi bi-lock-fill" aria-hidden="true"></i>
+                            <input type="password" name="{{ form.password.html_name }}" id="{{ form.password.id_for_label }}"
+                                   required autocomplete="current-password">
+                        </div>
+                    </div>
+
+                    {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+
+                    <button type="submit" class="login-botao" id="btn-entrar">Entrar</button>
+                </form>
+
+                <p class="login-esqueci">Esqueceu sua senha? Fale com o administrador.</p>
             </div>
+        </main>
 
-            <div class="mb-3">
-                <label for="{{ form.password.id_for_label }}" class="form-label">Senha</label>
-                <input type="password" name="{{ form.password.html_name }}" id="{{ form.password.id_for_label }}"
-                       required autocomplete="current-password">
+        <!-- Apresentação: desenho do Painel com números de exemplo (a tela de login é pública, então não usa dados reais) -->
+        <aside class="login-dir" aria-hidden="true">
+            <p class="login-boasvindas">Bem-vindo ao ERP MASC</p>
+            <div class="login-vitrine">
+                <div class="lv-note">
+                    <div class="lv-note-tela">
+                        <div class="lv-erp">
+                            <div class="lv-menu"><b>MASC</b><span class="ativo">Painel</span><span>Vendas</span><span>Compras</span><span>Estoque</span><span>Financeiro</span><span>Relatórios</span><span>Cadastros</span></div>
+                            <div class="lv-corpo">
+                                <h4>Painel</h4>
+                                <div class="lv-kpis">
+                                    <div><small>Vendas do mês</small><strong>R$ 48.250</strong></div>
+                                    <div><small>Margem</small><strong>32,4%</strong></div>
+                                    <div><small>A receber</small><strong>R$ 12.900</strong></div>
+                                    <div><small>Meta do mês</small><strong>78%</strong></div>
+                                </div>
+                                <div class="lv-graf">
+                                    <div class="lv-g"><small>Vendas por dia</small>
+                                        <div class="lv-barras"><i style="height:40%"></i><i style="height:62%"></i><i style="height:48%"></i><i style="height:80%"></i><i style="height:55%"></i><i style="height:70%"></i><i style="height:92%"></i><i style="height:66%"></i><i style="height:74%"></i></div>
+                                    </div>
+                                    <div class="lv-g"><small>Recebimentos</small><div class="lv-rosca"><div></div></div></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="lv-note-base"></div>
+                </div>
+                <div class="lv-cel"><div class="lv-cel-tela"><div class="t">ERP MASC</div><div class="bv">Bem-vindo ao ERP MASC</div><div class="c"><div class="m"></div><div class="l"></div><div class="l"></div><div class="b"></div></div></div></div>
             </div>
-
-            {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
-
-            <button type="submit" class="btn btn-primary w-100" id="btn-entrar">Entrar</button>
-        </form>
+        </aside>
     </div>
-</div>
 
-<!-- Evita o segundo toque no "Entrar": no celular ele reenvia o formulário com o código de segurança já usado -->
-<script>
-    document.getElementById("form-login").addEventListener("submit", function () {
-        const btn = document.getElementById("btn-entrar");
-        setTimeout(function () { btn.disabled = true; btn.textContent = "Entrando..."; }, 0);
-    });
-</script>
-
-{% endblock %}
+    <!-- Evita o segundo toque no "Entrar": no celular ele reenvia o formulário com o código de segurança já usado -->
+    <script>
+        document.getElementById("form-login").addEventListener("submit", function () {
+            const btn = document.getElementById("btn-entrar");
+            setTimeout(function () { btn.disabled = true; btn.textContent = "Entrando..."; }, 0);
+        });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

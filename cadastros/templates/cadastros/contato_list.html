@@ -34,7 +34,7 @@
                     <th>Documento</th>
                     <th>Telefone</th>
                     <th>Email</th>
-                    <th class="text-center">Ações</th>
+                    <th class="text-center col-acoes">Ações</th>
                 </tr>
             </thead>
             <tbody>
@@ -46,10 +46,10 @@
                     <td>{{ c.telefone }}</td> 
                     <td>{{ c.email }}</td>
                     <td class="text-center align-middle">
-                        <div class="d-flex justify-content-center gap-2">
-                            <a href="{% url 'cadastros:contato_detail' c.pk %}" class="btn btn-sm btn-info">Detalhar</a>
-                            {% pode "cadastros:contato_update" as pode_contato_update %}{% if pode_contato_update %}<a href="{% url 'cadastros:contato_update' c.pk %}" class="btn btn-sm btn-warning">Editar</a>{% endif %}
-                            {% pode "cadastros:contato_delete" as pode_contato_delete %}{% if pode_contato_delete %}<a href="{% url 'cadastros:contato_delete' c.pk %}" class="btn btn-sm btn-danger">Excluir</a>{% endif %}
+                        <div class="d-flex justify-content-center gap-1">
+                            <a href="{% url 'cadastros:contato_detail' c.pk %}" class="btn btn-sm btn-info btn-acao" title="Detalhes" aria-label="Detalhes"><i class="bi bi-eye" aria-hidden="true"></i><span class="visually-hidden">Detalhes</span></a>
+                            {% pode "cadastros:contato_update" as pode_contato_update %}{% if pode_contato_update %}<a href="{% url 'cadastros:contato_update' c.pk %}" class="btn btn-sm btn-warning btn-acao" title="Editar" aria-label="Editar"><i class="bi bi-pencil-square" aria-hidden="true"></i><span class="visually-hidden">Editar</span></a>{% endif %}
+                            {% pode "cadastros:contato_delete" as pode_contato_delete %}{% if pode_contato_delete %}<a href="{% url 'cadastros:contato_delete' c.pk %}" class="btn btn-sm btn-danger btn-acao" title="Excluir" aria-label="Excluir"><i class="bi bi-trash" aria-hidden="true"></i><span class="visually-hidden">Excluir</span></a>{% endif %}
                         </div>
                     </td>
                 </tr>

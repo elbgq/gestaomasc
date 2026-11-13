@@ -63,7 +63,7 @@
                                     <th>Descrição</th>
                                     <th>Valor</th>
                                     <th>Observação</th>
-                                    <th class="text-center">Ações</th>
+                                    <th class="text-center col-acoes">Ações</th>
                                 </tr>
                             </thead>
 
@@ -84,31 +84,23 @@
                                         </td>
                                         <!-- Botões de ação -->
                                         <td class="text-center">
-                                            <div class="btn-group" role="group" "text-center">
+                                            <div class="d-flex justify-content-center gap-1">
                                                 
                                                 {% with titulo=l.get_titulo %}
                                                     <!-- Quando quitado: mostrar apenas o botão de visualizar -->
                                                     {% if titulo and titulo.status == "pago" %}
                                                         <a href="{% url 'financeiro:titulo_detalhe' titulo.tipo titulo.id %}"
-                                                           class="btn btn-sm btn-success disabled me-2">
-                                                            Quitado
-                                                        </a>
+                                                           class="btn btn-sm btn-success disabled btn-acao" title="Quitado" aria-label="Quitado"><i class="bi bi-check2-circle" aria-hidden="true"></i><span class="visually-hidden">Quitado</span></a>
                                                         <a href="{% url 'financeiro:titulo_detalhe' titulo.tipo titulo.id %}"
-                                                        class="btn btn-sm btn-info">
-                                                            Ver Título
-                                                        </a>
+                                                        class="btn btn-sm btn-info btn-acao" title="Ver título" aria-label="Ver título"><i class="bi bi-eye" aria-hidden="true"></i><span class="visually-hidden">Ver título</span></a>
 
                                                     <!-- Quando NÃO quitado: permitir editar e excluir -->
                                                     {% else %}
                                                         {% pode "financeiro:lancamento_update" as pode_lancamento_update %}{% if pode_lancamento_update %}<a href="{% url 'financeiro:lancamento_update' l.id %}"
-                                                        class="btn btn-sm btn-warning me-2">
-                                                            Editar
-                                                        </a>{% endif %}
+                                                        class="btn btn-sm btn-warning btn-acao" title="Editar" aria-label="Editar"><i class="bi bi-pencil-square" aria-hidden="true"></i><span class="visually-hidden">Editar</span></a>{% endif %}
 
                                                         {% pode "financeiro:lancamento_delete" as pode_lancamento_delete %}{% if pode_lancamento_delete %}<a href="{% url 'financeiro:lancamento_delete' l.id %}"
-                                                        class="btn btn-sm btn-danger">
-                                                            Excluir
-                                                        </a>{% endif %}
+                                                        class="btn btn-sm btn-danger btn-acao" title="Excluir" aria-label="Excluir"><i class="bi bi-trash" aria-hidden="true"></i><span class="visually-hidden">Excluir</span></a>{% endif %}
                                                     {% endif %}
                                                 {% endwith %}
 
@@ -153,7 +145,7 @@
                                     <th>Descrição</th>
                                     <th>Valor</th>
                                     <th>Observação</th>
-                                    <th class="text-center">Ações</th>
+                                    <th class="text-center col-acoes">Ações</th>
                                 </tr>
                             </thead>
 
@@ -174,31 +166,23 @@
                                         </td>
 
                                         <td class="text-center">
-                                            <div class="btn-group" role="group">
+                                            <div class="d-flex justify-content-center gap-1">
                                                 
                                                 {% with titulo=l.get_titulo %}
                                                     <!-- Quando quitado: mostrar apenas o botão de visualizar -->
                                                     {% if titulo and titulo.status == "pago" %}
                                                         <a href="{% url 'financeiro:titulo_detalhe' titulo.tipo titulo.id %}"
-                                                           class="btn btn-sm btn-success disabled me-2">
-                                                            Quitado
-                                                        </a>
+                                                           class="btn btn-sm btn-success disabled btn-acao" title="Quitado" aria-label="Quitado"><i class="bi bi-check2-circle" aria-hidden="true"></i><span class="visually-hidden">Quitado</span></a>
                                                         <a href="{% url 'financeiro:titulo_detalhe' titulo.tipo titulo.id %}"
-                                                        class="btn btn-sm btn-info">
-                                                            Ver Título
-                                                        </a>
+                                                        class="btn btn-sm btn-info btn-acao" title="Ver título" aria-label="Ver título"><i class="bi bi-eye" aria-hidden="true"></i><span class="visually-hidden">Ver título</span></a>
 
                                                     <!-- Quando NÃO quitado: permitir editar e excluir -->
                                                     {% else %}
                                                         {% pode "financeiro:lancamento_update" as pode_lancamento_update %}{% if pode_lancamento_update %}<a href="{% url 'financeiro:lancamento_update' l.id %}"
-                                                        class="btn btn-sm btn-warning me-2">
-                                                            Editar
-                                                        </a>{% endif %}
+                                                        class="btn btn-sm btn-warning btn-acao" title="Editar" aria-label="Editar"><i class="bi bi-pencil-square" aria-hidden="true"></i><span class="visually-hidden">Editar</span></a>{% endif %}
 
                                                         {% pode "financeiro:lancamento_delete" as pode_lancamento_delete %}{% if pode_lancamento_delete %}<a href="{% url 'financeiro:lancamento_delete' l.id %}"
-                                                        class="btn btn-sm btn-danger">
-                                                            Excluir
-                                                        </a>{% endif %}
+                                                        class="btn btn-sm btn-danger btn-acao" title="Excluir" aria-label="Excluir"><i class="bi bi-trash" aria-hidden="true"></i><span class="visually-hidden">Excluir</span></a>{% endif %}
                                                     {% endif %}
                                                 {% endwith %}
                                             </div>

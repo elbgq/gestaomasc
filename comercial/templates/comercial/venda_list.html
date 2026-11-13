@@ -25,7 +25,7 @@
                     <th>Data</th>
                     <th>Status</th>
                     <th>Total</th>
-                    <th class="text-center">Ações</th>
+                    <th class="text-center col-acoes">Ações</th>
                 </tr>
             </thead>
 
@@ -48,17 +48,11 @@
                     <!-- Ações -->
                     <td class="text-center">
                         <div class="center-flex-cell">
-                            <a href="{% url 'comercial:venda_detalhe' venda.id %}" class="btn btn-sm btn-info">
-                                <i class="bi bi-eye"></i> Detalhes
-                            </a>
+                            <a href="{% url 'comercial:venda_detalhe' venda.id %}" class="btn btn-sm btn-info btn-acao" title="Detalhes" aria-label="Detalhes"><i class="bi bi-eye" aria-hidden="true"></i><span class="visually-hidden">Detalhes</span></a>
                             {% if venda.status == "rascunho" %}
-                                {% pode "comercial:venda_editar" as pode_venda_editar %}{% if pode_venda_editar %}<a href="{% url 'comercial:venda_editar' venda.id %}" class="btn btn-sm btn-warning">
-                                    <i class="bi bi-pencil-square"></i> Editar
-                                </a>{% endif %}
+                                {% pode "comercial:venda_editar" as pode_venda_editar %}{% if pode_venda_editar %}<a href="{% url 'comercial:venda_editar' venda.id %}" class="btn btn-sm btn-warning btn-acao" title="Editar" aria-label="Editar"><i class="bi bi-pencil-square" aria-hidden="true"></i><span class="visually-hidden">Editar</span></a>{% endif %}
 
-                                {% pode "comercial:venda_excluir" as pode_venda_excluir %}{% if pode_venda_excluir %}<a href="{% url 'comercial:venda_excluir' venda.id %}" class="btn btn-sm btn-danger">
-                                    <i class="bi bi-trash"></i> Excluir
-                                </a>{% endif %}
+                                {% pode "comercial:venda_excluir" as pode_venda_excluir %}{% if pode_venda_excluir %}<a href="{% url 'comercial:venda_excluir' venda.id %}" class="btn btn-sm btn-danger btn-acao" title="Excluir" aria-label="Excluir"><i class="bi bi-trash" aria-hidden="true"></i><span class="visually-hidden">Excluir</span></a>{% endif %}
                             {% endif %}
                         </div>
                     </td>

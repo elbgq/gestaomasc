@@ -10,6 +10,42 @@ Depois de copiar os arquivos, rode `python manage.py migrate` (há uma migraçã
 
 ---
 
+## Nova tela de login (13/11/2026)
+
+A tela de entrada foi redesenhada: topo "ERP MASC" em turquesa escuro e tela dividida em fundo turquesa. À esquerda fica o cartão de login (selo MASC, Usuário, Senha, Entrar). À direita fica a frase "Bem-vindo ao ERP MASC" com um desenho do Painel num notebook e do login num celular. O desenho usa números de exemplo, porque a tela de login é pública. Abaixo de 992px de largura (celular e tablet em pé) a parte da direita some e a frase aparece em cima do cartão.
+
+- `core/templates/registration/login.html`: virou página própria (não estende mais o `base.html`, então não tem menu nem rodapé). Carrega Bootstrap, Bootstrap Icons e o `masc_tema.css`. Mantém os avisos (`partials/messages.html`, usado pelo `csrf_falhou` quando a tela expira), o `next`, os atributos de celular nos campos e a trava contra o segundo toque no "Entrar".
+- `core/static/css/masc_tema.css`: novo bloco "TELA DE LOGIN NOVA" com as classes `.login-*` e `.lv-*` (desenho da direita), antes do bloco de impressão. As regras antigas `body:not(:has(.erp-sidebar))` ficaram para as outras telas sem menu (ex.: página expirada).
+- "Esqueceu sua senha?" orienta a falar com o administrador, já que o sistema não envia e-mail de troca de senha.
+
+No PythonAnywhere: copiar os dois arquivos, rodar `python manage.py collectstatic` e clicar em Reload.
+
+---
+
+## Coluna "Ações" com ícones pequenos (12/11/2026)
+
+Os botões de texto da coluna "Ações" (Detalhes, Editar, Excluir, Quitar...) viraram botões só com ícone, de 30px (32px no celular), com as mesmas cores. O nome da ação continua na página como dica (`title`), `aria-label` e texto oculto (`visually-hidden`), então os testes que procuram "Editar"/"Excluir" seguem valendo. "Detalhes" ficou turquesa (`btn-info`) em todas as telas (antes era azul em Compras, Contas a pagar, Contas a receber e Devoluções).
+
+| Ação | Ícone |
+|---|---|
+| Detalhes / Detalhar / Ver / Ver título | `bi-eye` |
+| Editar / Editar venda | `bi-pencil-square` |
+| Excluir | `bi-trash` |
+| Quitar | `bi-cash-coin` |
+| Quitado (desativado) | `bi-check2-circle` |
+| Vincular itens | `bi-link-45deg` |
+| Registrar devolução | `bi-arrow-return-left` |
+
+- `core/static/css/masc_tema.css`: novas regras `.btn-acao` e `.col-acoes` no fim do arquivo (coluna estreita, ícones sem quebrar linha).
+- Templates alterados: `cadastros/produto_list`, `servico_list`, `contato_list`; `comercial/venda_list`, `compras_list`, `meta_list`, `devolucao_list`, `posvenda_list`; `financeiro/categoria_list`, `caixa_list`, `caixa_historico`, `caixa_detalhe`, `contas_pagar_lista`, `receber_list`, `titulo_list`, `lancamento_list`.
+- `financeiro/lancamento_list.html`: corrigido o atributo solto `"text-center"` na div das ações; o `btn-group` virou `d-flex gap-1` como nas outras telas.
+- `financeiro/pagar_list.html` não foi alterado: nenhuma view usa esse template.
+- Os botões do topo das telas (Novo Produto, Importar CSV...) não mudaram.
+
+Sem migração. 221 testes passando. No PythonAnywhere: copiar os arquivos, rodar `python manage.py collectstatic --noinput` e clicar em Reload na aba Web.
+
+---
+
 ## Login no celular: erro CSRF e tela sem responsividade (12/11/2026)
 
 - `core/templates/base.html`: faltava `<meta name="viewport">`. Sem ela o celular mostrava a versão de computador encolhida (campos minúsculos e as regras de celular do CSS nunca valiam). Vale para todas as telas.

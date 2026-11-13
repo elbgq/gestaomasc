@@ -46,7 +46,7 @@
                     <th>O que aconteceu</th>
                     <th>Retornar até</th>
                     <th>Situação</th>
-                    <th class="text-center">Ações</th>
+                    <th class="text-center col-acoes">Ações</th>
                 </tr>
             </thead>
             <tbody>
@@ -71,8 +71,8 @@
                         {% else %}<span class="badge bg-warning text-dark">Aberto</span>{% endif %}
                     </td>
                     <td class="text-center">
-                        {% if pode_editar %}<a href="{% url 'comercial:posvenda_editar' r.id %}" class="btn btn-sm btn-warning">Editar</a>{% endif %}
-                        {% if pode_devolucao and r.tipo == "devolucao" and r.venda and r.venda.status == "finalizada" %}<a href="{% url 'comercial:devolucao_venda_criar' r.venda.id %}?posvenda={{ r.id }}" class="btn btn-sm btn-outline-danger">Registrar devolução</a>{% endif %}
+                        {% if pode_editar %}<a href="{% url 'comercial:posvenda_editar' r.id %}" class="btn btn-sm btn-warning btn-acao" title="Editar" aria-label="Editar"><i class="bi bi-pencil-square" aria-hidden="true"></i><span class="visually-hidden">Editar</span></a>{% endif %}
+                        {% if pode_devolucao and r.tipo == "devolucao" and r.venda and r.venda.status == "finalizada" %}<a href="{% url 'comercial:devolucao_venda_criar' r.venda.id %}?posvenda={{ r.id }}" class="btn btn-sm btn-outline-danger btn-acao" title="Registrar devolução" aria-label="Registrar devolução"><i class="bi bi-arrow-return-left" aria-hidden="true"></i><span class="visually-hidden">Registrar devolução</span></a>{% endif %}
                     </td>
                 </tr>
                 {% empty %}

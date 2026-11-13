@@ -47,7 +47,7 @@
                             <th class="text-end">Valor</th>
                             <th>Tipo</th>
                             <th>Origem</th>
-                            <th class="text-center">Ações</th>
+                            <th class="text-center col-acoes">Ações</th>
                         </tr>
                     </thead>
 
@@ -81,11 +81,9 @@
                             </td>
   
                             <td class="text-center allign-middle">
-                                <div class="d-flex justify-content-center gap-2">
+                                <div class="d-flex justify-content-center gap-1">
                                     <a href="{% url 'financeiro:caixa_movimento_detalhe' m.id %}"
-                                    class="btn btn-sm btn-info">
-                                        Detalhes
-                                    </a>
+                                    class="btn btn-sm btn-info btn-acao" title="Detalhes" aria-label="Detalhes"><i class="bi bi-eye" aria-hidden="true"></i><span class="visually-hidden">Detalhes</span></a>
                                 </div>
                             </td>
 

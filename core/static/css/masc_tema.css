@@ -599,7 +599,7 @@ hr {
 }
 
 /* =========================
-   TELA DE ENTRADA (login)
+   TELAS SEM MENU LATERAL (antigo login; hoje o login usa as regras .login-* abaixo)
 ========================= */
 body:not(:has(.erp-sidebar)) .erp-content form {
     background-color: var(--masc-cartao);
@@ -646,6 +646,286 @@ body:not(:has(.erp-sidebar)) .erp-content form input:not([type=hidden]):focus {
 }
 
 /* =========================
+   TELA DE LOGIN NOVA (registration/login.html, página própria sem o base.html)
+   Topo turquesa escuro, tela dividida: cartão de entrada à esquerda e
+   apresentação do sistema à direita. Abaixo de 992px a direita some.
+========================= */
+.login-pagina {
+    --login-turq: var(--masc-turquesa);
+    --login-turq-claro: #33a19c;
+    --login-turq-escuro: #1f6b68;
+    margin: 0;
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(135deg, var(--login-turq-claro), var(--login-turq)) fixed;
+    color: var(--masc-texto);
+    font-size: 1rem;
+}
+
+.login-topo {
+    background-color: var(--login-turq-escuro);
+    color: #fff;
+    text-align: center;
+    font-weight: 700;
+    font-size: 1.25rem;
+    letter-spacing: .12em;
+    padding: 1.1rem 1rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .18);
+}
+
+.login-split {
+    flex: 1;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.login-esq {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1rem;
+}
+
+.login-dir {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2rem;
+    padding: 2rem 1.5rem;
+    background-color: rgba(255, 255, 255, .06);
+    border-left: 1px solid rgba(255, 255, 255, .12);
+}
+
+.login-cartao {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 390px;
+    background-color: var(--masc-cartao);
+    border-radius: 16px;
+    padding: 2rem 1.75rem;
+    box-shadow: 0 18px 40px rgba(10, 50, 48, .28);
+}
+
+.login-cartao .form-login {
+    display: grid;
+    gap: .9rem;
+}
+
+.login-marca {
+    width: 92px;
+    height: 92px;
+    margin: 0 auto 1rem;
+    border-radius: 50%;
+    background-color: var(--login-turq);
+    color: #fff;
+    display: grid;
+    place-items: center;
+    font-weight: 700;
+    font-size: 1.5rem;
+    letter-spacing: .04em;
+    box-shadow: inset 0 0 0 5px #fff, 0 0 0 3px var(--login-turq);
+}
+
+.login-titulo {
+    text-align: center;
+    font-size: 1.65rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.login-sub {
+    text-align: center;
+    color: var(--masc-texto-suave);
+    margin: .25rem 0 1.25rem;
+}
+
+.login-campo label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: .35rem;
+}
+
+.login-entrada {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    padding: 0 .8rem;
+    background-color: #fff;
+    border: 1px solid var(--masc-borda-campo);
+    border-radius: .65rem;
+    box-shadow: var(--masc-afundado);
+}
+
+.login-entrada:focus-within {
+    border-color: var(--login-turq);
+    box-shadow: var(--masc-afundado), 0 0 0 .2rem rgba(42, 138, 134, .25);
+}
+
+.login-entrada i {
+    color: var(--login-turq);
+    font-size: 1.1rem;
+}
+
+.login-entrada input {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    outline: none;
+    background: transparent;
+    padding: .65rem 0;
+    font-size: 16px;   /* 16px ou mais: o iPhone não dá zoom sozinho ao tocar no campo */
+    color: var(--masc-texto);
+}
+
+.login-botao {
+    margin-top: .4rem;
+    width: 100%;
+    border: 0;
+    border-radius: .75rem;
+    padding: .75rem;
+    background-color: var(--login-turq);
+    color: #fff;
+    font-weight: 700;
+    font-size: 1.05rem;
+    box-shadow: 0 6px 14px rgba(31, 107, 104, .35);
+    transition: background-color .15s ease, transform .1s ease;
+}
+
+.login-botao:hover,
+.login-botao:focus-visible {
+    background-color: var(--login-turq-escuro);
+}
+
+.login-botao:focus-visible {
+    outline: 3px solid rgba(42, 138, 134, .45);
+    outline-offset: 2px;
+}
+
+.login-botao:active { transform: translateY(1px); }
+.login-botao:disabled { opacity: .75; }
+
+.login-esqueci {
+    text-align: center;
+    color: var(--login-turq-escuro);
+    font-size: .9rem;
+    margin: 1rem 0 0;
+}
+
+.login-cartao .erp-mensagens .alert {
+    font-size: .9rem;
+    padding-top: .5rem;
+    padding-bottom: .5rem;
+}
+
+.login-boasvindas {
+    color: #fff;
+    font-weight: 700;
+    font-size: 2.4rem;
+    line-height: 1.15;
+    text-align: center;
+    margin: 0;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, .15);
+}
+
+/* A frase aparece em cima do cartão só no celular (no computador ela fica na direita) */
+.login-boasvindas-celular { display: none; }
+
+/* ---- Vitrine: notebook com o Painel e celular com o login (desenho com números de exemplo) ---- */
+.login-vitrine {
+    position: relative;
+    width: 520px;
+    max-width: 100%;
+    height: 340px;
+    background-color: rgba(255, 255, 255, .12);
+    border-radius: 18px;
+    flex: none;
+}
+
+.lv-note { position: absolute; left: 28px; top: 24px; width: 420px; }
+.lv-note-tela { background: #111; border-radius: 12px 12px 0 0; padding: 8px; height: 262px; }
+.lv-note-base { height: 12px; background: linear-gradient(#cfd5d3, #9aa3a0); border-radius: 0 0 14px 14px; margin: 0 -22px; }
+
+.lv-erp {
+    display: grid;
+    grid-template-columns: 62px 1fr;
+    height: 100%;
+    background: var(--masc-bg);
+    border-radius: 3px;
+    overflow: hidden;
+    font-size: 6.5px;
+    line-height: 1.4;
+}
+
+.lv-menu { background: var(--masc-preto); color: #cfd8d2; padding: 7px 5px; display: grid; align-content: start; gap: 4px; }
+.lv-menu b { color: #fff; font-size: 8px; margin-bottom: 3px; }
+.lv-menu span { padding: 2px 4px; border-radius: 3px; }
+.lv-menu .ativo { background: var(--masc-verde); color: #fff; }
+
+.lv-corpo { padding: 8px; display: grid; gap: 6px; align-content: start; }
+.lv-corpo h4 { margin: 0; font-size: 10px; font-weight: 700; color: var(--masc-texto); }
+
+.lv-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+.lv-kpis > div,
+.lv-g { background: var(--masc-cartao); border-radius: 5px; padding: 5px; box-shadow: 2px 2px 4px var(--masc-sombra); }
+.lv-kpis small { display: block; color: var(--masc-texto-suave); font-size: 5.5px; }
+.lv-kpis strong { font-size: 8.5px; color: var(--masc-texto); }
+
+.lv-graf { display: grid; grid-template-columns: 1.6fr 1fr; gap: 5px; }
+.lv-g { height: 118px; display: flex; flex-direction: column; padding: 6px; }
+.lv-g small { color: var(--masc-texto-suave); font-size: 6px; }
+.lv-barras { flex: 1; display: flex; align-items: flex-end; gap: 5px; padding-top: 6px; border-bottom: 1px solid var(--masc-linha); }
+.lv-barras i { flex: 1; background: var(--masc-verde); border-radius: 2px 2px 0 0; }
+.lv-barras i:nth-child(even) { background: #7fbf86; }
+.lv-rosca { flex: 1; display: grid; place-items: center; }
+.lv-rosca div {
+    width: 62px;
+    height: 62px;
+    border-radius: 50%;
+    background: conic-gradient(var(--masc-verde) 0 52%, var(--masc-turquesa) 0 78%, var(--masc-ambar) 0 92%, var(--masc-vermelho) 0);
+    -webkit-mask: radial-gradient(circle, transparent 46%, #000 47%);
+    mask: radial-gradient(circle, transparent 46%, #000 47%);
+}
+
+.lv-cel { position: absolute; right: 26px; bottom: 18px; width: 108px; height: 214px; background: #111; border-radius: 16px; padding: 5px; box-shadow: 0 10px 24px rgba(0, 0, 0, .35); }
+.lv-cel-tela { height: 100%; border-radius: 12px; overflow: hidden; background: linear-gradient(160deg, #33a19c, var(--masc-turquesa)); display: flex; flex-direction: column; }
+.lv-cel .t { background: #1f6b68; color: #fff; text-align: center; font-weight: 700; font-size: 6px; letter-spacing: .1em; padding: 6px 0; }
+.lv-cel .bv { color: #fff; font-weight: 700; font-size: 7.5px; line-height: 1.2; text-align: center; padding: 8px 6px 4px; }
+.lv-cel .c { margin: 4px 7px; background: var(--masc-cartao); border-radius: 6px; padding: 7px 6px; display: grid; gap: 4px; }
+.lv-cel .m { width: 20px; height: 20px; border-radius: 50%; background: var(--masc-turquesa); margin: 0 auto; }
+.lv-cel .l { height: 9px; border: 1px solid var(--masc-borda-campo); border-radius: 3px; background: #fff; }
+.lv-cel .b { height: 10px; border-radius: 3px; background: var(--masc-turquesa); }
+
+/* Telas médias: a frase da direita diminui um pouco */
+@media (max-width: 1200px) {
+    .login-boasvindas { font-size: 2rem; }
+}
+
+/* Celular e tablet em pé: só o cartão, com a frase em cima */
+@media (max-width: 991.98px) {
+    .login-split { grid-template-columns: minmax(0, 1fr); }
+    .login-dir { display: none; }
+    .login-esq { justify-content: flex-start; padding: 1.5rem 1rem 2rem; }
+    .login-boasvindas-celular { display: block; font-size: 1.6rem; margin: .5rem 0 1.25rem; }
+}
+
+@media (max-width: 576px) {
+    .login-topo { font-size: 1rem; padding: .9rem 1rem; }
+    .login-cartao { padding: 1.4rem 1.15rem; border-radius: 14px; }
+    .login-marca { width: 64px; height: 64px; font-size: 1.05rem; margin-bottom: .75rem; box-shadow: inset 0 0 0 3px #fff, 0 0 0 2px var(--login-turq); }
+    .login-titulo { font-size: 1.3rem; }
+    .login-sub { margin-bottom: 1rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .login-botao { transition: none; }
+    .login-botao:active { transform: none; }
+}
+
+/* =========================
    IMPRESSÃO: sem sombras nem fundo
 ========================= */
 @media print {
@@ -661,3 +941,31 @@ body:not(:has(.erp-sidebar)) .erp-content form input:not([type=hidden]):focus {
 }
 
 html { font-size: 13px; }  /* o padrão do navegador é 16px */
+
+/* =========================
+   COLUNA "AÇÕES": botões só com ícone (2026-11-12)
+   Cada botão mantém a cor (btn-info, btn-warning...); o nome da ação
+   fica em title/aria-label e num span visually-hidden.
+========================= */
+.col-acoes,
+td:has(> .btn-acao),
+td:has(> div > .btn-acao) {
+    width: 1%;
+    white-space: nowrap;
+}
+.btn-acao {
+    --bs-btn-padding-x: 0;
+    --bs-btn-padding-y: 0;
+    width: 30px;
+    height: 30px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    line-height: 1;
+    vertical-align: middle;
+}
+td > .btn-acao + .btn-acao { margin-left: 2px; }
+@media (max-width: 576px) {
+    .btn-acao { width: 32px; height: 32px; }   /* alvo maior para o dedo */
+}

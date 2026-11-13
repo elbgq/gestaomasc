@@ -19,7 +19,7 @@
                 <th>Nome</th>
                 <th>Saldo Atual</th>
                 <th>Status</th>
-                <th class="text-center">Ações</th>
+                <th class="text-center col-acoes">Ações</th>
             </tr>
         </thead>
 
@@ -37,7 +37,7 @@
                 </td>
                 
                 <td class="text-center">
-                    <a href="{% url 'financeiro:caixa_detalhe' c.id %}" class="btn btn-sm btn-info">Detalhes</a>
+                    <a href="{% url 'financeiro:caixa_detalhe' c.id %}" class="btn btn-sm btn-info btn-acao" title="Detalhes" aria-label="Detalhes"><i class="bi bi-eye" aria-hidden="true"></i><span class="visually-hidden">Detalhes</span></a>
                 </td>
             </tr>
             {% empty %}
