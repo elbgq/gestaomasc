@@ -74,7 +74,20 @@ html, body {
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    /*min-height: 100vh;*/
+    /* Rodapé no fim da tela: a página tem pelo menos a altura da tela
+       (dvh = altura visível no celular, descontando a barra do navegador) */
+    min-height: 100vh;
+    min-height: 100dvh;
+}
+
+/* O conteúdo estica para ocupar o espaço livre; o rodapé fica logo abaixo dele.
+   Página curta: rodapé no fim da tela. Página longa: rodapé depois do conteúdo. */
+.erp-body > .erp-layout {
+    flex: 1 0 auto;
+}
+
+.erp-body > footer {
+    flex-shrink: 0;
 }
 
 
@@ -96,7 +109,6 @@ html, body {
 .erp-content {
     margin-left: 250px;
     padding: 30px;
-    min-height: 100vh;
 }
 
 /* Footer */
